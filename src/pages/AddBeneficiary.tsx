@@ -8,11 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import { toast } from '@/hooks/use-toast';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
-
-
 const genderOptions = ['Male', 'Female'];
 const maritalStatusOptions = ['Single', 'Married', 'Divorced', 'Widowed'];
-
 export default function AddBeneficiary() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -32,61 +29,61 @@ export default function AddBeneficiary() {
     staffIdNumber: '',
     dateOfBirth: '',
     dateOfEmployment: '',
-    
     loanAmount: '',
     tenorMonths: '36',
     disbursementDate: '',
     bankBranch: '',
-    state: '',
+    state: ''
   });
-
   const amount = parseFloat(form.loanAmount) || 0;
   const tenor = parseInt(form.tenorMonths) || 36;
   const disbDate = form.disbursementDate ? new Date(form.disbursementDate) : null;
-
-  const preview =
-    amount > 0 && tenor > 0 && disbDate
-      ? calculateLoan({
-          principal: amount,
-          annualRate: 6,
-          tenorMonths: tenor,
-          moratoriumMonths: 1,
-          disbursementDate: disbDate,
-        })
-      : null;
-
+  const preview = amount > 0 && tenor > 0 && disbDate ? calculateLoan({
+    principal: amount,
+    annualRate: 6,
+    tenorMonths: tenor,
+    moratoriumMonths: 1,
+    disbursementDate: disbDate
+  }) : null;
   const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !form.surname || !form.firstName || !form.staffIdNumber ||
-      !amount || !disbDate || !form.state || !form.bankBranch || !form.phoneNumber ||
-      !form.gender || !form.organization
-    ) {
-      toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
+    if (!form.surname || !form.firstName || !form.staffIdNumber || !amount || !disbDate || !form.state || !form.bankBranch || !form.phoneNumber || !form.gender || !form.organization) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fill all required fields.',
+        variant: 'destructive'
+      });
       return;
     }
     if (tenor > 60) {
-      toast({ title: 'Invalid Tenor', description: 'Maximum tenor is 60 months (5 years).', variant: 'destructive' });
+      toast({
+        title: 'Invalid Tenor',
+        description: 'Maximum tenor is 60 months (5 years).',
+        variant: 'destructive'
+      });
       return;
     }
     const fullName = `${form.surname} ${form.firstName}${form.otherName ? ' ' + form.otherName : ''}`;
-    toast({ title: 'Loan Created', description: `Loan for ${fullName} has been created successfully.` });
+    toast({
+      title: 'Loan Created',
+      description: `Loan for ${fullName} has been created successfully.`
+    });
     navigate('/beneficiaries');
   };
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
+  return <div className="max-w-4xl mx-auto space-y-6">
       <Link to="/beneficiaries" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back
       </Link>
 
       <div>
         <h1 className="text-3xl font-bold font-display">New Loan Application</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Create a new Home Renovation Loan facility for a staff member</p>
+        <p className="mt-1 text-sm text-muted-foreground">Create a new Home Renovation Loan facility for a customers</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -96,41 +93,37 @@ export default function AddBeneficiary() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="surname">Surname *</Label>
-              <Input id="surname" value={form.surname} onChange={(e) => handleChange('surname', e.target.value)} placeholder="e.g. Ogundimu" />
+              <Input id="surname" value={form.surname} onChange={e => handleChange('surname', e.target.value)} placeholder="e.g. Ogundimu" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name *</Label>
-              <Input id="firstName" value={form.firstName} onChange={(e) => handleChange('firstName', e.target.value)} placeholder="e.g. Adebayo" />
+              <Input id="firstName" value={form.firstName} onChange={e => handleChange('firstName', e.target.value)} placeholder="e.g. Adebayo" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="otherName">Other Name</Label>
-              <Input id="otherName" value={form.otherName} onChange={(e) => handleChange('otherName', e.target.value)} placeholder="e.g. Chukwuemeka" />
+              <Input id="otherName" value={form.otherName} onChange={e => handleChange('otherName', e.target.value)} placeholder="e.g. Chukwuemeka" />
             </div>
             <div className="space-y-2">
               <Label>Gender *</Label>
-              <Select value={form.gender} onValueChange={(v) => handleChange('gender', v)}>
+              <Select value={form.gender} onValueChange={v => handleChange('gender', v)}>
                 <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                 <SelectContent>
-                  {genderOptions.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
+                  {genderOptions.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Marital Status</Label>
-              <Select value={form.maritalStatus} onValueChange={(v) => handleChange('maritalStatus', v)}>
+              <Select value={form.maritalStatus} onValueChange={v => handleChange('maritalStatus', v)}>
                 <SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger>
                 <SelectContent>
-                  {maritalStatusOptions.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
+                  {maritalStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="dob">Date of Birth</Label>
-              <Input id="dob" type="date" value={form.dateOfBirth} onChange={(e) => handleChange('dateOfBirth', e.target.value)} />
+              <Input id="dob" type="date" value={form.dateOfBirth} onChange={e => handleChange('dateOfBirth', e.target.value)} />
             </div>
           </div>
         </div>
@@ -141,27 +134,27 @@ export default function AddBeneficiary() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2 sm:col-span-2 lg:col-span-3">
               <Label htmlFor="address">Address</Label>
-              <Input id="address" value={form.address} onChange={(e) => handleChange('address', e.target.value)} placeholder="e.g. 12 Marina Street, Lagos Island" />
+              <Input id="address" value={form.address} onChange={e => handleChange('address', e.target.value)} placeholder="e.g. 12 Marina Street, Lagos Island" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number *</Label>
-              <Input id="phone" type="tel" value={form.phoneNumber} onChange={(e) => handleChange('phoneNumber', e.target.value)} placeholder="e.g. 08012345678" />
+              <Input id="phone" type="tel" value={form.phoneNumber} onChange={e => handleChange('phoneNumber', e.target.value)} placeholder="e.g. 08012345678" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} placeholder="e.g. adebayo@email.com" />
+              <Input id="email" type="email" value={form.email} onChange={e => handleChange('email', e.target.value)} placeholder="e.g. adebayo@email.com" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="bvn">BVN Number</Label>
-              <Input id="bvn" value={form.bvnNumber} onChange={(e) => handleChange('bvnNumber', e.target.value)} placeholder="e.g. 22012345678" maxLength={11} />
+              <Input id="bvn" value={form.bvnNumber} onChange={e => handleChange('bvnNumber', e.target.value)} placeholder="e.g. 22012345678" maxLength={11} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="nin">NIN Number</Label>
-              <Input id="nin" value={form.ninNumber} onChange={(e) => handleChange('ninNumber', e.target.value)} placeholder="e.g. 12345678901" maxLength={11} />
+              <Input id="nin" value={form.ninNumber} onChange={e => handleChange('ninNumber', e.target.value)} placeholder="e.g. 12345678901" maxLength={11} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="nhf">NHF Number</Label>
-              <Input id="nhf" value={form.nhfNumber} onChange={(e) => handleChange('nhfNumber', e.target.value)} placeholder="e.g. NHF-00012345" />
+              <Input id="nhf" value={form.nhfNumber} onChange={e => handleChange('nhfNumber', e.target.value)} placeholder="e.g. NHF-00012345" />
             </div>
           </div>
         </div>
@@ -172,19 +165,19 @@ export default function AddBeneficiary() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="org">Customer's Organisation *</Label>
-              <Input id="org" value={form.organization} onChange={(e) => handleChange('organization', e.target.value)} placeholder="e.g. Federal Ministry of Works" />
+              <Input id="org" value={form.organization} onChange={e => handleChange('organization', e.target.value)} placeholder="e.g. Federal Ministry of Works" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="empNo">Employer's Number</Label>
-              <Input id="empNo" value={form.employerNumber} onChange={(e) => handleChange('employerNumber', e.target.value)} placeholder="e.g. EMP-0042" />
+              <Input id="empNo" value={form.employerNumber} onChange={e => handleChange('employerNumber', e.target.value)} placeholder="e.g. EMP-0042" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="staffId">Staff ID Number *</Label>
-              <Input id="staffId" value={form.staffIdNumber} onChange={(e) => handleChange('staffIdNumber', e.target.value)} placeholder="e.g. IPPIS-12345" />
+              <Input id="staffId" value={form.staffIdNumber} onChange={e => handleChange('staffIdNumber', e.target.value)} placeholder="e.g. IPPIS-12345" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="doe">Date of Employment</Label>
-              <Input id="doe" type="date" value={form.dateOfEmployment} onChange={(e) => handleChange('dateOfEmployment', e.target.value)} />
+              <Input id="doe" type="date" value={form.dateOfEmployment} onChange={e => handleChange('dateOfEmployment', e.target.value)} />
             </div>
           </div>
         </div>
@@ -195,18 +188,16 @@ export default function AddBeneficiary() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>State *</Label>
-              <Select value={form.state} onValueChange={(v) => handleChange('state', v)}>
+              <Select value={form.state} onValueChange={v => handleChange('state', v)}>
                 <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
                 <SelectContent>
-                  {NIGERIA_STATES.map((s) => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
+                  {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="branch">Bank Branch *</Label>
-              <Input id="branch" value={form.bankBranch} onChange={(e) => handleChange('bankBranch', e.target.value)} placeholder="e.g. Ikeja Branch" />
+              <Input id="branch" value={form.bankBranch} onChange={e => handleChange('bankBranch', e.target.value)} placeholder="e.g. Ikeja Branch" />
             </div>
           </div>
         </div>
@@ -217,15 +208,15 @@ export default function AddBeneficiary() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="amount">Loan Amount (₦) *</Label>
-              <Input id="amount" type="number" min={0} value={form.loanAmount} onChange={(e) => handleChange('loanAmount', e.target.value)} placeholder="e.g. 2500000" />
+              <Input id="amount" type="number" min={0} value={form.loanAmount} onChange={e => handleChange('loanAmount', e.target.value)} placeholder="e.g. 2500000" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tenor">Tenor (months, max 60) *</Label>
-              <Input id="tenor" type="number" min={1} max={60} value={form.tenorMonths} onChange={(e) => handleChange('tenorMonths', e.target.value)} />
+              <Input id="tenor" type="number" min={1} max={60} value={form.tenorMonths} onChange={e => handleChange('tenorMonths', e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="disbDate">Disbursement Date *</Label>
-              <Input id="disbDate" type="date" value={form.disbursementDate} onChange={(e) => handleChange('disbursementDate', e.target.value)} />
+              <Input id="disbDate" type="date" value={form.disbursementDate} onChange={e => handleChange('disbursementDate', e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Interest Rate</Label>
@@ -243,8 +234,7 @@ export default function AddBeneficiary() {
         </div>
 
         {/* Preview */}
-        {preview && (
-          <div className="bg-card rounded-xl shadow-card p-6 space-y-4 border-2 border-accent/30">
+        {preview && <div className="bg-card rounded-xl shadow-card p-6 space-y-4 border-2 border-accent/30">
             <h2 className="text-lg font-bold font-display">Loan Preview</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
               <div>
@@ -264,8 +254,7 @@ export default function AddBeneficiary() {
                 <p className="text-lg font-bold">{formatDate(preview.terminationDate)}</p>
               </div>
             </div>
-          </div>
-        )}
+          </div>}
 
         <div className="flex justify-end gap-3">
           <Link to="/beneficiaries">
@@ -276,6 +265,5 @@ export default function AddBeneficiary() {
           </Button>
         </div>
       </form>
-    </div>
-  );
+    </div>;
 }
