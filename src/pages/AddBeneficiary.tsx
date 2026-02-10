@@ -83,7 +83,7 @@ export default function AddBeneficiary() {
 
       <div>
         <h1 className="text-3xl font-bold font-display">New Loan Application</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Create a new Home Renovation Loan facility for a customers</p>
+        <p className="mt-1 text-sm text-muted-foreground">Create a new Home Renovation Loan facility for a customer</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
