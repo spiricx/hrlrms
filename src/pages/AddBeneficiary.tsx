@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import { toast } from '@/hooks/use-toast';
+import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 
 const departments = ['Engineering', 'Finance', 'Human Resources', 'Operations', 'Marketing', 'IT', 'Admin', 'Legal'];
 
@@ -19,6 +20,8 @@ export default function AddBeneficiary() {
     loanAmount: '',
     tenorMonths: '36',
     disbursementDate: '',
+    bankBranch: '',
+    state: '',
   });
 
   const amount = parseFloat(form.loanAmount) || 0;
@@ -38,7 +41,7 @@ export default function AddBeneficiary() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.employeeId || !form.department || !amount || !disbDate) {
+    if (!form.name || !form.employeeId || !form.department || !amount || !disbDate || !form.state || !form.bankBranch) {
       toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
       return;
     }
@@ -83,6 +86,27 @@ export default function AddBeneficiary() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
+          <h2 className="text-lg font-bold font-display">Branch &amp; Location</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>State *</Label>
+              <Select value={form.state} onValueChange={(v) => setForm({ ...form, state: v })}>
+                <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                <SelectContent>
+                  {NIGERIA_STATES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="branch">Bank Branch *</Label>
+              <Input id="branch" value={form.bankBranch} onChange={(e) => setForm({ ...form, bankBranch: e.target.value })} placeholder="e.g. Ikeja Branch" />
             </div>
           </div>
         </div>

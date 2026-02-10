@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       beneficiaries: {
         Row: {
+          bank_branch: string
           commencement_date: string
           created_at: string
           created_by: string | null
@@ -30,6 +31,7 @@ export type Database = {
           moratorium_months: number
           name: string
           outstanding_balance: number
+          state: string
           status: string
           tenor_months: number
           termination_date: string
@@ -37,6 +39,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bank_branch?: string
           commencement_date: string
           created_at?: string
           created_by?: string | null
@@ -51,6 +54,7 @@ export type Database = {
           moratorium_months?: number
           name: string
           outstanding_balance: number
+          state?: string
           status?: string
           tenor_months: number
           termination_date: string
@@ -58,6 +62,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bank_branch?: string
           commencement_date?: string
           created_at?: string
           created_by?: string | null
@@ -72,6 +77,7 @@ export type Database = {
           moratorium_months?: number
           name?: string
           outstanding_balance?: number
+          state?: string
           status?: string
           tenor_months?: number
           termination_date?: string
@@ -114,26 +120,47 @@ export type Database = {
       }
       profiles: {
         Row: {
+          bank_branch: string
           created_at: string
           email: string
+          first_name: string
           full_name: string
           id: string
+          nhf_account_number: string
+          other_names: string
+          staff_id_no: string
+          state: string
+          surname: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          bank_branch?: string
           created_at?: string
           email?: string
+          first_name?: string
           full_name?: string
           id?: string
+          nhf_account_number?: string
+          other_names?: string
+          staff_id_no?: string
+          state?: string
+          surname?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          bank_branch?: string
           created_at?: string
           email?: string
+          first_name?: string
           full_name?: string
           id?: string
+          nhf_account_number?: string
+          other_names?: string
+          staff_id_no?: string
+          state?: string
+          surname?: string
           updated_at?: string
           user_id?: string
         }
