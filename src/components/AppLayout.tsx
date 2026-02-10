@@ -7,11 +7,11 @@ import {
   FileText,
   Menu,
   X,
-  Building2,
   LogOut,
   Sun,
   Moon,
 } from 'lucide-react';
+import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -56,13 +56,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg gradient-accent">
-            <Building2 className="w-5 h-5 text-accent-foreground" />
-          </div>
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
+          <img src={fmbnLogo} alt="FMBN Logo" className="w-10 h-auto brightness-0 invert" />
           <div>
-            <h1 className="text-base font-bold text-sidebar-foreground font-display">HRL Portal</h1>
-            <p className="text-xs text-sidebar-foreground/60">Home Renovation Loan</p>
+            <h1 className="text-sm font-bold text-sidebar-foreground font-display">HRLMS Portal</h1>
+            <p className="text-[10px] text-sidebar-foreground/60">Loan Processing Unit</p>
           </div>
         </div>
 

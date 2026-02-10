@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Building2, Mail, Lock, User, Hash, MapPin } from 'lucide-react';
+import { Mail, Lock, User, Hash, MapPin } from 'lucide-react';
+import fmbnLogo from '@/assets/fmbn_logo.png';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -96,14 +97,16 @@ export default function Auth() {
       {/* Left side - branding */}
       <div className="hidden lg:flex lg:w-1/2 gradient-hero items-center justify-center p-12">
         <div className="max-w-md text-center">
-          <div className="flex items-center justify-center w-16 h-16 rounded-2xl gradient-accent mx-auto mb-6">
-            <Building2 className="w-8 h-8 text-accent-foreground" />
-          </div>
+          <img src={fmbnLogo} alt="FMBN Logo" className="w-28 h-auto mx-auto mb-6" />
+          <p className="text-xs font-semibold tracking-widest uppercase text-sidebar-foreground/60 mb-1">Loan Processing Unit</p>
           <h1 className="text-3xl font-bold font-display text-sidebar-foreground">
-            HRL Portal
+            HRLMS Portal
           </h1>
-          <p className="mt-3 text-sidebar-foreground/70">
-            Home Renovation Loan Management System — track disbursements, repayments, and defaults with ease.
+          <p className="mt-2 text-sm text-sidebar-foreground/70">
+            Home Renovation Loan Management System
+          </p>
+          <p className="mt-3 text-sidebar-foreground/50 text-xs">
+            Track Loan Monthly Repayments · Disbursements · Defaults
           </p>
         </div>
       </div>
@@ -112,10 +115,11 @@ export default function Auth() {
       <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
         <div className="w-full max-w-md space-y-6">
           <div className="lg:hidden flex items-center gap-3 justify-center mb-4">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg gradient-accent">
-              <Building2 className="w-5 h-5 text-accent-foreground" />
+            <img src={fmbnLogo} alt="FMBN Logo" className="w-12 h-auto" />
+            <div>
+              <h1 className="text-lg font-bold font-display">HRLMS Portal</h1>
+              <p className="text-[10px] text-muted-foreground">Loan Processing Unit</p>
             </div>
-            <h1 className="text-xl font-bold font-display">HRL Portal</h1>
           </div>
 
           <div className="text-center">
