@@ -9,7 +9,7 @@ import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculation
 import { toast } from '@/hooks/use-toast';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 
-const departments = ['Engineering', 'Finance', 'Human Resources', 'Operations', 'Marketing', 'IT', 'Admin', 'Legal'];
+
 const genderOptions = ['Male', 'Female'];
 const maritalStatusOptions = ['Single', 'Married', 'Divorced', 'Widowed'];
 
@@ -32,7 +32,7 @@ export default function AddBeneficiary() {
     staffIdNumber: '',
     dateOfBirth: '',
     dateOfEmployment: '',
-    department: '',
+    
     loanAmount: '',
     tenorMonths: '36',
     disbursementDate: '',
@@ -62,7 +62,7 @@ export default function AddBeneficiary() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (
-      !form.surname || !form.firstName || !form.staffIdNumber || !form.department ||
+      !form.surname || !form.firstName || !form.staffIdNumber ||
       !amount || !disbDate || !form.state || !form.bankBranch || !form.phoneNumber ||
       !form.gender || !form.organization
     ) {
@@ -181,17 +181,6 @@ export default function AddBeneficiary() {
             <div className="space-y-2">
               <Label htmlFor="staffId">Staff ID Number *</Label>
               <Input id="staffId" value={form.staffIdNumber} onChange={(e) => handleChange('staffIdNumber', e.target.value)} placeholder="e.g. IPPIS-12345" />
-            </div>
-            <div className="space-y-2">
-              <Label>Department *</Label>
-              <Select value={form.department} onValueChange={(v) => handleChange('department', v)}>
-                <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                <SelectContent>
-                  {departments.map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="doe">Date of Employment</Label>
