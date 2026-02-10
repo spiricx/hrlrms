@@ -125,9 +125,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
               {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
             <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
-              {user?.email?.[0]?.toUpperCase() || 'U'}
+              {(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
             </div>
-            <span className="hidden text-sm font-medium sm:block">{user?.email?.split('@')[0]}</span>
+            <span className="hidden text-sm font-medium sm:block">
+              {user?.user_metadata?.surname && user?.user_metadata?.first_name
+                ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
+                : user?.email?.split('@')[0]}
+            </span>
             <button
               onClick={signOut}
               className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"

@@ -1,6 +1,10 @@
+import { useState } from 'react';
 import { mockBeneficiaries, portfolioStats } from '@/lib/mockData';
 import { formatCurrency } from '@/lib/loanCalculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import { useAuth } from '@/contexts/AuthContext';
 
 const statusData = [
   { name: 'Active', value: portfolioStats.activeLoanCount, color: 'hsl(152, 60%, 40%)' },
@@ -19,11 +23,30 @@ const deptChartData = Object.entries(deptData).map(([dept, amount]) => ({
 }));
 
 export default function Reports() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole('admin');
+  const [stateFilter, setStateFilter] = useState('all');
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-display">Reports & Analytics</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Loan performance and portfolio insights</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold font-display">Reports & Analytics</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Loan performance and portfolio insights</p>
+        </div>
+        {isAdmin && (
+          <Select value={stateFilter} onValueChange={setStateFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter by state" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All States</SelectItem>
+              {NIGERIA_STATES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
