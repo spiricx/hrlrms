@@ -1,28 +1,55 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle } from 'lucide-react';
-import { mockBeneficiaries } from '@/lib/mockData';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
+
+type Beneficiary = Tables<'beneficiaries'>;
 
 export default function Beneficiaries() {
   const { hasRole } = useAuth();
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [loading, setLoading] = useState(true);
   const isAdmin = hasRole('admin');
 
-  const filtered = mockBeneficiaries.filter((b) => {
+  useEffect(() => {
+    const fetchBeneficiaries = async () => {
+      const { data, error } = await supabase
+        .from('beneficiaries')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setBeneficiaries(data);
+      }
+      setLoading(false);
+    };
+    fetchBeneficiaries();
+  }, []);
+
+  const filtered = beneficiaries.filter((b) => {
     const matchesSearch =
       b.name.toLowerCase().includes(search.toLowerCase()) ||
-      b.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-      b.department.toLowerCase().includes(search.toLowerCase());
-    return matchesSearch;
+      b.employee_id.toLowerCase().includes(search.toLowerCase());
+    const matchesState = stateFilter === 'all' || b.state === stateFilter;
+    return matchesSearch && matchesState;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-pulse text-muted-foreground">Loading beneficiaries...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -43,7 +70,7 @@ export default function Beneficiaries() {
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, ID, or department..."
+            placeholder="Search by name or ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
@@ -71,7 +98,6 @@ export default function Beneficiaries() {
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Emp ID</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dept</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
@@ -85,13 +111,12 @@ export default function Beneficiaries() {
               {filtered.map((b) => (
                 <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-6 py-4 font-medium whitespace-nowrap">{b.name}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{b.employeeId}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{b.department}</td>
-                  <td className="px-6 py-4 text-muted-foreground">—</td>
-                  <td className="px-6 py-4 text-muted-foreground">—</td>
-                  <td className="px-6 py-4">{formatCurrency(b.loanAmount)}</td>
-                  <td className="px-6 py-4">{formatCurrency(b.monthlyEMI)}</td>
-                  <td className="px-6 py-4 font-medium">{formatCurrency(b.outstandingBalance)}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{b.employee_id}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{b.state || '—'}</td>
+                  <td className="px-6 py-4 text-muted-foreground">{b.bank_branch || '—'}</td>
+                  <td className="px-6 py-4">{formatCurrency(Number(b.loan_amount))}</td>
+                  <td className="px-6 py-4">{formatCurrency(Number(b.monthly_emi))}</td>
+                  <td className="px-6 py-4 font-medium">{formatCurrency(Number(b.outstanding_balance))}</td>
                   <td className="px-6 py-4"><StatusBadge status={b.status} /></td>
                   <td className="px-6 py-4">
                     <Link
@@ -105,7 +130,7 @@ export default function Beneficiaries() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>

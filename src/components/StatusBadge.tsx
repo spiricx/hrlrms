@@ -8,8 +8,8 @@ const statusConfig: Record<LoanStatus, { label: string; className: string }> = {
   pending: { label: 'Pending', className: 'bg-warning/10 text-warning border-warning/20' },
 };
 
-export default function StatusBadge({ status }: { status: LoanStatus }) {
-  const config = statusConfig[status];
+export default function StatusBadge({ status }: { status: string }) {
+  const config = statusConfig[status as LoanStatus] ?? statusConfig.active;
   return (
     <span className={cn('inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border', config.className)}>
       {config.label}
