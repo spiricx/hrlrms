@@ -6,16 +6,23 @@ import { formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Beneficiaries() {
+  const { hasRole } = useAuth();
   const [search, setSearch] = useState('');
+  const [stateFilter, setStateFilter] = useState('all');
+  const isAdmin = hasRole('admin');
 
-  const filtered = mockBeneficiaries.filter(
-    (b) =>
+  const filtered = mockBeneficiaries.filter((b) => {
+    const matchesSearch =
       b.name.toLowerCase().includes(search.toLowerCase()) ||
       b.employeeId.toLowerCase().includes(search.toLowerCase()) ||
-      b.department.toLowerCase().includes(search.toLowerCase())
-  );
+      b.department.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -32,14 +39,29 @@ export default function Beneficiaries() {
         </Link>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, ID, or department..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, ID, or department..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        {isAdmin && (
+          <Select value={stateFilter} onValueChange={setStateFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filter by state" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All States</SelectItem>
+              {NIGERIA_STATES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
@@ -50,11 +72,11 @@ export default function Beneficiaries() {
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Emp ID</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Dept</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly EMI</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termination</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
               </tr>
@@ -65,11 +87,11 @@ export default function Beneficiaries() {
                   <td className="px-6 py-4 font-medium whitespace-nowrap">{b.name}</td>
                   <td className="px-6 py-4 text-muted-foreground">{b.employeeId}</td>
                   <td className="px-6 py-4 text-muted-foreground">{b.department}</td>
+                  <td className="px-6 py-4 text-muted-foreground">—</td>
+                  <td className="px-6 py-4 text-muted-foreground">—</td>
                   <td className="px-6 py-4">{formatCurrency(b.loanAmount)}</td>
                   <td className="px-6 py-4">{formatCurrency(b.monthlyEMI)}</td>
                   <td className="px-6 py-4 font-medium">{formatCurrency(b.outstandingBalance)}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{b.tenorMonths}m</td>
-                  <td className="px-6 py-4 text-muted-foreground whitespace-nowrap">{formatDate(b.terminationDate)}</td>
                   <td className="px-6 py-4"><StatusBadge status={b.status} /></td>
                   <td className="px-6 py-4">
                     <Link
