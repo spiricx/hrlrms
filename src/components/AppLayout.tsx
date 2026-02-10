@@ -8,8 +8,10 @@ import {
   Menu,
   X,
   Building2,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,6 +21,7 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
+  const { user, roles, signOut } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -63,7 +66,12 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="px-4 py-4 border-t border-sidebar-border">
+        <div className="px-4 py-4 border-t border-sidebar-border space-y-2">
+          {roles.length > 0 && (
+            <p className="text-xs text-sidebar-foreground/60 capitalize">
+              Role: {roles.join(', ')}
+            </p>
+          )}
           <p className="text-xs text-sidebar-foreground/40">© 2025 HRL Portal</p>
         </div>
       </aside>
@@ -86,11 +94,18 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex-1" />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
-              A
+              {user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
-            <span className="hidden text-sm font-medium sm:block">Admin</span>
+            <span className="hidden text-sm font-medium sm:block">{user?.email?.split('@')[0]}</span>
+            <button
+              onClick={signOut}
+              className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </header>
 

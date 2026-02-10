@@ -14,16 +14,205 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      beneficiaries: {
+        Row: {
+          commencement_date: string
+          created_at: string
+          created_by: string | null
+          default_count: number
+          department: string
+          disbursement_date: string
+          employee_id: string
+          id: string
+          interest_rate: number
+          loan_amount: number
+          monthly_emi: number
+          moratorium_months: number
+          name: string
+          outstanding_balance: number
+          status: string
+          tenor_months: number
+          termination_date: string
+          total_paid: number
+          updated_at: string
+        }
+        Insert: {
+          commencement_date: string
+          created_at?: string
+          created_by?: string | null
+          default_count?: number
+          department: string
+          disbursement_date: string
+          employee_id: string
+          id?: string
+          interest_rate?: number
+          loan_amount: number
+          monthly_emi: number
+          moratorium_months?: number
+          name: string
+          outstanding_balance: number
+          status?: string
+          tenor_months: number
+          termination_date: string
+          total_paid?: number
+          updated_at?: string
+        }
+        Update: {
+          commencement_date?: string
+          created_at?: string
+          created_by?: string | null
+          default_count?: number
+          department?: string
+          disbursement_date?: string
+          employee_id?: string
+          id?: string
+          interest_rate?: number
+          loan_amount?: number
+          monthly_emi?: number
+          moratorium_months?: number
+          name?: string
+          outstanding_balance?: number
+          status?: string
+          tenor_months?: number
+          termination_date?: string
+          total_paid?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      default_logs: {
+        Row: {
+          applied_at: string
+          beneficiary_id: string
+          charge_amount: number
+          id: string
+          month_year: string
+        }
+        Insert: {
+          applied_at?: string
+          beneficiary_id: string
+          charge_amount: number
+          id?: string
+          month_year: string
+        }
+        Update: {
+          applied_at?: string
+          beneficiary_id?: string
+          charge_amount?: number
+          id?: string
+          month_year?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "default_logs_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "beneficiaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          beneficiary_id: string
+          created_at: string
+          date_paid: string
+          id: string
+          month_for: number
+          recorded_by: string | null
+          rrr_number: string
+        }
+        Insert: {
+          amount: number
+          beneficiary_id: string
+          created_at?: string
+          date_paid: string
+          id?: string
+          month_for: number
+          recorded_by?: string | null
+          rrr_number: string
+        }
+        Update: {
+          amount?: number
+          beneficiary_id?: string
+          created_at?: string
+          date_paid?: string
+          id?: string
+          month_for?: number
+          recorded_by?: string | null
+          rrr_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "beneficiaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "loan_officer" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +339,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "loan_officer", "staff"],
+    },
   },
 } as const
