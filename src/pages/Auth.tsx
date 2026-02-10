@@ -1,18 +1,30 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Building2, Mail, Lock, User } from 'lucide-react';
+import { Building2, Mail, Lock, User, Hash, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 
 export default function Auth() {
   const { user, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ email: '', password: '', fullName: '' });
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    surname: '',
+    firstName: '',
+    otherNames: '',
+    staffIdNo: '',
+    nhfAccountNumber: '',
+    bankBranch: '',
+    state: '',
+  });
 
   if (loading) {
     return (
@@ -37,11 +49,26 @@ export default function Auth() {
         if (error) throw error;
         toast({ title: 'Welcome back!', description: 'Signed in successfully.' });
       } else {
+        if (!form.surname || !form.firstName || !form.staffIdNo || !form.state || !form.bankBranch) {
+          toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
+          setSubmitting(false);
+          return;
+        }
+        const fullName = [form.surname, form.firstName, form.otherNames].filter(Boolean).join(' ');
         const { error } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
           options: {
-            data: { full_name: form.fullName },
+            data: {
+              full_name: fullName,
+              surname: form.surname,
+              first_name: form.firstName,
+              other_names: form.otherNames,
+              staff_id_no: form.staffIdNo,
+              nhf_account_number: form.nhfAccountNumber,
+              bank_branch: form.bankBranch,
+              state: form.state,
+            },
             emailRedirectTo: window.location.origin,
           },
         });
@@ -62,6 +89,8 @@ export default function Auth() {
     }
   };
 
+  const set = (key: string, value: string) => setForm({ ...form, [key]: value });
+
   return (
     <div className="min-h-screen flex">
       {/* Left side - branding */}
@@ -80,8 +109,8 @@ export default function Auth() {
       </div>
 
       {/* Right side - form */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-sm space-y-6">
+      <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
+        <div className="w-full max-w-md space-y-6">
           <div className="lg:hidden flex items-center gap-3 justify-center mb-4">
             <div className="flex items-center justify-center w-10 h-10 rounded-lg gradient-accent">
               <Building2 className="w-5 h-5 text-accent-foreground" />
@@ -102,24 +131,64 @@ export default function Auth() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="fullName"
-                    placeholder="e.g. Adebayo Ogundimu"
-                    value={form.fullName}
-                    onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                    className="pl-10"
-                    required
-                  />
+              <>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="surname">Surname *</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input id="surname" placeholder="e.g. Ogundimu" value={form.surname} onChange={(e) => set('surname', e.target.value)} className="pl-10" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name *</Label>
+                    <Input id="firstName" placeholder="e.g. Adebayo" value={form.firstName} onChange={(e) => set('firstName', e.target.value)} required />
+                  </div>
                 </div>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="otherNames">Other Names</Label>
+                  <Input id="otherNames" placeholder="e.g. Oluwafemi" value={form.otherNames} onChange={(e) => set('otherNames', e.target.value)} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="staffIdNo">Staff ID No. *</Label>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input id="staffIdNo" placeholder="e.g. EMP-1024" value={form.staffIdNo} onChange={(e) => set('staffIdNo', e.target.value)} className="pl-10" required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="nhfAccount">NHF Account No.</Label>
+                    <Input id="nhfAccount" placeholder="e.g. NHF123456" value={form.nhfAccountNumber} onChange={(e) => set('nhfAccountNumber', e.target.value)} />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>State *</Label>
+                    <Select value={form.state} onValueChange={(v) => set('state', v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {NIGERIA_STATES.map((s) => (
+                          <SelectItem key={s} value={s}>{s}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bankBranch">Bank Branch *</Label>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input id="bankBranch" placeholder="e.g. Ikeja Branch" value={form.bankBranch} onChange={(e) => set('bankBranch', e.target.value)} className="pl-10" required />
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -127,7 +196,7 @@ export default function Auth() {
                   type="email"
                   placeholder="you@company.com"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e) => set('email', e.target.value)}
                   className="pl-10"
                   required
                 />
@@ -135,7 +204,7 @@ export default function Auth() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">Password *</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -143,7 +212,7 @@ export default function Auth() {
                   type="password"
                   placeholder="••••••••"
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) => set('password', e.target.value)}
                   className="pl-10"
                   required
                   minLength={6}
