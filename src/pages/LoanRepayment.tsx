@@ -63,25 +63,25 @@ export default function LoanRepayment() {
 
   useEffect(() => {
     const fetchBeneficiaries = async () => {
-      const { data, error } = await supabase
-        .from('beneficiaries')
-        .select('*')
-        .eq('status', 'active')
-        .order('name', { ascending: true });
+      const { data, error } = await supabase.
+      from('beneficiaries').
+      select('*').
+      eq('status', 'active').
+      order('name', { ascending: true });
       if (!error && data) setBeneficiaries(data);
       setLoading(false);
     };
     fetchBeneficiaries();
 
-    const channel = supabase.channel('repayment-beneficiaries')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => fetchBeneficiaries())
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const channel = supabase.channel('repayment-beneficiaries').
+    on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => fetchBeneficiaries()).
+    subscribe();
+    return () => {supabase.removeChannel(channel);};
   }, []);
 
-  const filtered = useMemo(() => beneficiaries.filter(b => {
+  const filtered = useMemo(() => beneficiaries.filter((b) => {
     const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase()) ||
-      b.employee_id.toLowerCase().includes(search.toLowerCase());
+    b.employee_id.toLowerCase().includes(search.toLowerCase());
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
     return matchesSearch && matchesState;
   }), [beneficiaries, search, stateFilter]);
@@ -105,11 +105,11 @@ export default function LoanRepayment() {
     setHistoryBen(b);
     setHistoryOpen(true);
     setHistoryLoading(true);
-    const { data } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('beneficiary_id', b.id)
-      .order('month_for', { ascending: true });
+    const { data } = await supabase.
+    from('transactions').
+    select('*').
+    eq('beneficiary_id', b.id).
+    order('month_for', { ascending: true });
     setHistoryTxns(data || []);
     setHistoryLoading(false);
   };
@@ -135,11 +135,11 @@ export default function LoanRepayment() {
     }
 
     // Check duplicate RRR
-    const { data: existing } = await supabase
-      .from('transactions')
-      .select('id')
-      .eq('rrr_number', rrrNumber.trim())
-      .maybeSingle();
+    const { data: existing } = await supabase.
+    from('transactions').
+    select('id').
+    eq('rrr_number', rrrNumber.trim()).
+    maybeSingle();
     if (existing) {
       toast({ title: 'Duplicate RRR', description: 'This Remita Reference Number has already been used.', variant: 'destructive' });
       return;
@@ -157,7 +157,7 @@ export default function LoanRepayment() {
       month_for: monthFor,
       recorded_by: user?.id || null,
       receipt_url: receiptUrl.trim(),
-      notes: notes.trim(),
+      notes: notes.trim()
     });
 
     if (txError) {
@@ -173,14 +173,14 @@ export default function LoanRepayment() {
     await supabase.from('beneficiaries').update({
       total_paid: newTotalPaid,
       outstanding_balance: newOutstanding,
-      status: newOutstanding <= 0 ? 'completed' : selectedBen.status,
+      status: newOutstanding <= 0 ? 'completed' : selectedBen.status
     }).eq('id', selectedBen.id);
 
     setSaving(false);
     setModalOpen(false);
     toast({
       title: 'Repayment Recorded',
-      description: `Balance updated using payment date: ${format(paymentDate, 'dd/MM/yyyy')}.`,
+      description: `Balance updated using payment date: ${format(paymentDate, 'dd/MM/yyyy')}.`
     });
   };
 
@@ -222,12 +222,12 @@ export default function LoanRepayment() {
     }
 
     // Check duplicate RRR (exclude current)
-    const { data: existing } = await supabase
-      .from('transactions')
-      .select('id')
-      .eq('rrr_number', rrrNumber.trim())
-      .neq('id', editingTxn.id)
-      .maybeSingle();
+    const { data: existing } = await supabase.
+    from('transactions').
+    select('id').
+    eq('rrr_number', rrrNumber.trim()).
+    neq('id', editingTxn.id).
+    maybeSingle();
     if (existing) {
       toast({ title: 'Duplicate RRR', description: 'This RRR is already used by another transaction.', variant: 'destructive' });
       return;
@@ -244,7 +244,7 @@ export default function LoanRepayment() {
       date_paid: format(paymentDate, 'yyyy-MM-dd'),
       month_for: Number(repaymentMonth),
       receipt_url: receiptUrl.trim(),
-      notes: notes.trim(),
+      notes: notes.trim()
     }).eq('id', editingTxn.id);
 
     if (error) {
@@ -257,7 +257,7 @@ export default function LoanRepayment() {
     if (diff !== 0) {
       await supabase.from('beneficiaries').update({
         total_paid: Number(historyBen.total_paid) + diff,
-        outstanding_balance: Math.max(0, Number(historyBen.outstanding_balance) - diff),
+        outstanding_balance: Math.max(0, Number(historyBen.outstanding_balance) - diff)
       }).eq('id', historyBen.id);
     }
 
@@ -284,7 +284,7 @@ export default function LoanRepayment() {
     await supabase.from('beneficiaries').update({
       total_paid: Math.max(0, Number(historyBen.total_paid) - amount),
       outstanding_balance: Number(historyBen.outstanding_balance) + amount,
-      status: 'active',
+      status: 'active'
     }).eq('id', historyBen.id);
 
     setDeleting(false);
@@ -294,20 +294,20 @@ export default function LoanRepayment() {
   };
 
   // Generate month options based on beneficiary tenor
-  const editMonthOptions = editingTxn && historyBen
-    ? Array.from({ length: historyBen.tenor_months }, (_, i) => i + 1)
-    : [];
+  const editMonthOptions = editingTxn && historyBen ?
+  Array.from({ length: historyBen.tenor_months }, (_, i) => i + 1) :
+  [];
 
-  const monthOptions = selectedBen
-    ? Array.from({ length: selectedBen.tenor_months }, (_, i) => i + 1)
-    : [];
+  const monthOptions = selectedBen ?
+  Array.from({ length: selectedBen.tenor_months }, (_, i) => i + 1) :
+  [];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-pulse text-muted-foreground">Loading active loans...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   return (
@@ -320,19 +320,19 @@ export default function LoanRepayment() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by name or ID..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Search by name or ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
-        {isAdmin && (
-          <Select value={stateFilter} onValueChange={setStateFilter}>
+        {isAdmin &&
+        <Select value={stateFilter} onValueChange={setStateFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by state" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All States</SelectItem>
-              {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {NIGERIA_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-        )}
+        }
       </div>
 
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
@@ -344,15 +344,15 @@ export default function LoanRepayment() {
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Emp ID</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly EMI</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">MONTHLY REPAYMENT</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                 <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map(b => (
-                <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
+              {filtered.map((b) =>
+              <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
                   <td className="px-6 py-4 font-medium whitespace-nowrap">{b.name}</td>
                   <td className="px-6 py-4 text-muted-foreground">{b.employee_id}</td>
                   <td className="px-6 py-4 text-muted-foreground">{b.state || '—'}</td>
@@ -369,14 +369,14 @@ export default function LoanRepayment() {
                     </Button>
                   </td>
                 </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
+              )}
+              {filtered.length === 0 &&
+              <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
                     No active loans found.
                   </td>
                 </tr>
-              )}
+              }
             </tbody>
           </table>
         </div>
@@ -390,8 +390,8 @@ export default function LoanRepayment() {
             <DialogDescription>Enter repayment details from the Remita receipt.</DialogDescription>
           </DialogHeader>
 
-          {selectedBen && (
-            <div className="space-y-4">
+          {selectedBen &&
+          <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-secondary/50">
                 <div>
                   <p className="text-xs text-muted-foreground">Beneficiary</p>
@@ -409,19 +409,19 @@ export default function LoanRepayment() {
                   <Select value={repaymentMonth} onValueChange={setRepaymentMonth}>
                     <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
                     <SelectContent>
-                      {monthOptions.map(m => <SelectItem key={m} value={String(m)}>Month {m}</SelectItem>)}
+                      {monthOptions.map((m) => <SelectItem key={m} value={String(m)}>Month {m}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
                   <Label>Amount Paid (₦) *</Label>
-                  <Input type="number" min="0" step="0.01" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} placeholder="0.00" />
+                  <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" />
                 </div>
 
                 <div>
                   <Label>Remita Reference Number (RRR) *</Label>
-                  <Input value={rrrNumber} onChange={e => setRrrNumber(e.target.value)} placeholder="e.g. 310007771234" />
+                  <Input value={rrrNumber} onChange={(e) => setRrrNumber(e.target.value)} placeholder="e.g. 310007771234" />
                 </div>
 
                 <div>
@@ -436,29 +436,29 @@ export default function LoanRepayment() {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
-                        mode="single"
-                        selected={paymentDate}
-                        onSelect={setPaymentDate}
-                        disabled={(date) => date > new Date()}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
+                      mode="single"
+                      selected={paymentDate}
+                      onSelect={setPaymentDate}
+                      disabled={(date) => date > new Date()}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")} />
+
                     </PopoverContent>
                   </Popover>
                 </div>
 
                 <div>
                   <Label>Remita Receipt URL *</Label>
-                  <Input value={receiptUrl} onChange={e => setReceiptUrl(e.target.value)} placeholder="https://remita.net/receipt/..." />
+                  <Input value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} placeholder="https://remita.net/receipt/..." />
                 </div>
 
                 <div>
                   <Label>Notes / Remarks</Label>
-                  <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional comments" rows={2} />
+                  <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional comments" rows={2} />
                 </div>
               </div>
             </div>
-          )}
+          }
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
@@ -477,12 +477,12 @@ export default function LoanRepayment() {
             <DialogDescription>All recorded repayments for this loan facility.</DialogDescription>
           </DialogHeader>
 
-          {historyLoading ? (
-            <div className="py-8 text-center text-muted-foreground animate-pulse">Loading...</div>
-          ) : historyTxns.length === 0 ? (
-            <div className="py-8 text-center text-muted-foreground">No repayments recorded yet.</div>
-          ) : (
-            <div className="overflow-x-auto">
+          {historyLoading ?
+          <div className="py-8 text-center text-muted-foreground animate-pulse">Loading...</div> :
+          historyTxns.length === 0 ?
+          <div className="py-8 text-center text-muted-foreground">No repayments recorded yet.</div> :
+
+          <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/50">
@@ -496,38 +496,38 @@ export default function LoanRepayment() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {historyTxns.map(t => (
-                    <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+                  {historyTxns.map((t) =>
+                <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
                       <td className="px-4 py-3">Month {t.month_for}</td>
                       <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(t.amount))}</td>
                       <td className="px-4 py-3 font-mono text-xs">{t.rrr_number}</td>
                       <td className="px-4 py-3">{formatDate(new Date(t.date_paid))}</td>
                       <td className="px-4 py-3">
-                        {t.receipt_url ? (
-                          <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+                        {t.receipt_url ?
+                    <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
                             <ExternalLink className="w-3 h-3" /> Open
-                          </a>
-                        ) : '—'}
+                          </a> :
+                    '—'}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
                       <td className="px-4 py-3 text-center space-x-1">
-                        {canEditTxn(t) && (
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
+                        {canEditTxn(t) &&
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
-                        )}
-                        {canDeleteTxn(t) && (
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { setDeletingTxn(t); setDeleteDialogOpen(true); }}>
+                    }
+                        {canDeleteTxn(t) &&
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => {setDeletingTxn(t);setDeleteDialogOpen(true);}}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
-                        )}
+                    }
                       </td>
                     </tr>
-                  ))}
+                )}
                 </tbody>
               </table>
             </div>
-          )}
+          }
         </DialogContent>
       </Dialog>
 
@@ -539,24 +539,24 @@ export default function LoanRepayment() {
             <DialogDescription>Modify the repayment details below.</DialogDescription>
           </DialogHeader>
 
-          {editingTxn && (
-            <div className="space-y-3">
+          {editingTxn &&
+          <div className="space-y-3">
               <div>
                 <Label>Repayment Month *</Label>
                 <Select value={repaymentMonth} onValueChange={setRepaymentMonth}>
                   <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
                   <SelectContent>
-                    {editMonthOptions.map(m => <SelectItem key={m} value={String(m)}>Month {m}</SelectItem>)}
+                    {editMonthOptions.map((m) => <SelectItem key={m} value={String(m)}>Month {m}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Amount Paid (₦) *</Label>
-                <Input type="number" min="0" step="0.01" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+                <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} />
               </div>
               <div>
                 <Label>Remita Reference Number (RRR) *</Label>
-                <Input value={rrrNumber} onChange={e => setRrrNumber(e.target.value)} />
+                <Input value={rrrNumber} onChange={(e) => setRrrNumber(e.target.value)} />
               </div>
               <div>
                 <Label>Payment Date (as on Remita receipt) *</Label>
@@ -574,14 +574,14 @@ export default function LoanRepayment() {
               </div>
               <div>
                 <Label>Remita Receipt URL *</Label>
-                <Input value={receiptUrl} onChange={e => setReceiptUrl(e.target.value)} />
+                <Input value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} />
               </div>
               <div>
                 <Label>Notes / Remarks</Label>
-                <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
               </div>
             </div>
-          )}
+          }
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
@@ -609,6 +609,6 @@ export default function LoanRepayment() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
-  );
+    </div>);
+
 }
