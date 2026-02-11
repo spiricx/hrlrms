@@ -174,6 +174,8 @@ export type Database = {
           date_paid: string
           id: string
           month_for: number
+          notes: string | null
+          receipt_url: string | null
           recorded_by: string | null
           rrr_number: string
         }
@@ -184,6 +186,8 @@ export type Database = {
           date_paid: string
           id?: string
           month_for: number
+          notes?: string | null
+          receipt_url?: string | null
           recorded_by?: string | null
           rrr_number: string
         }
@@ -194,6 +198,8 @@ export type Database = {
           date_paid?: string
           id?: string
           month_for?: number
+          notes?: string | null
+          receipt_url?: string | null
           recorded_by?: string | null
           rrr_number?: string
         }

@@ -5,6 +5,7 @@ import {
   Users,
   PlusCircle,
   FileText,
+  Banknote,
   Menu,
   X,
   LogOut,
@@ -38,6 +39,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/add-beneficiary', label: 'New Loan', icon: PlusCircle },
+  { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/reports', label: 'Reports', icon: FileText },
 ];
 
@@ -66,6 +68,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
+            if (item.roles && !item.roles.some(r => roles.includes(r as any))) return null;
             const active = location.pathname === item.path;
             return (
               <Link
