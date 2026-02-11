@@ -25,6 +25,17 @@ export default function Dashboard() {
       setLoading(false);
     };
     fetchBeneficiaries();
+
+    const channel = supabase
+      .channel('dashboard-beneficiaries')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'beneficiaries' },
+        () => { fetchBeneficiaries(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const totalDisbursed = beneficiaries.reduce((s, b) => s + Number(b.loan_amount), 0);

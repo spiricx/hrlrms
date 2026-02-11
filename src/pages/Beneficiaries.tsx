@@ -33,6 +33,17 @@ export default function Beneficiaries() {
       setLoading(false);
     };
     fetchBeneficiaries();
+
+    const channel = supabase
+      .channel('beneficiaries-list')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'beneficiaries' },
+        () => { fetchBeneficiaries(); }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const filtered = beneficiaries.filter((b) => {
