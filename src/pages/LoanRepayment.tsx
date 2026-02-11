@@ -341,7 +341,7 @@ export default function LoanRepayment() {
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Emp ID</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">STAFF ID</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">MONTHLY REPAYMENT</th>
