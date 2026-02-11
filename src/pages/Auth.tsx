@@ -24,15 +24,15 @@ export default function Auth() {
     staffIdNo: '',
     nhfAccountNumber: '',
     bankBranch: '',
-    state: '',
+    state: ''
   });
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>
-    );
+      </div>);
+
   }
 
   if (user) return <Navigate to="/" replace />;
@@ -45,7 +45,7 @@ export default function Auth() {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email: form.email,
-          password: form.password,
+          password: form.password
         });
         if (error) throw error;
         toast({ title: 'Welcome back!', description: 'Signed in successfully.' });
@@ -68,22 +68,22 @@ export default function Auth() {
               staff_id_no: form.staffIdNo,
               nhf_account_number: form.nhfAccountNumber,
               bank_branch: form.bankBranch,
-              state: form.state,
+              state: form.state
             },
-            emailRedirectTo: window.location.origin,
-          },
+            emailRedirectTo: window.location.origin
+          }
         });
         if (error) throw error;
         toast({
           title: 'Account created!',
-          description: 'Please check your email to verify your account.',
+          description: 'Please check your email to verify your account.'
         });
       }
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message,
-        variant: 'destructive',
+        variant: 'destructive'
       });
     } finally {
       setSubmitting(false);
@@ -99,14 +99,14 @@ export default function Auth() {
         <div className="max-w-md text-center">
           <img src={fmbnLogo} alt="FMBN Logo" className="w-28 h-auto mx-auto mb-6" />
           <p className="text-xs font-semibold tracking-widest uppercase text-sidebar-foreground/60 mb-1">Loan Processing Unit</p>
-          <h1 className="text-3xl font-bold font-display text-sidebar-foreground">
-            HRLMS Portal
+          <h1 className="text-3xl font-bold font-display text-sidebar-foreground">HRL-RMS Portal
+
           </h1>
-          <p className="mt-2 text-sm text-sidebar-foreground/70">
-            Home Renovation Loan Management System
+          <p className="mt-2 text-sm text-sidebar-foreground/70">Home Renovation Loan Repayment Management System
+
           </p>
-          <p className="mt-3 text-sidebar-foreground/50 text-xs">
-            Track Loan Monthly Repayments · Disbursements · Defaults
+          <p className="mt-3 text-sidebar-foreground/50 text-xs">Create Loans · Update Loan Repayment Records · Track Loan Monthly Repayments ·
+
           </p>
         </div>
       </div>
@@ -127,15 +127,15 @@ export default function Auth() {
               {isLogin ? 'Sign In' : 'Create Account'}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isLogin
-                ? 'Enter your credentials to access the portal'
-                : 'Register to get started — first user gets admin access'}
+              {isLogin ?
+              'Enter your credentials to access the portal' :
+              'Register to get started — first user gets admin access'}
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
-              <>
+            {!isLogin &&
+            <>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="surname">Surname *</Label>
@@ -174,9 +174,9 @@ export default function Auth() {
                         <SelectValue placeholder="Select state" />
                       </SelectTrigger>
                       <SelectContent>
-                        {NIGERIA_STATES.map((s) => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
+                        {NIGERIA_STATES.map((s) =>
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                      )}
                       </SelectContent>
                     </Select>
                   </div>
@@ -189,7 +189,7 @@ export default function Auth() {
                   </div>
                 </div>
               </>
-            )}
+            }
 
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
@@ -202,8 +202,8 @@ export default function Auth() {
                   value={form.email}
                   onChange={(e) => set('email', e.target.value)}
                   className="pl-10"
-                  required
-                />
+                  required />
+
               </div>
             </div>
 
@@ -219,16 +219,16 @@ export default function Auth() {
                   onChange={(e) => set('password', e.target.value)}
                   className="pl-10"
                   required
-                  minLength={6}
-                />
+                  minLength={6} />
+
               </div>
             </div>
 
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full gradient-accent text-accent-foreground border-0 font-semibold"
-            >
+              className="w-full gradient-accent text-accent-foreground border-0 font-semibold">
+
               {submitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </Button>
           </form>
@@ -237,13 +237,13 @@ export default function Auth() {
             {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="font-medium text-accent hover:underline"
-            >
+              className="font-medium text-accent hover:underline">
+
               {isLogin ? 'Sign Up' : 'Sign In'}
             </button>
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
