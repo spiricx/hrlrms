@@ -11,6 +11,7 @@ import BeneficiaryDetail from "./pages/BeneficiaryDetail";
 import AddBeneficiary from "./pages/AddBeneficiary";
 import Reports from "./pages/Reports";
 import LoanRepayment from "./pages/LoanRepayment";
+import NplStatus from "./pages/NplStatus";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -49,6 +50,7 @@ const App = () => (
                       <Route path="/beneficiary/:id" element={<BeneficiaryDetail />} />
                       <Route path="/add-beneficiary" element={<AddBeneficiary />} />
                       <Route path="/loan-repayment" element={<LoanRepayment />} />
+                      <Route path="/npl-status" element={<NplStatus />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
