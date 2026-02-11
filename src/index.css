@@ -135,4 +135,22 @@
   .shadow-elevated {
     box-shadow: var(--shadow-elevated);
   }
+
+  .animate-pulse-dot {
+    animation: pulse-dot 1.5s ease-in-out infinite;
+  }
+
+  .animate-pulse-border {
+    animation: pulse-border 2s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: hsl(var(--destructive) / 0.3); }
+  50% { border-color: hsl(var(--destructive) / 0.7); }
 }
