@@ -1,11 +1,14 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle } from 'lucide-react';
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import RepaymentSummaryCard from '@/components/beneficiary/RepaymentSummaryCard';
+import RepaymentHistoryTable from '@/components/beneficiary/RepaymentHistoryTable';
+import RepaymentScheduleGrid from '@/components/beneficiary/RepaymentScheduleGrid';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -82,8 +85,6 @@ export default function BeneficiaryDetail() {
     { label: 'Tenor', value: `${beneficiary.tenor_months} months`, icon: <Clock className="w-4 h-4" /> },
     { label: 'Total Interest', value: formatCurrency(loan.totalInterest), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Total Payment', value: formatCurrency(loan.totalPayment), icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Outstanding', value: formatCurrency(Number(beneficiary.outstanding_balance)), icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Total Paid', value: formatCurrency(Number(beneficiary.total_paid)), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Defaults', value: String(beneficiary.default_count), icon: <AlertTriangle className="w-4 h-4" /> },
   ];
 
@@ -116,14 +117,42 @@ export default function BeneficiaryDetail() {
         </div>
       </div>
 
+      {/* Repayment Summary Card */}
+      <RepaymentSummaryCard
+        totalPaid={Number(beneficiary.total_paid)}
+        outstandingBalance={Number(beneficiary.outstanding_balance)}
+        totalExpected={loan.totalPayment}
+        tenorMonths={beneficiary.tenor_months}
+        transactions={transactions}
+        schedule={loan.schedule}
+      />
+
       {/* Tabs */}
-      <Tabs defaultValue="schedule" className="space-y-4">
+      <Tabs defaultValue="history" className="space-y-4">
         <TabsList className="bg-secondary">
-          <TabsTrigger value="schedule">Repayment Schedule</TabsTrigger>
-          <TabsTrigger value="transactions">Transactions ({transactions.length})</TabsTrigger>
+          <TabsTrigger value="history">Repayment History</TabsTrigger>
+          <TabsTrigger value="visual">Repayment Schedule</TabsTrigger>
+          <TabsTrigger value="amortization">Amortization Table</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="schedule">
+        {/* Enhanced Repayment History */}
+        <TabsContent value="history">
+          <RepaymentHistoryTable
+            schedule={loan.schedule}
+            transactions={transactions}
+            totalExpected={loan.totalPayment}
+            totalPaid={Number(beneficiary.total_paid)}
+            outstandingBalance={Number(beneficiary.outstanding_balance)}
+          />
+        </TabsContent>
+
+        {/* Visual Repayment Schedule Grid */}
+        <TabsContent value="visual">
+          <RepaymentScheduleGrid schedule={loan.schedule} transactions={transactions} />
+        </TabsContent>
+
+        {/* Original Amortization Table */}
+        <TabsContent value="amortization">
           <div className="bg-card rounded-xl shadow-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -153,49 +182,6 @@ export default function BeneficiaryDetail() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="transactions">
-          <div className="bg-card rounded-xl shadow-card overflow-hidden">
-            {transactions.length === 0 ? (
-              <div className="px-6 py-12 text-center text-muted-foreground">
-                No transactions recorded yet.
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/50">
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">RRR</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Date (Remita)</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Receipt</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recorded On</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {transactions.map((t) => (
-                      <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                        <td className="px-6 py-4 text-muted-foreground">Month {t.month_for}</td>
-                        <td className="px-6 py-4 font-medium">{formatCurrency(Number(t.amount))}</td>
-                        <td className="px-6 py-4 font-mono text-sm">{t.rrr_number}</td>
-                        <td className="px-6 py-4">{formatDate(new Date(t.date_paid))}</td>
-                        <td className="px-6 py-4">
-                          {(t as any).receipt_url ? (
-                            <a href={(t as any).receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
-                              <ExternalLink className="w-3 h-3" /> Open
-                            </a>
-                          ) : '—'}
-                        </td>
-                        <td className="px-6 py-4 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </TabsContent>
       </Tabs>
