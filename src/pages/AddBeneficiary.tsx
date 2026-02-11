@@ -8,9 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import { toast } from '@/hooks/use-toast';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 const genderOptions = ['Male', 'Female'];
 const maritalStatusOptions = ['Single', 'Married', 'Divorced', 'Widowed'];
 export default function AddBeneficiary() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     surname: '',
@@ -51,7 +54,9 @@ export default function AddBeneficiary() {
       [field]: value
     }));
   };
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.surname || !form.firstName || !form.staffIdNumber || !amount || !disbDate || !form.state || !form.bankBranch || !form.phoneNumber || !form.gender || !form.organization) {
       toast({
@@ -69,7 +74,42 @@ export default function AddBeneficiary() {
       });
       return;
     }
+    if (!preview) {
+      toast({ title: 'Error', description: 'Unable to calculate loan details.', variant: 'destructive' });
+      return;
+    }
+
     const fullName = `${form.surname} ${form.firstName}${form.otherName ? ' ' + form.otherName : ''}`;
+
+    setSubmitting(true);
+    const { error } = await supabase.from('beneficiaries').insert({
+      name: fullName,
+      employee_id: form.staffIdNumber,
+      department: form.organization,
+      loan_amount: amount,
+      tenor_months: tenor,
+      interest_rate: 6,
+      moratorium_months: 1,
+      disbursement_date: form.disbursementDate,
+      commencement_date: preview.commencementDate.toISOString().split('T')[0],
+      termination_date: preview.terminationDate.toISOString().split('T')[0],
+      monthly_emi: preview.monthlyEMI,
+      outstanding_balance: preview.totalPayment,
+      bank_branch: form.bankBranch,
+      state: form.state,
+      created_by: user?.id ?? null,
+    });
+    setSubmitting(false);
+
+    if (error) {
+      toast({
+        title: 'Error Creating Loan',
+        description: error.message,
+        variant: 'destructive'
+      });
+      return;
+    }
+
     toast({
       title: 'Loan Created',
       description: `Loan for ${fullName} has been created successfully.`
@@ -260,8 +300,8 @@ export default function AddBeneficiary() {
           <Link to="/beneficiaries">
             <Button variant="outline" type="button">Cancel</Button>
           </Link>
-          <Button type="submit" className="gradient-accent text-accent-foreground border-0 font-semibold">
-            Create Loan
+          <Button type="submit" disabled={submitting} className="gradient-accent text-accent-foreground border-0 font-semibold">
+            {submitting ? 'Creating…' : 'Create Loan'}
           </Button>
         </div>
       </form>
