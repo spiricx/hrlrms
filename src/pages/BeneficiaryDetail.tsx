@@ -78,7 +78,7 @@ export default function BeneficiaryDetail() {
     { label: 'State', value: beneficiary.state || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Branch', value: beneficiary.bank_branch || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Loan Amount', value: formatCurrency(Number(beneficiary.loan_amount)), icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Monthly EMI', value: formatCurrency(loan.monthlyEMI), icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Monthly Repayment', value: formatCurrency(loan.monthlyEMI), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Disbursed On', value: formatDate(new Date(beneficiary.disbursement_date)), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Commencement', value: formatDate(loan.commencementDate), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Termination Date', value: formatDate(loan.terminationDate), icon: <Calendar className="w-4 h-4" /> },
