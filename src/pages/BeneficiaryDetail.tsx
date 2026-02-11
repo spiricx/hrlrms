@@ -1,18 +1,59 @@
 import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle } from 'lucide-react';
-import { mockBeneficiaries, mockTransactions } from '@/lib/mockData';
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
+
+type Beneficiary = Tables<'beneficiaries'>;
+type Transaction = Tables<'transactions'>;
 
 export default function BeneficiaryDetail() {
   const { id } = useParams<{ id: string }>();
-  const beneficiary = mockBeneficiaries.find((b) => b.id === id);
+  const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!beneficiary) {
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchData = async () => {
+      const [benRes, txRes] = await Promise.all([
+        supabase.from('beneficiaries').select('*').eq('id', id).single(),
+        supabase.from('transactions').select('*').eq('beneficiary_id', id).order('month_for', { ascending: true }),
+      ]);
+
+      if (benRes.error) {
+        setError('Beneficiary not found or access denied.');
+      } else {
+        setBeneficiary(benRes.data);
+      }
+
+      if (!txRes.error && txRes.data) {
+        setTransactions(txRes.data);
+      }
+
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-pulse text-muted-foreground">Loading loan details...</div>
+      </div>
+    );
+  }
+
+  if (error || !beneficiary) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-lg text-muted-foreground">Beneficiary not found</p>
+        <p className="text-lg text-muted-foreground">{error || 'Beneficiary not found'}</p>
         <Link to="/beneficiaries" className="mt-4 text-accent hover:underline">
           ← Back to Beneficiaries
         </Link>
@@ -21,27 +62,29 @@ export default function BeneficiaryDetail() {
   }
 
   const loan = calculateLoan({
-    principal: beneficiary.loanAmount,
-    annualRate: 6,
-    tenorMonths: beneficiary.tenorMonths,
-    moratoriumMonths: 1,
-    disbursementDate: beneficiary.disbursementDate,
+    principal: Number(beneficiary.loan_amount),
+    annualRate: Number(beneficiary.interest_rate),
+    tenorMonths: beneficiary.tenor_months,
+    moratoriumMonths: beneficiary.moratorium_months,
+    disbursementDate: new Date(beneficiary.disbursement_date),
   });
 
-  const transactions = mockTransactions.filter((t) => t.beneficiaryId === beneficiary.id);
-
   const infoItems = [
-    { label: 'Employee ID', value: beneficiary.employeeId, icon: <Clock className="w-4 h-4" /> },
+    { label: 'Employee ID', value: beneficiary.employee_id, icon: <Clock className="w-4 h-4" /> },
     { label: 'Department', value: beneficiary.department, icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Loan Amount', value: formatCurrency(beneficiary.loanAmount), icon: <Banknote className="w-4 h-4" /> },
+    { label: 'State', value: beneficiary.state || '—', icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Branch', value: beneficiary.bank_branch || '—', icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Loan Amount', value: formatCurrency(Number(beneficiary.loan_amount)), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Monthly EMI', value: formatCurrency(loan.monthlyEMI), icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Disbursed On', value: formatDate(beneficiary.disbursementDate), icon: <Calendar className="w-4 h-4" /> },
+    { label: 'Disbursed On', value: formatDate(new Date(beneficiary.disbursement_date)), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Commencement', value: formatDate(loan.commencementDate), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Termination Date', value: formatDate(loan.terminationDate), icon: <Calendar className="w-4 h-4" /> },
-    { label: 'Tenor', value: `${beneficiary.tenorMonths} months`, icon: <Clock className="w-4 h-4" /> },
+    { label: 'Tenor', value: `${beneficiary.tenor_months} months`, icon: <Clock className="w-4 h-4" /> },
     { label: 'Total Interest', value: formatCurrency(loan.totalInterest), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Total Payment', value: formatCurrency(loan.totalPayment), icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Defaults', value: String(beneficiary.defaultCount), icon: <AlertTriangle className="w-4 h-4" /> },
+    { label: 'Outstanding', value: formatCurrency(Number(beneficiary.outstanding_balance)), icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Total Paid', value: formatCurrency(Number(beneficiary.total_paid)), icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Defaults', value: String(beneficiary.default_count), icon: <AlertTriangle className="w-4 h-4" /> },
   ];
 
   return (
@@ -133,10 +176,10 @@ export default function BeneficiaryDetail() {
                   <tbody className="divide-y divide-border">
                     {transactions.map((t) => (
                       <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                        <td className="px-6 py-4 font-mono text-sm">{t.rrrNumber}</td>
-                        <td className="px-6 py-4 font-medium">{formatCurrency(t.amount)}</td>
-                        <td className="px-6 py-4">{formatDate(t.datePaid)}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{t.monthFor}</td>
+                        <td className="px-6 py-4 font-mono text-sm">{t.rrr_number}</td>
+                        <td className="px-6 py-4 font-medium">{formatCurrency(Number(t.amount))}</td>
+                        <td className="px-6 py-4">{formatDate(new Date(t.date_paid))}</td>
+                        <td className="px-6 py-4 text-muted-foreground">{t.month_for}</td>
                       </tr>
                     ))}
                   </tbody>
