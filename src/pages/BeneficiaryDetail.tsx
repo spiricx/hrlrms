@@ -74,7 +74,7 @@ export default function BeneficiaryDetail() {
 
   const infoItems = [
     { label: 'Employee ID', value: beneficiary.employee_id, icon: <Clock className="w-4 h-4" /> },
-    { label: 'Department', value: beneficiary.department, icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Organization', value: beneficiary.department, icon: <Banknote className="w-4 h-4" /> },
     { label: 'State', value: beneficiary.state || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Branch', value: beneficiary.bank_branch || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Loan Amount', value: formatCurrency(Number(beneficiary.loan_amount)), icon: <Banknote className="w-4 h-4" /> },
