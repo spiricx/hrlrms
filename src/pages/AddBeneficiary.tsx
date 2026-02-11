@@ -32,6 +32,7 @@ export default function AddBeneficiary() {
     staffIdNumber: '',
     dateOfBirth: '',
     dateOfEmployment: '',
+    loanReferenceNumber: '',
     loanAmount: '',
     tenorMonths: '36',
     disbursementDate: '',
@@ -246,6 +247,10 @@ export default function AddBeneficiary() {
         <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
           <h2 className="text-lg font-bold font-display">Loan Details</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="loanRef">Loan Reference Number</Label>
+              <Input id="loanRef" value={form.loanReferenceNumber} onChange={e => handleChange('loanReferenceNumber', e.target.value)} placeholder="e.g. HRL-2025-00123" />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="amount">Loan Amount (₦) *</Label>
               <Input id="amount" type="number" min={0} value={form.loanAmount} onChange={e => handleChange('loanAmount', e.target.value)} placeholder="e.g. 2500000" />
