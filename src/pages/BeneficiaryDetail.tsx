@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle, ExternalLink } from 'lucide-react';
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -167,19 +167,29 @@ export default function BeneficiaryDetail() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-secondary/50">
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">RRR Number</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date Paid</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Month #</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">RRR</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Date (Remita)</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Receipt</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recorded On</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
                     {transactions.map((t) => (
                       <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                        <td className="px-6 py-4 font-mono text-sm">{t.rrr_number}</td>
+                        <td className="px-6 py-4 text-muted-foreground">Month {t.month_for}</td>
                         <td className="px-6 py-4 font-medium">{formatCurrency(Number(t.amount))}</td>
+                        <td className="px-6 py-4 font-mono text-sm">{t.rrr_number}</td>
                         <td className="px-6 py-4">{formatDate(new Date(t.date_paid))}</td>
-                        <td className="px-6 py-4 text-muted-foreground">{t.month_for}</td>
+                        <td className="px-6 py-4">
+                          {(t as any).receipt_url ? (
+                            <a href={(t as any).receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+                              <ExternalLink className="w-3 h-3" /> Open
+                            </a>
+                          ) : '—'}
+                        </td>
+                        <td className="px-6 py-4 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
                       </tr>
                     ))}
                   </tbody>

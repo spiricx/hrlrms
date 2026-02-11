@@ -10,6 +10,7 @@ import Beneficiaries from "./pages/Beneficiaries";
 import BeneficiaryDetail from "./pages/BeneficiaryDetail";
 import AddBeneficiary from "./pages/AddBeneficiary";
 import Reports from "./pages/Reports";
+import LoanRepayment from "./pages/LoanRepayment";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -47,6 +48,7 @@ const App = () => (
                       <Route path="/beneficiaries" element={<Beneficiaries />} />
                       <Route path="/beneficiary/:id" element={<BeneficiaryDetail />} />
                       <Route path="/add-beneficiary" element={<AddBeneficiary />} />
+                      <Route path="/loan-repayment" element={<LoanRepayment />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
