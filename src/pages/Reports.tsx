@@ -1,31 +1,64 @@
-import { useState } from 'react';
-import { mockBeneficiaries, portfolioStats } from '@/lib/mockData';
+import { useEffect, useState, useMemo } from 'react';
 import { formatCurrency } from '@/lib/loanCalculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import type { Tables } from '@/integrations/supabase/types';
 
-const statusData = [
-  { name: 'Active', value: portfolioStats.activeLoanCount, color: 'hsl(152, 60%, 40%)' },
-  { name: 'Completed', value: portfolioStats.completedCount, color: 'hsl(222, 60%, 22%)' },
-  { name: 'Defaulted', value: portfolioStats.defaultedCount, color: 'hsl(0, 72%, 51%)' },
-];
-
-const deptData = mockBeneficiaries.reduce<Record<string, number>>((acc, b) => {
-  acc[b.department] = (acc[b.department] || 0) + b.loanAmount;
-  return acc;
-}, {});
-
-const deptChartData = Object.entries(deptData).map(([dept, amount]) => ({
-  department: dept,
-  amount: Math.round(amount / 1000000 * 100) / 100,
-}));
+type Beneficiary = Tables<'beneficiaries'>;
 
 export default function Reports() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const [stateFilter, setStateFilter] = useState('all');
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data } = await supabase.from('beneficiaries').select('*');
+      if (data) setBeneficiaries(data);
+      setLoading(false);
+    };
+    fetch();
+
+    const channel = supabase
+      .channel('reports-beneficiaries')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => { fetch(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  const filtered = useMemo(() =>
+    stateFilter === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === stateFilter),
+    [beneficiaries, stateFilter]
+  );
+
+  const totalDisbursed = filtered.reduce((s, b) => s + Number(b.loan_amount), 0);
+  const totalCollected = filtered.reduce((s, b) => s + Number(b.total_paid), 0);
+  const totalOutstanding = filtered.reduce((s, b) => s + Number(b.outstanding_balance), 0);
+  const activeCount = filtered.filter(b => b.status === 'active').length;
+  const completedCount = filtered.filter(b => b.status === 'completed').length;
+  const defaultedCount = filtered.filter(b => b.status === 'defaulted').length;
+
+  const statusData = [
+    { name: 'Active', value: activeCount, color: 'hsl(152, 60%, 40%)' },
+    { name: 'Completed', value: completedCount, color: 'hsl(222, 60%, 22%)' },
+    { name: 'Defaulted', value: defaultedCount, color: 'hsl(0, 72%, 51%)' },
+  ];
+
+  const deptChartData = useMemo(() => {
+    const deptData = filtered.reduce<Record<string, number>>((acc, b) => {
+      acc[b.department] = (acc[b.department] || 0) + Number(b.loan_amount);
+      return acc;
+    }, {});
+    return Object.entries(deptData).map(([dept, amount]) => ({
+      department: dept,
+      amount: Math.round(amount / 1000000 * 100) / 100,
+    }));
+  }, [filtered]);
 
   return (
     <div className="space-y-8">
@@ -98,21 +131,21 @@ export default function Reports() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="p-4 rounded-lg bg-secondary">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Disbursed</p>
-            <p className="mt-1 text-xl font-bold font-display">{formatCurrency(portfolioStats.totalDisbursed)}</p>
+            <p className="mt-1 text-xl font-bold font-display">{formatCurrency(totalDisbursed)}</p>
           </div>
           <div className="p-4 rounded-lg bg-secondary">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Collected</p>
-            <p className="mt-1 text-xl font-bold font-display">{formatCurrency(portfolioStats.totalCollected)}</p>
+            <p className="mt-1 text-xl font-bold font-display">{formatCurrency(totalCollected)}</p>
           </div>
           <div className="p-4 rounded-lg bg-secondary">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Outstanding</p>
-            <p className="mt-1 text-xl font-bold font-display">{formatCurrency(portfolioStats.totalOutstanding)}</p>
+            <p className="mt-1 text-xl font-bold font-display">{formatCurrency(totalOutstanding)}</p>
           </div>
           <div className="p-4 rounded-lg bg-secondary">
             <p className="text-xs text-muted-foreground uppercase tracking-wider">Recovery Rate</p>
             <p className="mt-1 text-xl font-bold font-display">
-              {portfolioStats.totalDisbursed > 0
-                ? `${Math.round((portfolioStats.totalCollected / portfolioStats.totalDisbursed) * 100)}%`
+              {totalDisbursed > 0
+                ? `${Math.round((totalCollected / totalDisbursed) * 100)}%`
                 : '0%'}
             </p>
           </div>
