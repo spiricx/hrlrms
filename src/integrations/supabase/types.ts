@@ -14,9 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      batch_repayments: {
+        Row: {
+          actual_amount: number
+          batch_id: string
+          created_at: string
+          expected_amount: number
+          id: string
+          month_for: number
+          notes: string | null
+          payment_date: string
+          receipt_url: string | null
+          recorded_by: string | null
+          rrr_number: string
+        }
+        Insert: {
+          actual_amount: number
+          batch_id: string
+          created_at?: string
+          expected_amount: number
+          id?: string
+          month_for: number
+          notes?: string | null
+          payment_date: string
+          receipt_url?: string | null
+          recorded_by?: string | null
+          rrr_number: string
+        }
+        Update: {
+          actual_amount?: number
+          batch_id?: string
+          created_at?: string
+          expected_amount?: number
+          id?: string
+          month_for?: number
+          notes?: string | null
+          payment_date?: string
+          receipt_url?: string | null
+          recorded_by?: string | null
+          rrr_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_repayments_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "loan_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       beneficiaries: {
         Row: {
           bank_branch: string
+          batch_id: string | null
           commencement_date: string
           created_at: string
           created_by: string | null
@@ -40,6 +91,7 @@ export type Database = {
         }
         Insert: {
           bank_branch?: string
+          batch_id?: string | null
           commencement_date: string
           created_at?: string
           created_by?: string | null
@@ -63,6 +115,7 @@ export type Database = {
         }
         Update: {
           bank_branch?: string
+          batch_id?: string | null
           commencement_date?: string
           created_at?: string
           created_by?: string | null
@@ -84,7 +137,15 @@ export type Database = {
           total_paid?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "beneficiaries_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "loan_batches"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       default_logs: {
         Row: {
@@ -117,6 +178,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      loan_batches: {
+        Row: {
+          bank_branch: string
+          batch_code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          state: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bank_branch?: string
+          batch_code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bank_branch?: string
+          batch_code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
