@@ -6,6 +6,7 @@ import {
   PlusCircle,
   FileText,
   Banknote,
+  AlertTriangle,
   Menu,
   X,
   LogOut,
@@ -40,6 +41,7 @@ const navItems = [
   { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/add-beneficiary', label: 'New Loan', icon: PlusCircle },
   { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
+  { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/reports', label: 'Reports', icon: FileText },
 ];
 
