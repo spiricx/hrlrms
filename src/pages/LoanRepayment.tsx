@@ -489,7 +489,7 @@ export default function LoanRepayment() {
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Month</th>
                     <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Amount</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">RRR</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Payment Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">DATE ON REMITA RECEIPT</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Recorded On</th>
                     <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Actions</th>
