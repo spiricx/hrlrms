@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ExternalLink, Banknote } from 'lucide-react';
+import { Search, ExternalLink, Banknote, Pencil, Trash2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,6 +43,15 @@ export default function LoanRepayment() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTxns, setHistoryTxns] = useState<Transaction[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Edit state
+  const [editingTxn, setEditingTxn] = useState<Transaction | null>(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // Delete state
+  const [deletingTxn, setDeletingTxn] = useState<Transaction | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [repaymentMonth, setRepaymentMonth] = useState('');
@@ -174,7 +184,120 @@ export default function LoanRepayment() {
     });
   };
 
+  const canEditTxn = (t: Transaction) => {
+    if (isAdmin) return true;
+    return t.recorded_by === user?.id;
+  };
+
+  const canDeleteTxn = (t: Transaction) => {
+    if (isAdmin) return true;
+    if (t.recorded_by !== user?.id) return false;
+    const createdAt = new Date(t.created_at);
+    const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceCreation > 24) return false;
+    if (historyBen?.status === 'completed') return false;
+    return true;
+  };
+
+  const openEditModal = (t: Transaction) => {
+    setEditingTxn(t);
+    setRepaymentMonth(String(t.month_for));
+    setAmountPaid(String(t.amount));
+    setRrrNumber(t.rrr_number);
+    setPaymentDate(new Date(t.date_paid));
+    setReceiptUrl(t.receipt_url || '');
+    setNotes(t.notes || '');
+    setEditModalOpen(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingTxn || !historyBen || !paymentDate) return;
+    if (!amountPaid || Number(amountPaid) <= 0) {
+      toast({ title: 'Validation Error', description: 'Enter a valid amount.', variant: 'destructive' });
+      return;
+    }
+    if (!rrrNumber.trim()) {
+      toast({ title: 'Validation Error', description: 'Remita RRR is required.', variant: 'destructive' });
+      return;
+    }
+
+    // Check duplicate RRR (exclude current)
+    const { data: existing } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('rrr_number', rrrNumber.trim())
+      .neq('id', editingTxn.id)
+      .maybeSingle();
+    if (existing) {
+      toast({ title: 'Duplicate RRR', description: 'This RRR is already used by another transaction.', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    const oldAmount = Number(editingTxn.amount);
+    const newAmount = Number(amountPaid);
+    const diff = newAmount - oldAmount;
+
+    const { error } = await supabase.from('transactions').update({
+      amount: newAmount,
+      rrr_number: rrrNumber.trim(),
+      date_paid: format(paymentDate, 'yyyy-MM-dd'),
+      month_for: Number(repaymentMonth),
+      receipt_url: receiptUrl.trim(),
+      notes: notes.trim(),
+    }).eq('id', editingTxn.id);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      setSaving(false);
+      return;
+    }
+
+    // Adjust beneficiary balance
+    if (diff !== 0) {
+      await supabase.from('beneficiaries').update({
+        total_paid: Number(historyBen.total_paid) + diff,
+        outstanding_balance: Math.max(0, Number(historyBen.outstanding_balance) - diff),
+      }).eq('id', historyBen.id);
+    }
+
+    setSaving(false);
+    setEditModalOpen(false);
+    toast({ title: 'Repayment Updated', description: `Transaction updated successfully.` });
+    // Refresh history
+    openHistory(historyBen);
+  };
+
+  const handleDelete = async () => {
+    if (!deletingTxn || !historyBen) return;
+    setDeleting(true);
+
+    const { error } = await supabase.from('transactions').delete().eq('id', deletingTxn.id);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      setDeleting(false);
+      return;
+    }
+
+    // Reverse balance
+    const amount = Number(deletingTxn.amount);
+    await supabase.from('beneficiaries').update({
+      total_paid: Math.max(0, Number(historyBen.total_paid) - amount),
+      outstanding_balance: Number(historyBen.outstanding_balance) + amount,
+      status: 'active',
+    }).eq('id', historyBen.id);
+
+    setDeleting(false);
+    setDeleteDialogOpen(false);
+    toast({ title: 'Repayment Deleted', description: 'Transaction removed and balance restored.' });
+    openHistory(historyBen);
+  };
+
   // Generate month options based on beneficiary tenor
+  const editMonthOptions = editingTxn && historyBen
+    ? Array.from({ length: historyBen.tenor_months }, (_, i) => i + 1)
+    : [];
+
   const monthOptions = selectedBen
     ? Array.from({ length: selectedBen.tenor_months }, (_, i) => i + 1)
     : [];
@@ -369,6 +492,7 @@ export default function LoanRepayment() {
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Payment Date</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt</th>
                     <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Recorded On</th>
+                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -379,13 +503,25 @@ export default function LoanRepayment() {
                       <td className="px-4 py-3 font-mono text-xs">{t.rrr_number}</td>
                       <td className="px-4 py-3">{formatDate(new Date(t.date_paid))}</td>
                       <td className="px-4 py-3">
-                        {(t as any).receipt_url ? (
-                          <a href={(t as any).receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+                        {t.receipt_url ? (
+                          <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
                             <ExternalLink className="w-3 h-3" /> Open
                           </a>
                         ) : '—'}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
+                      <td className="px-4 py-3 text-center space-x-1">
+                        {canEditTxn(t) && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        {canDeleteTxn(t) && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { setDeletingTxn(t); setDeleteDialogOpen(true); }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -394,6 +530,85 @@ export default function LoanRepayment() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Repayment Modal */}
+      <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Repayment</DialogTitle>
+            <DialogDescription>Modify the repayment details below.</DialogDescription>
+          </DialogHeader>
+
+          {editingTxn && (
+            <div className="space-y-3">
+              <div>
+                <Label>Repayment Month *</Label>
+                <Select value={repaymentMonth} onValueChange={setRepaymentMonth}>
+                  <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
+                  <SelectContent>
+                    {editMonthOptions.map(m => <SelectItem key={m} value={String(m)}>Month {m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Amount Paid (₦) *</Label>
+                <Input type="number" min="0" step="0.01" value={amountPaid} onChange={e => setAmountPaid(e.target.value)} />
+              </div>
+              <div>
+                <Label>Remita Reference Number (RRR) *</Label>
+                <Input value={rrrNumber} onChange={e => setRrrNumber(e.target.value)} />
+              </div>
+              <div>
+                <Label>Payment Date (as on Remita receipt) *</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !paymentDate && "text-muted-foreground")}>
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {paymentDate ? format(paymentDate, 'PPP') : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={paymentDate} onSelect={setPaymentDate} disabled={(date) => date > new Date()} initialFocus className="p-3 pointer-events-auto" />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Remita Receipt URL *</Label>
+                <Input value={receiptUrl} onChange={e => setReceiptUrl(e.target.value)} />
+              </div>
+              <div>
+                <Label>Notes / Remarks</Label>
+                <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdate} disabled={saving}>
+              {saving ? 'Updating...' : 'Update Repayment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Repayment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the repayment record and restore the amount ({deletingTxn ? formatCurrency(Number(deletingTxn.amount)) : ''}) to the outstanding balance. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
