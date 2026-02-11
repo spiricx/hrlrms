@@ -225,7 +225,7 @@ export default function AddBeneficiary() {
 
         {/* Branch & Location */}
         <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
-          <h2 className="text-lg font-bold font-display">Branch &amp; Location</h2>
+          <h2 className="text-lg font-bold font-display">Loan Originating Branch &amp; Location</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>State *</Label>
