@@ -105,7 +105,7 @@ export default function Auth() {
           <p className="mt-2 text-sm text-sidebar-foreground/70">Home Renovation Loan Repayment Management System
 
           </p>
-          <p className="mt-3 text-sidebar-foreground/50 text-xs">Create Loans · Update Loan Repayment Records · Track Loan Monthly Repayments ·
+          <p className="mt-3 text-sidebar-foreground/50 text-xs">Create Loans · Update Loan Repayment Records · Track Loan Monthly Repayments
 
           </p>
         </div>
