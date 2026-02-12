@@ -66,75 +66,117 @@ export type Database = {
       }
       beneficiaries: {
         Row: {
+          address: string | null
           bank_branch: string
           batch_id: string | null
+          bvn_number: string | null
           commencement_date: string
           created_at: string
           created_by: string | null
+          date_of_birth: string | null
+          date_of_employment: string | null
           default_count: number
           department: string
           disbursement_date: string
+          email: string | null
           employee_id: string
+          employer_number: string | null
+          first_name: string | null
+          gender: string | null
           id: string
           interest_rate: number
           loan_amount: number
+          loan_reference_number: string | null
+          marital_status: string | null
           monthly_emi: number
           moratorium_months: number
           name: string
           nhf_number: string | null
+          nin_number: string | null
+          other_name: string | null
           outstanding_balance: number
+          phone_number: string | null
           state: string
           status: string
+          surname: string | null
           tenor_months: number
           termination_date: string
           total_paid: number
           updated_at: string
         }
         Insert: {
+          address?: string | null
           bank_branch?: string
           batch_id?: string | null
+          bvn_number?: string | null
           commencement_date: string
           created_at?: string
           created_by?: string | null
+          date_of_birth?: string | null
+          date_of_employment?: string | null
           default_count?: number
           department: string
           disbursement_date: string
+          email?: string | null
           employee_id: string
+          employer_number?: string | null
+          first_name?: string | null
+          gender?: string | null
           id?: string
           interest_rate?: number
           loan_amount: number
+          loan_reference_number?: string | null
+          marital_status?: string | null
           monthly_emi: number
           moratorium_months?: number
           name: string
           nhf_number?: string | null
+          nin_number?: string | null
+          other_name?: string | null
           outstanding_balance: number
+          phone_number?: string | null
           state?: string
           status?: string
+          surname?: string | null
           tenor_months: number
           termination_date: string
           total_paid?: number
           updated_at?: string
         }
         Update: {
+          address?: string | null
           bank_branch?: string
           batch_id?: string | null
+          bvn_number?: string | null
           commencement_date?: string
           created_at?: string
           created_by?: string | null
+          date_of_birth?: string | null
+          date_of_employment?: string | null
           default_count?: number
           department?: string
           disbursement_date?: string
+          email?: string | null
           employee_id?: string
+          employer_number?: string | null
+          first_name?: string | null
+          gender?: string | null
           id?: string
           interest_rate?: number
           loan_amount?: number
+          loan_reference_number?: string | null
+          marital_status?: string | null
           monthly_emi?: number
           moratorium_months?: number
           name?: string
           nhf_number?: string | null
+          nin_number?: string | null
+          other_name?: string | null
           outstanding_balance?: number
+          phone_number?: string | null
           state?: string
           status?: string
+          surname?: string | null
           tenor_months?: number
           termination_date?: string
           total_paid?: number

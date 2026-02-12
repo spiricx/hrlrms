@@ -85,6 +85,9 @@ export default function AddBeneficiary() {
     setSubmitting(true);
     const { error } = await supabase.from('beneficiaries').insert({
       name: fullName,
+      surname: form.surname,
+      first_name: form.firstName,
+      other_name: form.otherName,
       employee_id: form.staffIdNumber,
       department: form.organization,
       loan_amount: amount,
@@ -100,6 +103,17 @@ export default function AddBeneficiary() {
       state: form.state,
       created_by: user?.id ?? null,
       nhf_number: form.nhfNumber,
+      phone_number: form.phoneNumber,
+      email: form.email,
+      bvn_number: form.bvnNumber,
+      nin_number: form.ninNumber,
+      gender: form.gender,
+      marital_status: form.maritalStatus,
+      date_of_birth: form.dateOfBirth || null,
+      address: form.address,
+      employer_number: form.employerNumber,
+      date_of_employment: form.dateOfEmployment || null,
+      loan_reference_number: form.loanReferenceNumber,
     });
     setSubmitting(false);
 

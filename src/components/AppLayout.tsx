@@ -41,6 +41,7 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/add-beneficiary', label: 'New Loan', icon: PlusCircle },
+  { path: '/bio-data', label: 'Bio Data', icon: FileText },
   { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/batch-repayment', label: 'Batch Repayment', icon: Package, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
