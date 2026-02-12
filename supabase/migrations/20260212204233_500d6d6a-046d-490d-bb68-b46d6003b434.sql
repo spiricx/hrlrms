@@ -1,0 +1,1 @@
+ALTER TABLE public.beneficiaries ADD COLUMN nhf_number TEXT DEFAULT '';

@@ -99,6 +99,7 @@ export default function AddBeneficiary() {
       bank_branch: form.bankBranch,
       state: form.state,
       created_by: user?.id ?? null,
+      nhf_number: form.nhfNumber,
     });
     setSubmitting(false);
 

@@ -81,6 +81,7 @@ export type Database = {
           monthly_emi: number
           moratorium_months: number
           name: string
+          nhf_number: string | null
           outstanding_balance: number
           state: string
           status: string
@@ -105,6 +106,7 @@ export type Database = {
           monthly_emi: number
           moratorium_months?: number
           name: string
+          nhf_number?: string | null
           outstanding_balance: number
           state?: string
           status?: string
@@ -129,6 +131,7 @@ export type Database = {
           monthly_emi?: number
           moratorium_months?: number
           name?: string
+          nhf_number?: string | null
           outstanding_balance?: number
           state?: string
           status?: string
