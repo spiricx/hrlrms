@@ -189,6 +189,7 @@ export default function Beneficiaries() {
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Repayment Amt</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
@@ -224,6 +225,11 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {b.lastTransaction
+                        ? formatCurrency(Number(b.lastTransaction.amount))
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
                       {arrears > 0
                         ? <span className="text-destructive font-medium">{formatCurrency(arrears)}</span>
                         : <span className="text-muted-foreground">₦0</span>}
@@ -247,7 +253,7 @@ export default function Beneficiaries() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={14} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>
