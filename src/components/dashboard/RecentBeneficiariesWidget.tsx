@@ -349,7 +349,7 @@ export default function RecentBeneficiariesWidget() {
                   <tr key={b.id} className="hover:bg-secondary/30 transition-colors group">
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3">
-                      <Link to={`/beneficiaries/${b.id}`} className="flex items-center gap-2.5 group-hover:underline">
+                      <Link to={`/beneficiary/${b.id}`} className="flex items-center gap-2.5 group-hover:underline">
                         <Avatar className="h-7 w-7 text-[10px]">
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                             {b.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -365,7 +365,7 @@ export default function RecentBeneficiariesWidget() {
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <Link to={`/beneficiaries/${b.id}`} className="text-accent hover:underline font-mono text-xs">
+                      <Link to={`/beneficiary/${b.id}`} className="text-accent hover:underline font-mono text-xs">
                         {b.employee_id}
                       </Link>
                     </td>
