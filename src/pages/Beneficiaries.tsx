@@ -188,6 +188,7 @@ export default function Beneficiaries() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
@@ -221,6 +222,7 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatTenor(b.tenor_months)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.loan_amount))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {arrears > 0
                         ? <span className="text-destructive font-medium">{formatCurrency(arrears)}</span>
@@ -245,7 +247,7 @@ export default function Beneficiaries() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={13} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>
