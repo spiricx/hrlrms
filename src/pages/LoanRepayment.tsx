@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ExternalLink, Banknote, Pencil, Trash2 } from 'lucide-react';
+import { Search, ExternalLink, Banknote, Pencil, Trash2, MessageSquare } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,23 +24,36 @@ import type { Tables } from '@/integrations/supabase/types';
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
 
+function formatTenor(months: number): string {
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  if (years === 0) return `${rem} Month${rem !== 1 ? 's' : ''}`;
+  if (rem === 0) return `${years} Year${years !== 1 ? 's' : ''}`;
+  return `${years} Year${years !== 1 ? 's' : ''} ${rem} Month${rem !== 1 ? 's' : ''}`;
+}
+
+interface BeneficiaryWithTxnInfo extends Beneficiary {
+  lastPaymentDate: string | null;
+  lastPaymentAmount: number | null;
+}
+
 export default function LoanRepayment() {
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
 
-  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithTxnInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
 
   // Modal state
-  const [selectedBen, setSelectedBen] = useState<Beneficiary | null>(null);
+  const [selectedBen, setSelectedBen] = useState<BeneficiaryWithTxnInfo | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Repayment history state
-  const [historyBen, setHistoryBen] = useState<Beneficiary | null>(null);
+  const [historyBen, setHistoryBen] = useState<BeneficiaryWithTxnInfo | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyTxns, setHistoryTxns] = useState<Transaction[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -62,26 +76,50 @@ export default function LoanRepayment() {
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    const fetchBeneficiaries = async () => {
-      const { data, error } = await supabase.
-      from('beneficiaries').
-      select('*').
-      eq('status', 'active').
-      order('name', { ascending: true });
-      if (!error && data) setBeneficiaries(data);
+    const fetchData = async () => {
+      // Fetch beneficiaries and their latest transaction in parallel
+      const [benResult, txnResult] = await Promise.all([
+        supabase.from('beneficiaries').select('*').eq('status', 'active').order('name', { ascending: true }),
+        supabase.from('transactions').select('beneficiary_id, date_paid, amount').order('date_paid', { ascending: false })
+      ]);
+
+      const bens = benResult.data || [];
+      const txns = txnResult.data || [];
+
+      // Build map of latest txn per beneficiary
+      const latestTxnMap = new Map<string, { date: string; amount: number }>();
+      txns.forEach((t) => {
+        if (!latestTxnMap.has(t.beneficiary_id)) {
+          latestTxnMap.set(t.beneficiary_id, { date: t.date_paid, amount: Number(t.amount) });
+        }
+      });
+
+      const enriched: BeneficiaryWithTxnInfo[] = bens.map((b) => {
+        const latest = latestTxnMap.get(b.id);
+        return {
+          ...b,
+          lastPaymentDate: latest?.date || null,
+          lastPaymentAmount: latest?.amount ?? null,
+        };
+      });
+
+      setBeneficiaries(enriched);
       setLoading(false);
     };
-    fetchBeneficiaries();
+    fetchData();
 
-    const channel = supabase.channel('repayment-beneficiaries').
-    on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => fetchBeneficiaries()).
-    subscribe();
-    return () => {supabase.removeChannel(channel);};
+    const channel = supabase.channel('repayment-beneficiaries')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const filtered = useMemo(() => beneficiaries.filter((b) => {
-    const matchesSearch = b.name.toLowerCase().includes(search.toLowerCase()) ||
-    b.employee_id.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchesSearch = b.name.toLowerCase().includes(q) ||
+      b.employee_id.toLowerCase().includes(q) ||
+      (b.nhf_number && b.nhf_number.toLowerCase().includes(q));
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
     return matchesSearch && matchesState;
   }), [beneficiaries, search, stateFilter]);
@@ -95,21 +133,21 @@ export default function LoanRepayment() {
     setNotes('');
   };
 
-  const openRecordModal = (b: Beneficiary) => {
+  const openRecordModal = (b: BeneficiaryWithTxnInfo) => {
     setSelectedBen(b);
     resetForm();
     setModalOpen(true);
   };
 
-  const openHistory = async (b: Beneficiary) => {
+  const openHistory = async (b: BeneficiaryWithTxnInfo) => {
     setHistoryBen(b);
     setHistoryOpen(true);
     setHistoryLoading(true);
-    const { data } = await supabase.
-    from('transactions').
-    select('*').
-    eq('beneficiary_id', b.id).
-    order('month_for', { ascending: true });
+    const { data } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('beneficiary_id', b.id)
+      .order('month_for', { ascending: true });
     setHistoryTxns(data || []);
     setHistoryLoading(false);
   };
@@ -135,11 +173,11 @@ export default function LoanRepayment() {
     }
 
     // Check duplicate RRR
-    const { data: existing } = await supabase.
-    from('transactions').
-    select('id').
-    eq('rrr_number', rrrNumber.trim()).
-    maybeSingle();
+    const { data: existing } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('rrr_number', rrrNumber.trim())
+      .maybeSingle();
     if (existing) {
       toast({ title: 'Duplicate RRR', description: 'This Remita Reference Number has already been used.', variant: 'destructive' });
       return;
@@ -222,12 +260,12 @@ export default function LoanRepayment() {
     }
 
     // Check duplicate RRR (exclude current)
-    const { data: existing } = await supabase.
-    from('transactions').
-    select('id').
-    eq('rrr_number', rrrNumber.trim()).
-    neq('id', editingTxn.id).
-    maybeSingle();
+    const { data: existing } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('rrr_number', rrrNumber.trim())
+      .neq('id', editingTxn.id)
+      .maybeSingle();
     if (existing) {
       toast({ title: 'Duplicate RRR', description: 'This RRR is already used by another transaction.', variant: 'destructive' });
       return;
@@ -263,8 +301,7 @@ export default function LoanRepayment() {
 
     setSaving(false);
     setEditModalOpen(false);
-    toast({ title: 'Repayment Updated', description: `Transaction updated successfully.` });
-    // Refresh history
+    toast({ title: 'Repayment Updated', description: 'Transaction updated successfully.' });
     openHistory(historyBen);
   };
 
@@ -293,21 +330,46 @@ export default function LoanRepayment() {
     openHistory(historyBen);
   };
 
+  // Compute arrears info
+  const getArrearsInfo = (b: Beneficiary) => {
+    const now = new Date();
+    const commencement = new Date(b.commencement_date);
+    // Months elapsed since commencement
+    const monthsElapsed = Math.max(0,
+      (now.getFullYear() - commencement.getFullYear()) * 12 + (now.getMonth() - commencement.getMonth())
+    );
+    const monthsDue = Math.min(monthsElapsed, b.tenor_months);
+    const expectedTotal = monthsDue * Number(b.monthly_emi);
+    const arrears = Math.max(0, expectedTotal - Number(b.total_paid));
+    const monthsInArrears = Number(b.monthly_emi) > 0 ? Math.round(arrears / Number(b.monthly_emi)) : 0;
+    return { arrearsAmount: arrears, monthsInArrears };
+  };
+
+  // Compute running loan balance for history
+  const computeHistoryBalances = (txns: Transaction[], loanAmount: number, interestRate: number, moratoriumMonths: number) => {
+    const monthlyRate = interestRate / 100 / 12;
+    const moratoriumInterest = loanAmount * monthlyRate * moratoriumMonths;
+    const startingBalance = loanAmount + moratoriumInterest;
+    let runningBalance = startingBalance;
+    return txns.map((t) => {
+      runningBalance = Math.max(0, runningBalance - Number(t.amount));
+      return { ...t, loanBalance: runningBalance };
+    });
+  };
+
   // Generate month options based on beneficiary tenor
   const editMonthOptions = editingTxn && historyBen ?
-  Array.from({ length: historyBen.tenor_months }, (_, i) => i + 1) :
-  [];
+    Array.from({ length: historyBen.tenor_months }, (_, i) => i + 1) : [];
 
   const monthOptions = selectedBen ?
-  Array.from({ length: selectedBen.tenor_months }, (_, i) => i + 1) :
-  [];
+    Array.from({ length: selectedBen.tenor_months }, (_, i) => i + 1) : [];
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-pulse text-muted-foreground">Loading active loans...</div>
-      </div>);
-
+      </div>
+    );
   }
 
   return (
@@ -320,10 +382,10 @@ export default function LoanRepayment() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by name or ID..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Search by name, NHF or Loan Ref..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         {isAdmin &&
-        <Select value={stateFilter} onValueChange={setStateFilter}>
+          <Select value={stateFilter} onValueChange={setStateFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by state" />
             </SelectTrigger>
@@ -340,39 +402,54 @@ export default function LoanRepayment() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">STAFF ID</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">MONTHLY REPAYMENT</th>
-                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                <th className="px-6 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF Number</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Repayment</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-destructive">Arrears Amount</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground text-destructive">Months in Arrears</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment Date</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((b) =>
-              <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-6 py-4 font-medium whitespace-nowrap">{b.name}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{b.employee_id}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{b.state || '—'}</td>
-                  <td className="px-6 py-4 text-right">{formatCurrency(Number(b.loan_amount))}</td>
-                  <td className="px-6 py-4 text-right">{formatCurrency(Number(b.monthly_emi))}</td>
-                  <td className="px-6 py-4 text-right font-medium">{formatCurrency(Number(b.outstanding_balance))}</td>
-                  <td className="px-6 py-4"><StatusBadge status={b.status} /></td>
-                  <td className="px-6 py-4 text-center space-x-2">
-                    <Button size="sm" onClick={() => openRecordModal(b)} className="gap-1">
-                      <Banknote className="w-3.5 h-3.5" /> Record
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => openHistory(b)}>
-                      History
-                    </Button>
-                  </td>
-                </tr>
-              )}
+              {filtered.map((b) => {
+                const { arrearsAmount, monthsInArrears } = getArrearsInfo(b);
+                return (
+                  <tr key={b.id} className={cn("hover:bg-secondary/30 transition-colors", monthsInArrears > 0 && "bg-destructive/5")}>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{b.bank_branch || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs font-semibold">{b.nhf_number || '—'}</td>
+                    <td className="px-4 py-3 font-mono text-xs">{b.employee_id}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{formatTenor(b.tenor_months)}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(Number(b.loan_amount))}</td>
+                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(b.outstanding_balance))}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(Number(b.monthly_emi))}</td>
+                    <td className="px-4 py-3 text-right">{b.lastPaymentAmount != null ? formatCurrency(b.lastPaymentAmount) : '—'}</td>
+                    <td className={cn("px-4 py-3 text-right font-semibold", arrearsAmount > 0 && "text-destructive")}>{arrearsAmount > 0 ? formatCurrency(arrearsAmount) : '—'}</td>
+                    <td className={cn("px-4 py-3 text-center font-semibold", monthsInArrears > 0 && "text-destructive")}>{monthsInArrears > 0 ? monthsInArrears : '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{b.lastPaymentDate ? formatDate(new Date(b.lastPaymentDate)) : '—'}</td>
+                    <td className="px-4 py-3 text-center space-x-1">
+                      <Button size="sm" onClick={() => openRecordModal(b)} className="gap-1">
+                        <Banknote className="w-3.5 h-3.5" /> Record
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => openHistory(b)}>
+                        History
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 &&
-              <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                <tr>
+                  <td colSpan={14} className="px-6 py-12 text-center text-muted-foreground">
                     No active loans found.
                   </td>
                 </tr>
@@ -391,7 +468,7 @@ export default function LoanRepayment() {
           </DialogHeader>
 
           {selectedBen &&
-          <div className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-secondary/50">
                 <div>
                   <p className="text-xs text-muted-foreground">Beneficiary</p>
@@ -400,6 +477,14 @@ export default function LoanRepayment() {
                 <div>
                   <p className="text-xs text-muted-foreground">Current Balance</p>
                   <p className="text-sm font-semibold">{formatCurrency(Number(selectedBen.outstanding_balance))}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">NHF Number</p>
+                  <p className="text-sm font-semibold font-mono">{selectedBen.nhf_number || 'Not Set'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Loan Ref</p>
+                  <p className="text-sm font-semibold font-mono">{selectedBen.employee_id}</p>
                 </div>
               </div>
 
@@ -436,13 +521,13 @@ export default function LoanRepayment() {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
-                      mode="single"
-                      selected={paymentDate}
-                      onSelect={setPaymentDate}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                      className={cn("p-3 pointer-events-auto")} />
-
+                        mode="single"
+                        selected={paymentDate}
+                        onSelect={setPaymentDate}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        className={cn("p-3 pointer-events-auto")}
+                      />
                     </PopoverContent>
                   </Popover>
                 </div>
@@ -471,62 +556,91 @@ export default function LoanRepayment() {
 
       {/* Repayment History Modal */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Repayment History — {historyBen?.name}</DialogTitle>
-            <DialogDescription>All recorded repayments for this loan facility.</DialogDescription>
+            <DialogDescription>
+              {historyBen && (
+                <span className="flex gap-4 mt-1">
+                  <span><strong>NHF:</strong> {historyBen.nhf_number || 'N/A'}</span>
+                  <span><strong>Loan Ref:</strong> {historyBen.employee_id}</span>
+                </span>
+              )}
+            </DialogDescription>
           </DialogHeader>
 
           {historyLoading ?
-          <div className="py-8 text-center text-muted-foreground animate-pulse">Loading...</div> :
-          historyTxns.length === 0 ?
-          <div className="py-8 text-center text-muted-foreground">No repayments recorded yet.</div> :
+            <div className="py-8 text-center text-muted-foreground animate-pulse">Loading...</div> :
+            historyTxns.length === 0 ?
+              <div className="py-8 text-center text-muted-foreground">No repayments recorded yet.</div> :
 
-          <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-secondary/50">
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Month</th>
-                    <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">RRR</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">DATE ON REMITA RECEIPT</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt</th>
-                    <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Recorded On</th>
-                    <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {historyTxns.map((t) =>
-                <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                      <td className="px-4 py-3">Month {t.month_for}</td>
-                      <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(t.amount))}</td>
-                      <td className="px-4 py-3 font-mono text-xs">{t.rrr_number}</td>
-                      <td className="px-4 py-3">{formatDate(new Date(t.date_paid))}</td>
-                      <td className="px-4 py-3">
-                        {t.receipt_url ?
-                    <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
-                            <ExternalLink className="w-3 h-3" /> Open
-                          </a> :
-                    '—'}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
-                      <td className="px-4 py-3 text-center space-x-1">
-                        {canEditTxn(t) &&
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                    }
-                        {canDeleteTxn(t) &&
-                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => {setDeletingTxn(t);setDeleteDialogOpen(true);}}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                    }
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50">
+                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Repayment Month</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date on Remita Receipt</th>
+                      <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Amount on Remita Receipt</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Remita RRR</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt Link</th>
+                      <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Loan Balance</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date Recorded</th>
+                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Notes</th>
+                      <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Actions</th>
                     </tr>
-                )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {(() => {
+                      const withBalances = historyBen
+                        ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.moratorium_months)
+                        : historyTxns.map(t => ({ ...t, loanBalance: 0 }));
+                      return withBalances.map((t) => (
+                        <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+                          <td className="px-4 py-3 font-medium">Month {t.month_for}</td>
+                          <td className="px-4 py-3">{formatDate(new Date(t.date_paid))}</td>
+                          <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(t.amount))}</td>
+                          <td className="px-4 py-3 font-mono text-xs">{t.rrr_number}</td>
+                          <td className="px-4 py-3">
+                            {t.receipt_url ?
+                              <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+                                <ExternalLink className="w-3 h-3" /> Open
+                              </a> : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold">{formatCurrency(t.loanBalance)}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
+                          <td className="px-4 py-3 max-w-[150px]">
+                            {t.notes ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-help truncate max-w-[120px]">
+                                    <MessageSquare className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{t.notes}</span>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">
+                                  <p className="text-sm whitespace-pre-wrap">{t.notes}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-center space-x-1">
+                            {canEditTxn(t) &&
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                            }
+                            {canDeleteTxn(t) &&
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { setDeletingTxn(t); setDeleteDialogOpen(true); }}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            }
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
           }
         </DialogContent>
       </Dialog>
@@ -540,7 +654,7 @@ export default function LoanRepayment() {
           </DialogHeader>
 
           {editingTxn &&
-          <div className="space-y-3">
+            <div className="space-y-3">
               <div>
                 <Label>Repayment Month *</Label>
                 <Select value={repaymentMonth} onValueChange={setRepaymentMonth}>
@@ -609,6 +723,6 @@ export default function LoanRepayment() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>);
-
+    </div>
+  );
 }
