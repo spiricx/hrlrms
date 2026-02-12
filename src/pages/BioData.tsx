@@ -12,7 +12,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 const columns = [
-  'S/N', 'Surname', 'First Name', 'Other Name', 'Gender', 'Marital Status', 'Date of Birth',
+  'S/N', 'Title', 'Surname', 'First Name', 'Other Name', 'Gender', 'Marital Status', 'Date of Birth',
   'Address', 'Phone Number', 'Email', 'BVN', 'NIN', 'NHF Number',
   'Organization', 'Employer No.', 'Staff ID', 'Date of Employment',
   'State', 'Bank Branch', 'Loan Ref No.', 'Loan Amount', 'Tenor (Months)',
@@ -30,6 +30,7 @@ function formatTenor(months: number) {
 type Beneficiary = {
   id: string;
   name: string;
+  title: string | null;
   surname: string | null;
   first_name: string | null;
   other_name: string | null;
@@ -67,6 +68,7 @@ function getField(b: Beneficiary, label: string, value: string) {
 function buildFields(b: Beneficiary) {
   return [
     { section: 'Personal Information', fields: [
+      { label: 'Title', value: b.title || '' },
       { label: 'Surname', value: b.surname || b.name?.split(' ')[0] || '' },
       { label: 'First Name', value: b.first_name || b.name?.split(' ')[1] || '' },
       { label: 'Other Name', value: b.other_name || '' },
@@ -206,6 +208,7 @@ export default function BioData() {
 
   const toRow = (b: typeof beneficiaries[0], i: number) => [
     i + 1,
+    (b as any).title || '',
     b.surname || b.name?.split(' ')[0] || '',
     b.first_name || b.name?.split(' ')[1] || '',
     b.other_name || '',
@@ -308,6 +311,7 @@ export default function BioData() {
                 filtered.map((b, i) => (
                   <tr key={b.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelected(b as any)}>
                     <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">{(b as any).title || ''}</td>
                     <td className="px-3 py-2.5 font-medium whitespace-nowrap">{b.surname || b.name?.split(' ')[0] || ''}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{b.first_name || b.name?.split(' ')[1] || ''}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{b.other_name || ''}</td>

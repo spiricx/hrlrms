@@ -1,0 +1,1 @@
+ALTER TABLE public.beneficiaries ADD COLUMN IF NOT EXISTS title text DEFAULT '';
