@@ -189,9 +189,9 @@ export default function Beneficiaries() {
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               </tr>
             </thead>
@@ -223,7 +223,6 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.loan_amount))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{lastPayment}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {arrears > 0
                         ? <span className="text-destructive font-medium">{formatCurrency(arrears)}</span>
@@ -234,6 +233,7 @@ export default function Beneficiaries() {
                         ? <span className="text-destructive font-semibold">{monthsArr}</span>
                         : <span className="text-success font-semibold">0</span>}
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{lastPayment}</td>
                     <td className="px-4 py-3">
                       <span className={cn(
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap',
