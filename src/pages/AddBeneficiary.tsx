@@ -10,12 +10,14 @@ import { toast } from '@/hooks/use-toast';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+const titleOptions = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Chief', 'Alhaji', 'Alhaja', 'Hon', 'Engr', 'Barr', 'Arc'];
 const genderOptions = ['Male', 'Female'];
 const maritalStatusOptions = ['Single', 'Married', 'Divorced', 'Widowed'];
 export default function AddBeneficiary() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
+    title: '',
     surname: '',
     firstName: '',
     otherName: '',
@@ -85,6 +87,7 @@ export default function AddBeneficiary() {
     setSubmitting(true);
     const { error } = await supabase.from('beneficiaries').insert({
       name: fullName,
+      title: form.title,
       surname: form.surname,
       first_name: form.firstName,
       other_name: form.otherName,
@@ -147,6 +150,15 @@ export default function AddBeneficiary() {
         <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
           <h2 className="text-lg font-bold font-display">Customer Personal Information</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Select value={form.title} onValueChange={v => handleChange('title', v)}>
+                <SelectTrigger><SelectValue placeholder="Select title" /></SelectTrigger>
+                <SelectContent>
+                  {titleOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="surname">Surname *</Label>
               <Input id="surname" value={form.surname} onChange={e => handleChange('surname', e.target.value)} placeholder="e.g. Ogundimu" />
