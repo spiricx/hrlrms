@@ -13,6 +13,7 @@ import Reports from "./pages/Reports";
 import LoanRepayment from "./pages/LoanRepayment";
 import NplStatus from "./pages/NplStatus";
 import BatchRepayment from "./pages/BatchRepayment";
+import BioData from "./pages/BioData";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -50,6 +51,7 @@ const App = () => (
                       <Route path="/beneficiaries" element={<Beneficiaries />} />
                       <Route path="/beneficiary/:id" element={<BeneficiaryDetail />} />
                       <Route path="/add-beneficiary" element={<AddBeneficiary />} />
+                      <Route path="/bio-data" element={<BioData />} />
                       <Route path="/loan-repayment" element={<LoanRepayment />} />
                       <Route path="/batch-repayment" element={<BatchRepayment />} />
                       <Route path="/npl-status" element={<NplStatus />} />
