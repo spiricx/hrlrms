@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle, Copy, Check } from 'lucide-react';
 import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,9 +9,32 @@ import type { Tables } from '@/integrations/supabase/types';
 import RepaymentSummaryCard from '@/components/beneficiary/RepaymentSummaryCard';
 import RepaymentHistoryTable from '@/components/beneficiary/RepaymentHistoryTable';
 import RepaymentScheduleGrid from '@/components/beneficiary/RepaymentScheduleGrid';
+import LoanStatementExportButtons from '@/components/beneficiary/LoanStatementExport';
+import { toast } from 'sonner';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
+
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    toast.success(`${label} copied to clipboard`);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center ml-1.5 p-0.5 rounded hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+      title={`Copy ${label}`}
+    >
+      {copied ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
 
 export default function BeneficiaryDetail() {
   const { id } = useParams<{ id: string }>();
@@ -25,12 +48,14 @@ export default function BeneficiaryDetail() {
 
     const fetchData = async () => {
       const [benRes, txRes] = await Promise.all([
-        supabase.from('beneficiaries').select('*').eq('id', id).single(),
+        supabase.from('beneficiaries').select('*').eq('id', id).maybeSingle(),
         supabase.from('transactions').select('*').eq('beneficiary_id', id).order('month_for', { ascending: true }),
       ]);
 
       if (benRes.error) {
         setError('Beneficiary not found or access denied.');
+      } else if (!benRes.data) {
+        setError('Beneficiary not found.');
       } else {
         setBeneficiary(benRes.data);
       }
@@ -73,7 +98,6 @@ export default function BeneficiaryDetail() {
   });
 
   const infoItems = [
-    { label: 'Employee ID', value: beneficiary.employee_id, icon: <Clock className="w-4 h-4" /> },
     { label: 'Organization', value: beneficiary.department, icon: <Banknote className="w-4 h-4" /> },
     { label: 'State', value: beneficiary.state || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Branch', value: beneficiary.bank_branch || '—', icon: <Banknote className="w-4 h-4" /> },
@@ -99,15 +123,17 @@ export default function BeneficiaryDetail() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold font-display">{beneficiary.name}</h1>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-              <span className="text-sm font-bold text-foreground">
-                Loan Ref: <span className="font-mono">{beneficiary.employee_id}</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2">
+              <span className="text-sm font-bold text-foreground inline-flex items-center">
+                Loan Ref: <span className="font-mono ml-1">{beneficiary.employee_id}</span>
+                <CopyButton value={beneficiary.employee_id} label="Loan Reference" />
               </span>
-              {(beneficiary as any).nhf_number && (
-                <span className="text-sm font-bold text-foreground">
-                  NHF: <span className="font-mono">{(beneficiary as any).nhf_number}</span>
-                </span>
-              )}
+              <span className="text-sm font-bold text-foreground inline-flex items-center">
+                NHF Number: <span className="font-mono ml-1">{beneficiary.nhf_number || 'Not Set'}</span>
+                {beneficiary.nhf_number && (
+                  <CopyButton value={beneficiary.nhf_number} label="NHF Number" />
+                )}
+              </span>
             </div>
           </div>
           <StatusBadge status={beneficiary.status} />
@@ -134,6 +160,18 @@ export default function BeneficiaryDetail() {
         tenorMonths={beneficiary.tenor_months}
         transactions={transactions}
         schedule={loan.schedule}
+      />
+
+      {/* Loan Statement Export */}
+      <LoanStatementExportButtons
+        beneficiary={beneficiary}
+        schedule={loan.schedule}
+        transactions={transactions}
+        totalExpected={loan.totalPayment}
+        monthlyEMI={loan.monthlyEMI}
+        totalInterest={loan.totalInterest}
+        commencementDate={loan.commencementDate}
+        terminationDate={loan.terminationDate}
       />
 
       {/* Tabs */}
