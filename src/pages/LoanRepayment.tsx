@@ -433,8 +433,8 @@ export default function LoanRepayment() {
                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(b.outstanding_balance))}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right">{b.lastPaymentAmount != null ? formatCurrency(b.lastPaymentAmount) : '—'}</td>
-                    <td className={cn("px-4 py-3 text-right font-semibold", arrearsAmount > 0 && "text-destructive")}>{arrearsAmount > 0 ? formatCurrency(arrearsAmount) : '—'}</td>
-                    <td className={cn("px-4 py-3 text-center font-semibold", monthsInArrears > 0 && "text-destructive")}>{monthsInArrears > 0 ? monthsInArrears : '—'}</td>
+                    <td className={cn("px-4 py-3 text-right font-semibold", arrearsAmount > 0 ? "text-destructive animate-pulse" : "text-success")}>{arrearsAmount > 0 ? formatCurrency(arrearsAmount) : '₦0'}</td>
+                    <td className={cn("px-4 py-3 text-center font-semibold", monthsInArrears > 0 ? "text-destructive animate-pulse" : "text-success")}>{monthsInArrears > 0 ? monthsInArrears : '0'}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{b.lastPaymentDate ? formatDate(new Date(b.lastPaymentDate)) : '—'}</td>
                     <td className="px-4 py-3 text-center space-x-1">
                       <Button size="sm" onClick={() => openRecordModal(b)} className="gap-1">
