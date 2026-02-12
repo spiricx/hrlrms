@@ -99,7 +99,16 @@ export default function BeneficiaryDetail() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold font-display">{beneficiary.name}</h1>
-            <p className="text-sm text-muted-foreground mt-1">Loan facility details and repayment history</p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+              <span className="text-sm font-bold text-foreground">
+                Loan Ref: <span className="font-mono">{beneficiary.employee_id}</span>
+              </span>
+              {(beneficiary as any).nhf_number && (
+                <span className="text-sm font-bold text-foreground">
+                  NHF: <span className="font-mono">{(beneficiary as any).nhf_number}</span>
+                </span>
+              )}
+            </div>
           </div>
           <StatusBadge status={beneficiary.status} />
         </div>
