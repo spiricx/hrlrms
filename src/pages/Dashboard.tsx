@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote } from 'lucide-react';
 import StatCard from '@/components/StatCard';
-import StatusBadge from '@/components/StatusBadge';
 import { formatCurrency } from '@/lib/loanCalculations';
-import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import RecentBeneficiariesWidget from '@/components/dashboard/RecentBeneficiariesWidget';
 
 type Beneficiary = Tables<'beneficiaries'>;
 
@@ -44,7 +43,7 @@ export default function Dashboard() {
   const defaultedCount = beneficiaries.filter((b) => b.status === 'defaulted').length;
   const completedCount = beneficiaries.filter((b) => b.status === 'completed').length;
   const activeCount = beneficiaries.filter((b) => b.status === 'active').length;
-  const recentLoans = beneficiaries.slice(0, 5);
+  
 
   if (loading) {
     return (
@@ -123,46 +122,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Recent beneficiaries */}
-      <div className="bg-card rounded-xl shadow-card overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <h2 className="text-lg font-bold font-display">Recent Beneficiaries</h2>
-          <Link to="/beneficiaries" className="text-sm font-medium text-accent hover:underline">
-            View All →
-          </Link>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Employee ID</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {recentLoans.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                    No beneficiaries found. Create a new loan to get started.
-                  </td>
-                </tr>
-              )}
-              {recentLoans.map((b) => (
-                <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-6 py-4 font-medium">{b.name}</td>
-                  <td className="px-6 py-4 text-muted-foreground">{b.employee_id}</td>
-                  <td className="px-6 py-4">{formatCurrency(Number(b.loan_amount))}</td>
-                  <td className="px-6 py-4">{formatCurrency(Number(b.outstanding_balance))}</td>
-                  <td className="px-6 py-4"><StatusBadge status={b.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Recent Beneficiaries Widget */}
+      <RecentBeneficiariesWidget />
     </div>
   );
 }
