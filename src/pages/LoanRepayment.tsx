@@ -556,14 +556,15 @@ export default function LoanRepayment() {
 
       {/* Repayment History Modal */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] w-full max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Repayment History — {historyBen?.name}</DialogTitle>
+            <DialogTitle className="text-xl">Repayment History — {historyBen?.name}</DialogTitle>
             <DialogDescription>
               {historyBen && (
-                <span className="flex gap-4 mt-1">
+                <span className="flex gap-6 mt-1 text-sm">
                   <span><strong>NHF:</strong> {historyBen.nhf_number || 'N/A'}</span>
                   <span><strong>Loan Ref:</strong> {historyBen.employee_id}</span>
+                  <span><strong>Loan Amount:</strong> {formatCurrency(Number(historyBen.loan_amount))}</span>
                 </span>
               )}
             </DialogDescription>
@@ -574,73 +575,89 @@ export default function LoanRepayment() {
             historyTxns.length === 0 ?
               <div className="py-8 text-center text-muted-foreground">No repayments recorded yet.</div> :
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/50">
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Repayment Month</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date on Remita Receipt</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Amount on Remita Receipt</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Remita RRR</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt Link</th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Loan Balance</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date Recorded</th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Notes</th>
-                      <th className="px-4 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {(() => {
-                      const withBalances = historyBen
-                        ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.moratorium_months)
-                        : historyTxns.map(t => ({ ...t, loanBalance: 0 }));
-                      return withBalances.map((t) => (
-                        <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
-                          <td className="px-4 py-3 font-medium">Month {t.month_for}</td>
-                          <td className="px-4 py-3">{formatDate(new Date(t.date_paid))}</td>
-                          <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(t.amount))}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{t.rrr_number}</td>
-                          <td className="px-4 py-3">
-                            {t.receipt_url ?
-                              <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
-                                <ExternalLink className="w-3 h-3" /> Open
-                              </a> : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold">{formatCurrency(t.loanBalance)}</td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(new Date(t.created_at))}</td>
-                          <td className="px-4 py-3 max-w-[150px]">
-                            {t.notes ? (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-help truncate max-w-[120px]">
-                                    <MessageSquare className="w-3 h-3 shrink-0" />
-                                    <span className="truncate">{t.notes}</span>
-                                  </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="max-w-xs">
-                                  <p className="text-sm whitespace-pre-wrap">{t.notes}</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            ) : '—'}
-                          </td>
-                          <td className="px-4 py-3 text-center space-x-1">
-                            {canEditTxn(t) &&
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                            }
-                            {canDeleteTxn(t) &&
-                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { setDeletingTxn(t); setDeleteDialogOpen(true); }}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            }
-                          </td>
-                        </tr>
-                      ));
-                    })()}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="rounded-lg bg-success/10 border border-success/20 p-4">
+                    <p className="text-xs text-muted-foreground uppercase font-semibold">Total Payment Made So Far</p>
+                    <p className="text-2xl font-bold text-success">{formatCurrency(historyTxns.reduce((s, t) => s + Number(t.amount), 0))}</p>
+                  </div>
+                  <div className={cn("rounded-lg border p-4", Number(historyBen?.outstanding_balance) > 0 ? "bg-destructive/10 border-destructive/20" : "bg-success/10 border-success/20")}>
+                    <p className="text-xs text-muted-foreground uppercase font-semibold">Total Loan Outstanding</p>
+                    <p className={cn("text-2xl font-bold", Number(historyBen?.outstanding_balance) > 0 ? "text-destructive" : "text-success")}>{formatCurrency(Number(historyBen?.outstanding_balance ?? 0))}</p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-secondary/60">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Repayment Month</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Date on Remita Receipt</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount on Remita Receipt</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Remita RRR</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Receipt Link</th>
+                        <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Loan Balance</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Date Recorded</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Time Recorded</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Notes</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {(() => {
+                        const withBalances = historyBen
+                          ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.moratorium_months)
+                          : historyTxns.map(t => ({ ...t, loanBalance: 0 }));
+                        return withBalances.map((t) => (
+                          <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+                            <td className="px-4 py-3.5 font-semibold text-base">Month {t.month_for}</td>
+                            <td className="px-4 py-3.5">{formatDate(new Date(t.date_paid))}</td>
+                            <td className="px-4 py-3.5 text-right font-semibold text-base">{formatCurrency(Number(t.amount))}</td>
+                            <td className="px-4 py-3.5 font-mono text-xs">{t.rrr_number}</td>
+                            <td className="px-4 py-3.5">
+                              {t.receipt_url ?
+                                <a href={t.receipt_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-accent hover:underline text-xs">
+                                  <ExternalLink className="w-3 h-3" /> Open
+                                </a> : '—'}
+                            </td>
+                            <td className="px-4 py-3.5 text-right font-bold text-base">{formatCurrency(t.loanBalance)}</td>
+                            <td className="px-4 py-3.5 text-muted-foreground">{formatDate(new Date(t.created_at))}</td>
+                            <td className="px-4 py-3.5 text-muted-foreground">{format(new Date(t.created_at), 'hh:mm a')}</td>
+                            <td className="px-4 py-3.5 max-w-[150px]">
+                              {t.notes ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground cursor-help truncate max-w-[120px]">
+                                      <MessageSquare className="w-3 h-3 shrink-0" />
+                                      <span className="truncate">{t.notes}</span>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-xs">
+                                    <p className="text-sm whitespace-pre-wrap">{t.notes}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : '—'}
+                            </td>
+                            <td className="px-4 py-3.5 text-center space-x-1">
+                              {canEditTxn(t) &&
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEditModal(t)}>
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                              }
+                              {canDeleteTxn(t) &&
+                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => { setDeletingTxn(t); setDeleteDialogOpen(true); }}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              }
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </>
           }
         </DialogContent>
       </Dialog>
