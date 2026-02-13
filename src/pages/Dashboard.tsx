@@ -117,7 +117,7 @@ export default function Dashboard() {
           </div>
           <div>
             <p className="text-2xl font-bold font-display">6%</p>
-            <p className="text-xs text-muted-foreground">Interest Rate p.a.</p>
+            <p className="text-xs text-muted-foreground">Annuity Rate</p>
           </div>
         </div>
       </div>

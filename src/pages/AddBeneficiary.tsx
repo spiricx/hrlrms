@@ -292,7 +292,7 @@ export default function AddBeneficiary() {
             </div>
             <div className="space-y-2">
               <Label>Interest Rate</Label>
-              <Input value="6% per annum" disabled />
+              <Input value="6% Annuity (Declining Balance)" disabled />
             </div>
             <div className="space-y-2">
               <Label>Moratorium</Label>

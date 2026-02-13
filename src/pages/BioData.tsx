@@ -95,7 +95,7 @@ function buildFields(b: Beneficiary) {
     { section: 'Loan Information', fields: [
       { label: 'Loan Reference No.', value: b.loan_reference_number || '' },
       { label: 'Loan Amount', value: formatCurrency(Number(b.loan_amount)) },
-      { label: 'Interest Rate', value: `${b.interest_rate}%` },
+      { label: 'Interest Rate', value: `${b.interest_rate}% Annuity` },
       { label: 'Tenor', value: formatTenor(b.tenor_months) },
       { label: 'Monthly Repayment', value: formatCurrency(Number(b.monthly_emi)) },
       { label: 'Disbursement Date', value: b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : '' },
