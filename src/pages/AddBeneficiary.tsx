@@ -36,13 +36,13 @@ export default function AddBeneficiary() {
     dateOfEmployment: '',
     loanReferenceNumber: '',
     loanAmount: '',
-    tenorMonths: '36',
+    tenorYears: '3',
     disbursementDate: '',
     bankBranch: '',
     state: ''
   });
   const amount = parseFloat(form.loanAmount) || 0;
-  const tenor = parseInt(form.tenorMonths) || 36;
+  const tenor = (parseInt(form.tenorYears) || 3) * 12;
   const disbDate = form.disbursementDate ? new Date(form.disbursementDate) : null;
   const preview = amount > 0 && tenor > 0 && disbDate ? calculateLoan({
     principal: amount,
@@ -69,10 +69,10 @@ export default function AddBeneficiary() {
       });
       return;
     }
-    if (tenor > 60) {
+    if (parseInt(form.tenorYears) > 5) {
       toast({
         title: 'Invalid Tenor',
-        description: 'Maximum tenor is 60 months (5 years).',
+        description: 'Maximum tenor is 5 years.',
         variant: 'destructive'
       });
       return;
@@ -283,8 +283,8 @@ export default function AddBeneficiary() {
               <Input id="amount" type="number" min={0} value={form.loanAmount} onChange={e => handleChange('loanAmount', e.target.value)} placeholder="e.g. 2500000" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tenor">Tenor (months, max 60) *</Label>
-              <Input id="tenor" type="number" min={1} max={60} value={form.tenorMonths} onChange={e => handleChange('tenorMonths', e.target.value)} />
+              <Label htmlFor="tenor">Tenor (years, max 5) *</Label>
+              <Input id="tenor" type="number" min={1} max={5} value={form.tenorYears} onChange={e => handleChange('tenorYears', e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="disbDate">Disbursement Date *</Label>
