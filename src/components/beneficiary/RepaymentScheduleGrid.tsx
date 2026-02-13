@@ -11,7 +11,7 @@ interface RepaymentScheduleGridProps {
   transactions: Transaction[];
 }
 
-type MonthStatus = 'paid' | 'late-paid' | 'partial' | 'overdue' | 'upcoming' | 'current';
+type MonthStatus = 'paid' | 'paid-advance' | 'late-paid' | 'partial' | 'overdue' | 'upcoming' | 'current';
 
 function getMonthStatus(
   entry: ScheduleEntry,
@@ -22,6 +22,9 @@ function getMonthStatus(
   const totalPaid = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
 
   if (totalPaid >= entry.emi) {
+    // Check if this is an advance payment (paid before due date and in the future)
+    const isPaidInAdvance = entry.dueDate > now;
+    if (isPaidInAdvance) return 'paid-advance';
     const anyLate = monthTxns.some((t) => new Date(t.date_paid) > entry.dueDate);
     return anyLate ? 'late-paid' : 'paid';
   }
@@ -39,6 +42,7 @@ function getMonthStatus(
 
 const statusStyles: Record<MonthStatus, string> = {
   paid: 'bg-success/15 border-success/30 text-success',
+  'paid-advance': 'bg-success/20 border-success/40 text-success ring-2 ring-success/20',
   'late-paid': 'bg-success/10 border-success/20 text-success',
   partial: 'bg-warning/15 border-warning/30 text-warning',
   overdue: 'bg-destructive/10 border-destructive/30 text-destructive animate-pulse-border',
@@ -48,6 +52,7 @@ const statusStyles: Record<MonthStatus, string> = {
 
 const statusIcons: Record<MonthStatus, React.ReactNode> = {
   paid: <CheckCircle className="w-4 h-4" />,
+  'paid-advance': <CheckCircle className="w-4 h-4" />,
   'late-paid': <CheckCircle className="w-4 h-4" />,
   partial: <MinusCircle className="w-4 h-4" />,
   overdue: <AlertTriangle className="w-4 h-4" />,
@@ -57,6 +62,7 @@ const statusIcons: Record<MonthStatus, React.ReactNode> = {
 
 const statusLabels: Record<MonthStatus, string> = {
   paid: 'Paid',
+  'paid-advance': 'Paid in Advance',
   'late-paid': 'Paid (Late)',
   partial: 'Partial',
   overdue: 'Overdue',
@@ -86,6 +92,7 @@ export default function RepaymentScheduleGrid({
         <h3 className="text-lg font-bold font-display">Visual Repayment Schedule</h3>
         <div className="flex flex-wrap gap-3 text-xs">
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-success/30 border border-success/40" /> Paid</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-success/40 border-2 border-success/50" /> Advance</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-warning/30 border border-warning/40" /> Partial</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-destructive/30 border border-destructive/40" /> Overdue</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-primary/20 border border-primary/40" /> Due Now</span>
@@ -111,6 +118,11 @@ export default function RepaymentScheduleGrid({
                   >
                     {statusIcons[status]}
                     <span className="text-xs font-bold mt-1">M{entry.month}</span>
+                    {status === 'paid-advance' && (
+                      <span className="absolute -top-1 -right-1 px-1 py-px rounded bg-success text-success-foreground text-[9px] font-bold">
+                        ADV
+                      </span>
+                    )}
                     {status === 'late-paid' && (
                       <span className="absolute -top-1 -right-1 px-1 py-px rounded bg-warning text-warning-foreground text-[9px] font-bold">
                         LATE

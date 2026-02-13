@@ -164,7 +164,7 @@ export default function LoanRepayment() {
       return;
     }
     if (!repaymentMonth) {
-      toast({ title: 'Validation Error', description: 'Select the repayment month.', variant: 'destructive' });
+      toast({ title: 'Validation Error', description: 'Select the starting repayment month.', variant: 'destructive' });
       return;
     }
     if (!receiptUrl.trim()) {
@@ -184,19 +184,45 @@ export default function LoanRepayment() {
     }
 
     setSaving(true);
-    const amount = Number(amountPaid);
-    const monthFor = Number(repaymentMonth);
+    const totalAmount = Number(amountPaid);
+    const startMonth = Number(repaymentMonth);
+    const emi = Number(selectedBen.monthly_emi);
+    const maxMonth = selectedBen.tenor_months;
 
-    const { error: txError } = await supabase.from('transactions').insert({
+    // Auto-forward allocation: split payment across consecutive months
+    const transactions: { month_for: number; amount: number }[] = [];
+    let remaining = totalAmount;
+    let currentMonth = startMonth;
+
+    while (remaining > 0 && currentMonth <= maxMonth) {
+      const allocation = Math.min(remaining, emi);
+      transactions.push({ month_for: currentMonth, amount: Math.round(allocation * 100) / 100 });
+      remaining = Math.round((remaining - allocation) * 100) / 100;
+      currentMonth++;
+    }
+
+    // If there's still remaining after all months, add it to the last month
+    if (remaining > 0 && transactions.length > 0) {
+      transactions[transactions.length - 1].amount += remaining;
+    }
+
+    // Insert all transaction records
+    const inserts = transactions.map((t, idx) => ({
       beneficiary_id: selectedBen.id,
-      amount,
-      rrr_number: rrrNumber.trim(),
+      amount: t.amount,
+      rrr_number: idx === 0 ? rrrNumber.trim() : `${rrrNumber.trim()}-ADV-M${t.month_for}`,
       date_paid: format(paymentDate, 'yyyy-MM-dd'),
-      month_for: monthFor,
+      month_for: t.month_for,
       recorded_by: user?.id || null,
       receipt_url: receiptUrl.trim(),
-      notes: notes.trim()
-    });
+      notes: idx === 0
+        ? (transactions.length > 1
+          ? `${notes.trim()} [Advance payment covering months ${startMonth}-${startMonth + transactions.length - 1}]`.trim()
+          : notes.trim())
+        : `Advance allocation from Month ${startMonth} payment (RRR: ${rrrNumber.trim()})`
+    }));
+
+    const { error: txError } = await supabase.from('transactions').insert(inserts);
 
     if (txError) {
       toast({ title: 'Error', description: txError.message, variant: 'destructive' });
@@ -205,8 +231,8 @@ export default function LoanRepayment() {
     }
 
     // Update beneficiary balance
-    const newTotalPaid = Number(selectedBen.total_paid) + amount;
-    const newOutstanding = Math.max(0, Number(selectedBen.outstanding_balance) - amount);
+    const newTotalPaid = Number(selectedBen.total_paid) + totalAmount;
+    const newOutstanding = Math.max(0, Number(selectedBen.outstanding_balance) - totalAmount);
 
     await supabase.from('beneficiaries').update({
       total_paid: newTotalPaid,
@@ -216,9 +242,13 @@ export default function LoanRepayment() {
 
     setSaving(false);
     setModalOpen(false);
+
+    const monthsCovered = transactions.length;
     toast({
-      title: 'Repayment Recorded',
-      description: `Balance updated using payment date: ${format(paymentDate, 'dd/MM/yyyy')}.`
+      title: monthsCovered > 1 ? `Advance Repayment Recorded (${monthsCovered} months)` : 'Repayment Recorded',
+      description: monthsCovered > 1
+        ? `₦${totalAmount.toLocaleString()} applied to months ${startMonth}–${startMonth + monthsCovered - 1}.`
+        : `Balance updated using payment date: ${format(paymentDate, 'dd/MM/yyyy')}.`
     });
   };
 
@@ -490,7 +520,8 @@ export default function LoanRepayment() {
 
               <div className="space-y-3">
                 <div>
-                  <Label>Repayment Month *</Label>
+                  <Label>Starting Repayment Month *</Label>
+                  <p className="text-xs text-muted-foreground mb-1">If payment covers multiple months, excess will auto-allocate to subsequent months.</p>
                   <Select value={repaymentMonth} onValueChange={setRepaymentMonth}>
                     <SelectTrigger><SelectValue placeholder="Select month" /></SelectTrigger>
                     <SelectContent>
@@ -502,6 +533,14 @@ export default function LoanRepayment() {
                 <div>
                   <Label>Amount Paid (₦) *</Label>
                   <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" />
+                  {selectedBen && amountPaid && Number(amountPaid) > Number(selectedBen.monthly_emi) && repaymentMonth && (
+                    <div className="mt-2 p-2.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-medium">
+                      💡 This payment covers <strong>{Math.min(Math.floor(Number(amountPaid) / Number(selectedBen.monthly_emi)), selectedBen.tenor_months - Number(repaymentMonth) + 1)} month(s)</strong> starting from Month {repaymentMonth}
+                      {Number(amountPaid) % Number(selectedBen.monthly_emi) > 0 && Number(amountPaid) / Number(selectedBen.monthly_emi) < (selectedBen.tenor_months - Number(repaymentMonth) + 1) &&
+                        <span> (+ partial ₦{(Number(amountPaid) % Number(selectedBen.monthly_emi)).toLocaleString()} for the next month)</span>
+                      }
+                    </div>
+                  )}
                 </div>
 
                 <div>
