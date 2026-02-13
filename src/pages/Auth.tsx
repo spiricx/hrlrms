@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Mail, Lock, User, Hash, MapPin } from 'lucide-react';
 import fmbnLogo from '@/assets/fmbn_logo.png';
+import fmbnHero from '@/assets/fmbn_hero.jpeg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,19 +96,15 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - branding */}
-      <div className="hidden lg:flex lg:w-1/2 gradient-hero items-center justify-center p-12">
-        <div className="max-w-md text-center">
-          <img src={fmbnLogo} alt="FMBN Logo" className="w-28 h-auto mx-auto mb-6" />
+      <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center p-12 overflow-hidden">
+        <img src={fmbnHero} alt="FMBN professionals at work" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 gradient-hero opacity-80" />
+        <div className="relative z-10 max-w-md text-center">
+          <img src={fmbnLogo} alt="FMBN Logo" className="w-28 h-auto mx-auto mb-6 drop-shadow-lg" />
           <p className="text-xs font-semibold tracking-widest uppercase text-sidebar-foreground/60 mb-1">Loan Processing Unit</p>
-          <h1 className="text-3xl font-bold font-display text-sidebar-foreground">HRL-RMS Portal
-
-          </h1>
-          <p className="mt-2 text-sm text-sidebar-foreground/70">Home Renovation Loan Repayment Management System
-
-          </p>
-          <p className="mt-3 text-sidebar-foreground/50 text-xs">Create Loans · Update Loan Repayment Records · Track Loan Monthly Repayments
-
-          </p>
+          <h1 className="text-3xl font-bold font-display text-sidebar-foreground drop-shadow-md">HRL-RMS Portal</h1>
+          <p className="mt-2 text-sm text-sidebar-foreground/80 drop-shadow-sm">Home Renovation Loan Repayment Management System</p>
+          <p className="mt-3 text-sidebar-foreground/60 text-xs">Create Loans · Update Loan Repayment Records · Track Loan Monthly Repayments</p>
         </div>
       </div>
 
