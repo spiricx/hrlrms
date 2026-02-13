@@ -43,19 +43,8 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const schedule: ScheduleEntry[] = [];
   let balance = principal;
 
-  // During moratorium, interest accrues but no payment
-  const moratoriumInterest = principal * monthlyRate * moratoriumMonths;
-  balance += moratoriumInterest;
-
-  // Recalculate EMI with accrued interest added to principal
-  const adjustedPrincipal = balance;
-  const adjustedEMI =
-    monthlyRate === 0
-      ? adjustedPrincipal / n
-      : (adjustedPrincipal * monthlyRate * Math.pow(1 + monthlyRate, n)) /
-        (Math.pow(1 + monthlyRate, n) - 1);
-
-  balance = adjustedPrincipal;
+  // Moratorium only delays commencement; no interest capitalization
+  const adjustedEMI = emi;
 
   for (let i = 1; i <= n; i++) {
     const dueDate = new Date(commencementDate);
