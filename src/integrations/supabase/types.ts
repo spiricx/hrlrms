@@ -311,6 +311,81 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_members: {
+        Row: {
+          branch: string
+          cadre: string | null
+          created_at: string
+          created_by: string | null
+          date_employed: string | null
+          date_of_birth: string | null
+          department: string | null
+          designation: string | null
+          email: string | null
+          first_name: string
+          gender: string | null
+          group_name: string | null
+          id: string
+          other_names: string | null
+          phone: string | null
+          staff_id: string
+          state: string
+          status: string
+          surname: string
+          title: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          branch?: string
+          cadre?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_employed?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          group_name?: string | null
+          id?: string
+          other_names?: string | null
+          phone?: string | null
+          staff_id: string
+          state?: string
+          status?: string
+          surname?: string
+          title?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          branch?: string
+          cadre?: string | null
+          created_at?: string
+          created_by?: string | null
+          date_employed?: string | null
+          date_of_birth?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          first_name?: string
+          gender?: string | null
+          group_name?: string | null
+          id?: string
+          other_names?: string | null
+          phone?: string | null
+          staff_id?: string
+          state?: string
+          status?: string
+          surname?: string
+          title?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number

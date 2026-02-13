@@ -13,6 +13,8 @@ import {
   LogOut,
   Sun,
   Moon,
+  UserCog,
+  BarChart3,
 } from 'lucide-react';
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
@@ -45,6 +47,8 @@ const navItems = [
   { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/batch-repayment', label: 'Batch Repayment', icon: Package, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
+  { path: '/staff-directory', label: 'Staff Management', icon: UserCog, roles: ['admin', 'loan_officer'] as string[] },
+  { path: '/staff-performance', label: 'Staff Performance', icon: BarChart3, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/reports', label: 'Reports', icon: FileText },
 ];
 
