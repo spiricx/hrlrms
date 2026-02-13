@@ -314,6 +314,7 @@ export type Database = {
       staff_members: {
         Row: {
           branch: string
+          bvn_number: string | null
           cadre: string | null
           created_at: string
           created_by: string | null
@@ -326,6 +327,8 @@ export type Database = {
           gender: string | null
           group_name: string | null
           id: string
+          nhf_number: string | null
+          nin_number: string | null
           other_names: string | null
           phone: string | null
           staff_id: string
@@ -338,6 +341,7 @@ export type Database = {
         }
         Insert: {
           branch?: string
+          bvn_number?: string | null
           cadre?: string | null
           created_at?: string
           created_by?: string | null
@@ -350,6 +354,8 @@ export type Database = {
           gender?: string | null
           group_name?: string | null
           id?: string
+          nhf_number?: string | null
+          nin_number?: string | null
           other_names?: string | null
           phone?: string | null
           staff_id: string
@@ -362,6 +368,7 @@ export type Database = {
         }
         Update: {
           branch?: string
+          bvn_number?: string | null
           cadre?: string | null
           created_at?: string
           created_by?: string | null
@@ -374,6 +381,8 @@ export type Database = {
           gender?: string | null
           group_name?: string | null
           id?: string
+          nhf_number?: string | null
+          nin_number?: string | null
           other_names?: string | null
           phone?: string | null
           staff_id?: string
