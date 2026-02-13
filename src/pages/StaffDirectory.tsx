@@ -27,6 +27,9 @@ type StaffMember = {
   first_name: string;
   other_names: string;
   staff_id: string;
+  nhf_number: string;
+  bvn_number: string;
+  nin_number: string;
   state: string;
   branch: string;
   unit: string;
@@ -45,6 +48,7 @@ type StaffMember = {
 
 const emptyForm = {
   title: '', surname: '', first_name: '', other_names: '', staff_id: '',
+  nhf_number: '', bvn_number: '', nin_number: '',
   state: '', branch: '', unit: '', department: '', designation: '',
   cadre: '', group_name: '', gender: '', date_of_birth: '', phone: '',
   email: '', date_employed: '', status: 'Active',
@@ -63,6 +67,11 @@ function buildProfileSections(s: StaffMember) {
       { label: 'Date of Birth', value: s.date_of_birth ? format(new Date(s.date_of_birth), 'dd-MMM-yyyy') : '' },
       { label: 'Phone Number', value: s.phone },
       { label: 'Email', value: s.email },
+    ]},
+    { section: 'Identification', fields: [
+      { label: 'NHF Number', value: s.nhf_number },
+      { label: 'BVN Number', value: s.bvn_number },
+      { label: 'NIN', value: s.nin_number },
     ]},
     { section: 'Employment Details', fields: [
       { label: 'State', value: s.state },
@@ -119,7 +128,7 @@ export default function StaffDirectory() {
   const filtered = useMemo(() => {
     return staff.filter(s => {
       const q = search.toLowerCase();
-      const matchSearch = !q || [s.surname, s.first_name, s.other_names, s.staff_id, s.email, s.phone, s.designation]
+      const matchSearch = !q || [s.surname, s.first_name, s.other_names, s.staff_id, s.email, s.phone, s.designation, s.nhf_number, s.bvn_number, s.nin_number]
         .some(v => v?.toLowerCase().includes(q));
       const matchState = filterState === 'all' || s.state === filterState;
       const matchBranch = !filterBranch || s.branch === filterBranch;
@@ -144,6 +153,9 @@ export default function StaffDirectory() {
       first_name: form.first_name,
       other_names: form.other_names,
       staff_id: form.staff_id,
+      nhf_number: form.nhf_number,
+      bvn_number: form.bvn_number,
+      nin_number: form.nin_number,
       state: form.state,
       branch: form.branch,
       unit: form.unit,
@@ -174,7 +186,9 @@ export default function StaffDirectory() {
   const exportExcel = () => {
     const rows = filtered.map((s, i) => ({
       'S/N': i + 1, Title: s.title, Surname: s.surname, 'First Name': s.first_name,
-      'Other Names': s.other_names, 'Staff ID': s.staff_id, State: s.state, Branch: s.branch,
+      'Other Names': s.other_names, 'Staff ID': s.staff_id,
+      'NHF Number': s.nhf_number, 'BVN': s.bvn_number, 'NIN': s.nin_number,
+      State: s.state, Branch: s.branch,
       Unit: s.unit, Department: s.department, Designation: s.designation, Cadre: s.cadre,
       Gender: s.gender, Phone: s.phone, Email: s.email, Status: s.status,
     }));
@@ -190,8 +204,8 @@ export default function StaffDirectory() {
     doc.text('Staff Directory', 40, 40);
     autoTable(doc, {
       startY: 60,
-      head: [['S/N', 'Title', 'Surname', 'First Name', 'Staff ID', 'State', 'Branch', 'Department', 'Designation', 'Cadre', 'Status']],
-      body: filtered.map((s, i) => [i + 1, s.title, s.surname, s.first_name, s.staff_id, s.state, s.branch, s.department, s.designation, s.cadre, s.status]),
+      head: [['S/N', 'Title', 'Surname', 'First Name', 'Staff ID', 'NHF No.', 'BVN', 'NIN', 'State', 'Branch', 'Department', 'Designation', 'Cadre', 'Status']],
+      body: filtered.map((s, i) => [i + 1, s.title, s.surname, s.first_name, s.staff_id, s.nhf_number, s.bvn_number, s.nin_number, s.state, s.branch, s.department, s.designation, s.cadre, s.status]),
       styles: { fontSize: 7 },
     });
     doc.save('Staff_Directory.pdf');
@@ -258,7 +272,7 @@ export default function StaffDirectory() {
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="relative lg:col-span-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input className="pl-9" placeholder="Search name, ID, email…" value={search} onChange={e => setSearch(e.target.value)} />
+              <Input className="pl-9" placeholder="Search name, ID, NHF, BVN, NIN…" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <Select value={filterState} onValueChange={setFilterState}>
               <SelectTrigger><SelectValue placeholder="State" /></SelectTrigger>
@@ -299,16 +313,16 @@ export default function StaffDirectory() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80 backdrop-blur z-10">
                 <tr>
-                  {['#', 'Title', 'Surname', 'First Name', 'Other Names', 'Staff ID', 'State', 'Branch', 'Unit', 'Department', 'Designation', 'Cadre', 'Gender', 'Phone', 'Email', 'Status', 'Action'].map(h => (
+                  {['#', 'Title', 'Surname', 'First Name', 'Other Names', 'Staff ID', 'NHF No.', 'BVN', 'NIN', 'State', 'Branch', 'Unit', 'Department', 'Designation', 'Cadre', 'Gender', 'Phone', 'Email', 'Status', 'Action'].map(h => (
                     <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={17} className="py-12 text-center text-muted-foreground">Loading…</td></tr>
+                  <tr><td colSpan={20} className="py-12 text-center text-muted-foreground">Loading…</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={17} className="py-12 text-center text-muted-foreground">No staff members found</td></tr>
+                  <tr><td colSpan={20} className="py-12 text-center text-muted-foreground">No staff members found</td></tr>
                 ) : filtered.map((s, i) => (
                   <tr key={s.id} className="border-b hover:bg-muted/30 transition-colors">
                     <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
@@ -317,6 +331,9 @@ export default function StaffDirectory() {
                     <td className="px-3 py-2.5 whitespace-nowrap">{s.first_name}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{s.other_names}</td>
                     <td className="px-3 py-2.5 font-mono text-xs">{s.staff_id}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs">{s.nhf_number}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs">{s.bvn_number}</td>
+                    <td className="px-3 py-2.5 font-mono text-xs">{s.nin_number}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{s.state}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{s.branch}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{s.unit}</td>
@@ -388,6 +405,9 @@ export default function StaffDirectory() {
             <div className="space-y-1"><Label>First Name *</Label><Input value={form.first_name} onChange={e => handleChange('first_name', e.target.value)} /></div>
             <div className="space-y-1"><Label>Other Names</Label><Input value={form.other_names} onChange={e => handleChange('other_names', e.target.value)} /></div>
             <div className="space-y-1"><Label>Staff ID *</Label><Input value={form.staff_id} onChange={e => handleChange('staff_id', e.target.value)} placeholder="e.g. STF-LAS-001" /></div>
+            <div className="space-y-1"><Label>NHF Number</Label><Input value={form.nhf_number} onChange={e => handleChange('nhf_number', e.target.value)} placeholder="NHF Account No." /></div>
+            <div className="space-y-1"><Label>BVN Number</Label><Input value={form.bvn_number} onChange={e => handleChange('bvn_number', e.target.value)} placeholder="11-digit BVN" maxLength={11} /></div>
+            <div className="space-y-1"><Label>NIN</Label><Input value={form.nin_number} onChange={e => handleChange('nin_number', e.target.value)} placeholder="11-digit NIN" maxLength={11} /></div>
             <div className="space-y-1">
               <Label>Gender</Label>
               <Select value={form.gender} onValueChange={v => handleChange('gender', v)}>
