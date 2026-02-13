@@ -335,6 +335,8 @@ export type Database = {
           staff_id: string
           state: string
           status: string
+          status_date: string | null
+          status_reason: string | null
           surname: string
           title: string | null
           unit: string | null
@@ -363,6 +365,8 @@ export type Database = {
           staff_id: string
           state?: string
           status?: string
+          status_date?: string | null
+          status_reason?: string | null
           surname?: string
           title?: string | null
           unit?: string | null
@@ -391,6 +395,8 @@ export type Database = {
           staff_id?: string
           state?: string
           status?: string
+          status_date?: string | null
+          status_reason?: string | null
           surname?: string
           title?: string | null
           unit?: string | null

@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 const titleOptions = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Chief', 'Alhaji', 'Alhaja', 'Hon', 'Engr', 'Barr', 'Arc'];
 const genderOptions = ['Male', 'Female'];
 const maritalStatusOptions = ['Single', 'Married', 'Divorced', 'Widowed', 'Separated'];
-const statusOptions = ['Active', 'Inactive', 'Transferred'];
+const statusOptions = ['Active', 'Retired', 'Out of Service', 'Died in Active Service', 'Dismissal', 'Resigned', 'Transferred', 'Inactive'];
 
 type StaffMember = {
   id: string;
@@ -45,6 +45,8 @@ type StaffMember = {
   email: string;
   date_employed: string | null;
   status: string;
+  status_date: string | null;
+  status_reason: string;
   created_at: string;
 };
 
@@ -53,7 +55,7 @@ const emptyForm = {
   nhf_number: '', bvn_number: '', nin_number: '',
   state: '', branch: '', unit: '', department: '', designation: '',
   cadre: '', group_name: '', gender: '', marital_status: '', date_of_birth: '', phone: '',
-  email: '', date_employed: '', status: 'Active',
+  email: '', date_employed: '', status: 'Active', status_date: '', status_reason: '',
 };
 
 function buildProfileSections(s: StaffMember) {
@@ -86,6 +88,8 @@ function buildProfileSections(s: StaffMember) {
       { label: 'Cadre/Grade Level', value: s.cadre },
       { label: 'Date Employed', value: s.date_employed ? format(new Date(s.date_employed), 'dd-MMM-yyyy') : '' },
       { label: 'Status', value: s.status },
+      { label: 'Status Date', value: s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '' },
+      { label: 'Status Reason', value: s.status_reason },
     ]},
   ];
 }
@@ -173,6 +177,8 @@ export default function StaffDirectory() {
       email: form.email,
       date_employed: form.date_employed || null,
       status: form.status,
+      status_date: form.status_date || null,
+      status_reason: form.status_reason,
       created_by: user?.id,
     } as any);
     setSubmitting(false);
@@ -252,6 +258,11 @@ export default function StaffDirectory() {
   const statusColor = (s: string) => {
     const l = s.toLowerCase();
     if (l === 'active') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+    if (l === 'retired') return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+    if (l === 'out of service') return 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+    if (l === 'died in active service') return 'bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-400';
+    if (l === 'dismissal') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+    if (l === 'resigned') return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400';
     if (l === 'inactive') return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
   };
@@ -317,43 +328,46 @@ export default function StaffDirectory() {
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80 backdrop-blur z-10">
                 <tr>
-                  {['#', 'Title', 'Surname', 'First Name', 'Other Names', 'Staff ID', 'NHF No.', 'BVN', 'NIN', 'State', 'Branch', 'Unit', 'Department', 'Designation', 'Cadre', 'Gender', 'Phone', 'Email', 'Status', 'Action'].map(h => (
+                  {['#', 'Title', 'Surname', 'First Name', 'Other Names', 'Staff ID', 'NHF No.', 'BVN', 'NIN', 'State', 'Branch', 'Unit', 'Department', 'Designation', 'Cadre', 'Gender', 'Phone', 'Email', 'Status', 'Event Date', 'Action'].map(h => (
                     <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={20} className="py-12 text-center text-muted-foreground">Loading…</td></tr>
+                  <tr><td colSpan={21} className="py-12 text-center text-muted-foreground">Loading…</td></tr>
                 ) : filtered.length === 0 ? (
-                  <tr><td colSpan={20} className="py-12 text-center text-muted-foreground">No staff members found</td></tr>
-                ) : filtered.map((s, i) => (
-                  <tr key={s.id} className="border-b hover:bg-muted/30 transition-colors">
-                    <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.title}</td>
-                    <td className="px-3 py-2.5 font-medium whitespace-nowrap">{s.surname}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.first_name}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.other_names}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs">{s.staff_id}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs">{s.nhf_number}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs">{s.bvn_number}</td>
-                    <td className="px-3 py-2.5 font-mono text-xs">{s.nin_number}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.state}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.branch}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.unit}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.department}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.designation}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.cadre}</td>
-                    <td className="px-3 py-2.5">{s.gender}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.phone}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{s.email}</td>
-                    <td className="px-3 py-2.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(s.status)}`}>{s.status}</span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <Button size="sm" variant="ghost" onClick={() => setSelected(s)}><Eye className="w-4 h-4" /></Button>
-                    </td>
-                  </tr>
+                   <tr><td colSpan={21} className="py-12 text-center text-muted-foreground">No staff members found</td></tr>
+                 ) : filtered.map((s, i) => (
+                   <tr key={s.id} className="border-b hover:bg-muted/30 transition-colors">
+                     <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.title}</td>
+                     <td className="px-3 py-2.5 font-medium whitespace-nowrap">{s.surname}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.first_name}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.other_names}</td>
+                     <td className="px-3 py-2.5 font-mono text-xs">{s.staff_id}</td>
+                     <td className="px-3 py-2.5 font-mono text-xs">{s.nhf_number}</td>
+                     <td className="px-3 py-2.5 font-mono text-xs">{s.bvn_number}</td>
+                     <td className="px-3 py-2.5 font-mono text-xs">{s.nin_number}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.state}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.branch}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.unit}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.department}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.designation}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.cadre}</td>
+                     <td className="px-3 py-2.5">{s.gender}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.phone}</td>
+                     <td className="px-3 py-2.5 whitespace-nowrap">{s.email}</td>
+                     <td className="px-3 py-2.5">
+                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusColor(s.status)}`}>{s.status}</span>
+                     </td>
+                     <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
+                       {s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '—'}
+                     </td>
+                     <td className="px-3 py-2.5">
+                       <Button size="sm" variant="ghost" onClick={() => setSelected(s)}><Eye className="w-4 h-4" /></Button>
+                     </td>
+                   </tr>
                 ))}
               </tbody>
             </table>
@@ -450,6 +464,8 @@ export default function StaffDirectory() {
                 <SelectContent>{statusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            <div className="space-y-1"><Label>Status/Event Date</Label><Input type="date" value={form.status_date} onChange={e => handleChange('status_date', e.target.value)} /></div>
+            <div className="space-y-1"><Label>Status Reason</Label><Input value={form.status_reason} onChange={e => handleChange('status_reason', e.target.value)} placeholder="e.g. Voluntary resignation" /></div>
           </div>
           <div className="flex justify-end gap-2 pt-3">
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
