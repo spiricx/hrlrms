@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Eye, Download, Plus, Users } from 'lucide-react';
+import { Search, Eye, Download, Plus, Users, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
@@ -107,6 +107,8 @@ export default function StaffDirectory() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [selected, setSelected] = useState<StaffMember | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [submitting, setSubmitting] = useState(false);
 
@@ -187,6 +189,54 @@ export default function StaffDirectory() {
     } else {
       toast({ title: 'Staff member added' });
       setShowAdd(false);
+      setForm({ ...emptyForm });
+      fetchStaff();
+    }
+  };
+
+  const openEdit = (s: StaffMember) => {
+    setEditingStaff(s);
+    setForm({
+      title: s.title || '', surname: s.surname || '', first_name: s.first_name || '',
+      other_names: s.other_names || '', staff_id: s.staff_id || '',
+      nhf_number: s.nhf_number || '', bvn_number: s.bvn_number || '', nin_number: s.nin_number || '',
+      state: s.state || '', branch: s.branch || '', unit: s.unit || '',
+      department: s.department || '', designation: s.designation || '',
+      cadre: s.cadre || '', group_name: s.group_name || '',
+      gender: s.gender || '', marital_status: s.marital_status || '',
+      date_of_birth: s.date_of_birth || '', phone: s.phone || '', email: s.email || '',
+      date_employed: s.date_employed || '', status: s.status || 'Active',
+      status_date: s.status_date || '', status_reason: s.status_reason || '',
+    });
+    setShowEdit(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editingStaff) return;
+    if (!form.surname || !form.first_name || !form.staff_id) {
+      toast({ title: 'Missing fields', description: 'Surname, First Name and Staff ID are required', variant: 'destructive' });
+      return;
+    }
+    setSubmitting(true);
+    const { error } = await supabase.from('staff_members').update({
+      title: form.title, surname: form.surname, first_name: form.first_name,
+      other_names: form.other_names, staff_id: form.staff_id,
+      nhf_number: form.nhf_number, bvn_number: form.bvn_number, nin_number: form.nin_number,
+      state: form.state, branch: form.branch, unit: form.unit,
+      department: form.department, designation: form.designation,
+      cadre: form.cadre, group_name: form.group_name,
+      gender: form.gender, marital_status: form.marital_status,
+      date_of_birth: form.date_of_birth || null, phone: form.phone, email: form.email,
+      date_employed: form.date_employed || null, status: form.status,
+      status_date: form.status_date || null, status_reason: form.status_reason,
+    } as any).eq('id', editingStaff.id);
+    setSubmitting(false);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Staff record updated' });
+      setShowEdit(false);
+      setEditingStaff(null);
       setForm({ ...emptyForm });
       fetchStaff();
     }
@@ -364,9 +414,10 @@ export default function StaffDirectory() {
                      <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
                        {s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '—'}
                      </td>
-                     <td className="px-3 py-2.5">
-                       <Button size="sm" variant="ghost" onClick={() => setSelected(s)}><Eye className="w-4 h-4" /></Button>
-                     </td>
+                      <td className="px-3 py-2.5 flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setSelected(s)} title="View"><Eye className="w-4 h-4" /></Button>
+                        {canEdit && <Button size="sm" variant="ghost" onClick={() => openEdit(s)} title="Edit"><Pencil className="w-4 h-4" /></Button>}
+                      </td>
                    </tr>
                 ))}
               </tbody>
@@ -407,10 +458,10 @@ export default function StaffDirectory() {
         </DialogContent>
       </Dialog>
 
-      {/* Add Staff Dialog */}
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+      {/* Add/Edit Staff Dialog */}
+      <Dialog open={showAdd || showEdit} onOpenChange={open => { if (!open) { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Add New Staff Member</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{showEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</DialogTitle></DialogHeader>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1">
               <Label>Title</Label>
@@ -468,8 +519,10 @@ export default function StaffDirectory() {
             <div className="space-y-1"><Label>Status Reason</Label><Input value={form.status_reason} onChange={e => handleChange('status_reason', e.target.value)} placeholder="e.g. Voluntary resignation" /></div>
           </div>
           <div className="flex justify-end gap-2 pt-3">
-            <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={submitting}>{submitting ? 'Saving…' : 'Add Staff'}</Button>
+            <Button variant="outline" onClick={() => { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); }}>Cancel</Button>
+            <Button onClick={showEdit ? handleUpdate : handleSubmit} disabled={submitting}>
+              {submitting ? 'Saving…' : showEdit ? 'Update Staff' : 'Add Staff'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
