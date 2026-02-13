@@ -14,6 +14,8 @@ import LoanRepayment from "./pages/LoanRepayment";
 import NplStatus from "./pages/NplStatus";
 import BatchRepayment from "./pages/BatchRepayment";
 import BioData from "./pages/BioData";
+import StaffDirectory from "./pages/StaffDirectory";
+import StaffPerformance from "./pages/StaffPerformance";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +57,8 @@ const App = () => (
                       <Route path="/loan-repayment" element={<LoanRepayment />} />
                       <Route path="/batch-repayment" element={<BatchRepayment />} />
                       <Route path="/npl-status" element={<NplStatus />} />
+                      <Route path="/staff-directory" element={<StaffDirectory />} />
+                      <Route path="/staff-performance" element={<StaffPerformance />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
