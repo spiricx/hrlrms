@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const titleOptions = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Chief', 'Alhaji', 'Alhaja', 'Hon', 'Engr', 'Barr', 'Arc'];
 const genderOptions = ['Male', 'Female'];
+const maritalStatusOptions = ['Single', 'Married', 'Divorced', 'Widowed', 'Separated'];
 const statusOptions = ['Active', 'Inactive', 'Transferred'];
 
 type StaffMember = {
@@ -38,6 +39,7 @@ type StaffMember = {
   cadre: string;
   group_name: string;
   gender: string;
+  marital_status: string;
   date_of_birth: string | null;
   phone: string;
   email: string;
@@ -50,7 +52,7 @@ const emptyForm = {
   title: '', surname: '', first_name: '', other_names: '', staff_id: '',
   nhf_number: '', bvn_number: '', nin_number: '',
   state: '', branch: '', unit: '', department: '', designation: '',
-  cadre: '', group_name: '', gender: '', date_of_birth: '', phone: '',
+  cadre: '', group_name: '', gender: '', marital_status: '', date_of_birth: '', phone: '',
   email: '', date_employed: '', status: 'Active',
 };
 
@@ -64,6 +66,7 @@ function buildProfileSections(s: StaffMember) {
       { label: 'First Name', value: s.first_name },
       { label: 'Other Names', value: s.other_names },
       { label: 'Gender', value: s.gender },
+      { label: 'Marital Status', value: s.marital_status },
       { label: 'Date of Birth', value: s.date_of_birth ? format(new Date(s.date_of_birth), 'dd-MMM-yyyy') : '' },
       { label: 'Phone Number', value: s.phone },
       { label: 'Email', value: s.email },
@@ -164,6 +167,7 @@ export default function StaffDirectory() {
       cadre: form.cadre,
       group_name: form.group_name,
       gender: form.gender,
+      marital_status: form.marital_status,
       date_of_birth: form.date_of_birth || null,
       phone: form.phone,
       email: form.email,
@@ -413,6 +417,13 @@ export default function StaffDirectory() {
               <Select value={form.gender} onValueChange={v => handleChange('gender', v)}>
                 <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                 <SelectContent>{genderOptions.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label>Marital Status</Label>
+              <Select value={form.marital_status} onValueChange={v => handleChange('marital_status', v)}>
+                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>{maritalStatusOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="space-y-1"><Label>Date of Birth</Label><Input type="date" value={form.date_of_birth} onChange={e => handleChange('date_of_birth', e.target.value)} /></div>

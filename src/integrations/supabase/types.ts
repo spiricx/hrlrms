@@ -327,6 +327,7 @@ export type Database = {
           gender: string | null
           group_name: string | null
           id: string
+          marital_status: string | null
           nhf_number: string | null
           nin_number: string | null
           other_names: string | null
@@ -354,6 +355,7 @@ export type Database = {
           gender?: string | null
           group_name?: string | null
           id?: string
+          marital_status?: string | null
           nhf_number?: string | null
           nin_number?: string | null
           other_names?: string | null
@@ -381,6 +383,7 @@ export type Database = {
           gender?: string | null
           group_name?: string | null
           id?: string
+          marital_status?: string | null
           nhf_number?: string | null
           nin_number?: string | null
           other_names?: string | null
