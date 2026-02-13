@@ -76,7 +76,7 @@ export function exportToExcel(
     ['Branch', beneficiary.bank_branch || '—'],
     [],
     ['Loan Amount', Number(beneficiary.loan_amount)],
-    ['Interest Rate', `${beneficiary.interest_rate}%`],
+    ['Interest Rate', `${beneficiary.interest_rate}% Annuity`],
     ['Tenor (Months)', beneficiary.tenor_months],
     ['Monthly Repayment', props.monthlyEMI],
     ['Total Interest', props.totalInterest],
