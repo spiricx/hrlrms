@@ -127,9 +127,12 @@ export function getMonthsDue(commencementDate: string | Date, tenorMonths: numbe
     (today.getFullYear() - comm.getFullYear()) * 12 +
     (today.getMonth() - comm.getMonth());
 
-  // A month is only due once today is STRICTLY past its due date (not on the due date itself)
-  const monthsDue = today.getDate() > comm.getDate() ? monthsDiff + 1 : monthsDiff;
-  return Math.min(Math.max(monthsDue, 0), tenorMonths);
+  // The ENTIRE current calendar month is the repayment window.
+  // A month's installment is only considered "due" (past grace) once the
+  // current month has fully ended and we've entered the next calendar month.
+  // E.g. comm Jan 14 → month-1 due in Jan → grace through Feb → overdue on Mar 1.
+  const monthsDue = Math.max(0, monthsDiff - 1);
+  return Math.min(monthsDue, tenorMonths);
 }
 
 export interface OverdueArrearsInfo {
