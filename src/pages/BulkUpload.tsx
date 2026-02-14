@@ -13,13 +13,17 @@ import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import * as XLSX from 'xlsx';
 
 interface ParsedRow {
+  title: string;
+  surname: string;
+  firstName: string;
+  otherName: string;
   organisation: string;
+  nhfNumber: string;
   loanReferenceNumber: string;
   state: string;
   branch: string;
   loanTenorMonths: number;
   loanAmount: number;
-  nhfNumber: string;
   disbursementDate: string;
   maturityDate: string;
   interestRate: number;
@@ -34,13 +38,17 @@ interface ParsedRow {
 }
 
 const EXPECTED_HEADERS = [
+  'Title',
+  'Surname',
+  'First Name',
+  'Other Name',
   'Organisations',
+  'NHF number',
   'Loan Reference Number',
   'State',
   'Branch',
   'Loan Tenor',
   'Loan Amount',
-  'NHF number',
   'Date of Loan Disbursement',
   'Date of Loan Maturity',
   'Interest',
@@ -69,11 +77,15 @@ function parseExcelDate(value: any): string | null {
 function validateRow(row: any): ParsedRow {
   const errors: string[] = [];
 
+  const title = String(row['Title'] || '').trim();
+  const surname = String(row['Surname'] || '').trim();
+  const firstName = String(row['First Name'] || '').trim();
+  const otherName = String(row['Other Name'] || '').trim();
   const organisation = String(row['Organisations'] || '').trim();
+  const nhfNumber = String(row['NHF number'] || '').trim();
   const loanRef = String(row['Loan Reference Number'] || '').trim();
   const state = String(row['State'] || '').trim();
   const branch = String(row['Branch'] || '').trim();
-  const nhfNumber = String(row['NHF number'] || '').trim();
 
   const loanTenorRaw = Number(row['Loan Tenor']);
   const loanAmountRaw = Number(row['Loan Amount']);
@@ -82,6 +94,8 @@ function validateRow(row: any): ParsedRow {
   const disbDateStr = parseExcelDate(row['Date of Loan Disbursement']);
   const matDateStr = parseExcelDate(row['Date of Loan Maturity']);
 
+  if (!surname) errors.push('Surname is required');
+  if (!firstName) errors.push('First Name is required');
   if (!organisation) errors.push('Organisation is required');
   if (!state) errors.push('State is required');
   else if (!NIGERIA_STATES.includes(state as any)) errors.push(`Invalid state: ${state}`);
@@ -116,13 +130,17 @@ function validateRow(row: any): ParsedRow {
   }
 
   return {
+    title,
+    surname,
+    firstName,
+    otherName,
     organisation,
+    nhfNumber,
     loanReferenceNumber: loanRef,
     state,
     branch,
     loanTenorMonths: tenorMonths,
     loanAmount: loanAmountRaw || 0,
-    nhfNumber,
     disbursementDate: disbDateStr || '',
     maturityDate: matDateStr || '',
     interestRate,
@@ -138,7 +156,7 @@ function validateRow(row: any): ParsedRow {
 function generateTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
     EXPECTED_HEADERS,
-    ['Federal Ministry of Works', 'HRL-2025-00001', 'Lagos', 'Ikeja Branch', 3, 2500000, 'NHF-00012345', '2025-01-15', '2028-01-15', 6],
+    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 'Lagos', 'Ikeja Branch', 3, 2500000, '2025-01-15', '2028-01-15', 6],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Loans');
@@ -204,7 +222,11 @@ export default function BulkUpload() {
     setUploading(true);
 
     const records = validRows.map(r => ({
-      name: r.organisation,
+      title: r.title,
+      surname: r.surname,
+      first_name: r.firstName,
+      other_name: r.otherName,
+      name: [r.surname, r.firstName, r.otherName].filter(Boolean).join(' '),
       employee_id: r.nhfNumber || `BULK-${Date.now()}`,
       department: r.organisation,
       loan_amount: r.loanAmount,
@@ -321,13 +343,17 @@ export default function BulkUpload() {
                 <TableRow>
                   <TableHead className="w-10">#</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Surname</TableHead>
+                  <TableHead>First Name</TableHead>
+                  <TableHead>Other Name</TableHead>
                   <TableHead>Organisation</TableHead>
+                  <TableHead>NHF No.</TableHead>
                   <TableHead>Loan Ref</TableHead>
                   <TableHead>State</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead>Tenor</TableHead>
-                  <TableHead>NHF No.</TableHead>
                   <TableHead>Disbursement</TableHead>
                   <TableHead className="text-right">Monthly EMI</TableHead>
                   <TableHead>Errors</TableHead>
@@ -342,13 +368,17 @@ export default function BulkUpload() {
                         ? <Badge variant="outline" className="text-green-600 border-green-300"><CheckCircle2 className="w-3 h-3 mr-1" />Valid</Badge>
                         : <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Error</Badge>}
                     </TableCell>
+                    <TableCell>{row.title || '—'}</TableCell>
+                    <TableCell>{row.surname || '—'}</TableCell>
+                    <TableCell>{row.firstName || '—'}</TableCell>
+                    <TableCell>{row.otherName || '—'}</TableCell>
                     <TableCell className="max-w-[160px] truncate">{row.organisation}</TableCell>
+                    <TableCell className="font-mono text-xs">{row.nhfNumber || '—'}</TableCell>
                     <TableCell className="font-mono text-xs">{row.loanReferenceNumber || '—'}</TableCell>
                     <TableCell>{row.state}</TableCell>
                     <TableCell>{row.branch}</TableCell>
                     <TableCell className="text-right font-mono">{row.loanAmount > 0 ? formatCurrency(row.loanAmount) : '—'}</TableCell>
                     <TableCell>{row.loanTenorMonths > 0 ? `${row.loanTenorMonths}m` : '—'}</TableCell>
-                    <TableCell className="font-mono text-xs">{row.nhfNumber || '—'}</TableCell>
                     <TableCell>{row.disbursementDate || '—'}</TableCell>
                     <TableCell className="text-right font-mono">{row.monthlyEMI > 0 ? formatCurrency(row.monthlyEMI) : '—'}</TableCell>
                     <TableCell className="max-w-[200px]">
