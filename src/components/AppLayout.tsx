@@ -43,7 +43,7 @@ function useTheme() {
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/add-beneficiary', label: 'New Loan', icon: PlusCircle },
-  { path: '/bulk-upload', label: 'Bulk Upload', icon: Package },
+  { path: '/bulk-upload', label: 'Bulk Loan Creation', icon: Package },
   { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/bio-data', label: 'Bio Data', icon: FileText },
   { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
