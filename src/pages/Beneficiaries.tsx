@@ -18,7 +18,7 @@ interface BeneficiaryWithPayment extends Beneficiary {
   lastTransaction?: Transaction | null;
 }
 
-type StatusInfo = { label: string; className: string };
+type StatusInfo = {label: string;className: string;};
 
 function getStatusInfo(b: Beneficiary): StatusInfo {
   const oa = getOverdueAndArrears(
@@ -55,7 +55,7 @@ function formatPaymentDate(date: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric',
+    year: 'numeric'
   }).format(new Date(date));
 }
 
@@ -68,18 +68,18 @@ export default function Beneficiaries() {
   const isAdmin = hasRole('admin');
 
   const fetchData = useCallback(async () => {
-    const { data: bens, error } = await supabase
-      .from('beneficiaries')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { data: bens, error } = await supabase.
+    from('beneficiaries').
+    select('*').
+    order('created_at', { ascending: false });
 
     if (!error && bens) {
       const benIds = bens.map((b) => b.id);
-      const { data: txns } = await supabase
-        .from('transactions')
-        .select('*')
-        .in('beneficiary_id', benIds)
-        .order('date_paid', { ascending: false });
+      const { data: txns } = await supabase.
+      from('transactions').
+      select('*').
+      in('beneficiary_id', benIds).
+      order('date_paid', { ascending: false });
 
       const latestTxMap = new Map<string, Transaction>();
       txns?.forEach((t) => {
@@ -106,9 +106,9 @@ export default function Beneficiaries() {
   }, [fetchData]);
 
   const filtered = useMemo(() => {
-    return beneficiaries.filter(b => {
+    return beneficiaries.filter((b) => {
       const q = search.toLowerCase();
-      const matchesSearch = b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q) || (b.nhf_number && b.nhf_number.toLowerCase().includes(q));
+      const matchesSearch = b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q) || b.nhf_number && b.nhf_number.toLowerCase().includes(q);
       const matchesState = stateFilter === 'all' || b.state === stateFilter;
       return matchesSearch && matchesState;
     });
@@ -138,19 +138,19 @@ export default function Beneficiaries() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by name, loan ref, or NHF number..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Search by name, loan ref, or NHF number..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
-        {isAdmin && (
-          <Select value={stateFilter} onValueChange={setStateFilter}>
+        {isAdmin &&
+        <Select value={stateFilter} onValueChange={setStateFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filter by state" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All States</SelectItem>
-              {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              {NIGERIA_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-        )}
+        }
       </div>
 
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
@@ -160,7 +160,7 @@ export default function Beneficiaries() {
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF NO </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
@@ -183,9 +183,9 @@ export default function Beneficiaries() {
                   b.commencement_date, b.tenor_months, Number(b.monthly_emi),
                   Number(b.total_paid), Number(b.outstanding_balance), b.status
                 );
-                const lastPayment = b.lastTransaction
-                  ? formatPaymentDate(b.lastTransaction.date_paid)
-                  : 'No payment recorded';
+                const lastPayment = b.lastTransaction ?
+                formatPaymentDate(b.lastTransaction.date_paid) :
+                'No payment recorded';
 
                 return (
                   <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
@@ -207,33 +207,33 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {b.lastTransaction
-                        ? formatCurrency(Number(b.lastTransaction.amount))
-                        : <span className="text-muted-foreground">—</span>}
+                      {b.lastTransaction ?
+                      formatCurrency(Number(b.lastTransaction.amount)) :
+                      <span className="text-muted-foreground">—</span>}
                     </td>
                     {/* Overdue Amount */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {oa.overdueAmount > 0
-                        ? <span className="text-warning font-medium">{formatCurrency(oa.overdueAmount)}</span>
-                        : <span className="text-muted-foreground">₦0</span>}
+                      {oa.overdueAmount > 0 ?
+                      <span className="text-warning font-medium">{formatCurrency(oa.overdueAmount)}</span> :
+                      <span className="text-muted-foreground">₦0</span>}
                     </td>
                     {/* Months Overdue */}
                     <td className="px-4 py-3 text-center">
-                      {oa.overdueMonths > 0
-                        ? <span className="text-warning font-semibold">{oa.overdueMonths}</span>
-                        : <span className="text-success font-semibold">0</span>}
+                      {oa.overdueMonths > 0 ?
+                      <span className="text-warning font-semibold">{oa.overdueMonths}</span> :
+                      <span className="text-success font-semibold">0</span>}
                     </td>
                     {/* Arrears Amount */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {oa.arrearsAmount > 0
-                        ? <span className="text-destructive font-medium animate-pulse">{formatCurrency(oa.arrearsAmount)}</span>
-                        : <span className="text-muted-foreground">₦0</span>}
+                      {oa.arrearsAmount > 0 ?
+                      <span className="text-destructive font-medium animate-pulse">{formatCurrency(oa.arrearsAmount)}</span> :
+                      <span className="text-muted-foreground">₦0</span>}
                     </td>
                     {/* Months in Arrears */}
                     <td className="px-4 py-3 text-center">
-                      {oa.monthsInArrears > 0
-                        ? <span className="text-destructive font-semibold animate-pulse">{oa.monthsInArrears}</span>
-                        : <span className="text-success font-semibold">0</span>}
+                      {oa.monthsInArrears > 0 ?
+                      <span className="text-destructive font-semibold animate-pulse">{oa.monthsInArrears}</span> :
+                      <span className="text-success font-semibold">0</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{lastPayment}</td>
                     <td className="px-4 py-3">
@@ -244,20 +244,20 @@ export default function Beneficiaries() {
                         {statusInfo.label}
                       </span>
                     </td>
-                  </tr>
-                );
+                  </tr>);
+
               })}
-              {filtered.length === 0 && (
-                <tr>
+              {filtered.length === 0 &&
+              <tr>
                   <td colSpan={16} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>
-              )}
+              }
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
