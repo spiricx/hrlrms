@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Clock, TrendingDown, TrendingUp, CheckCircle2, AlertTriangle, Filter } from 'lucide-react';
-import { formatCurrency, formatDate, getOverdueAndArrears } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, getOverdueAndArrears, stripTime, getMonthsDue } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -24,6 +25,7 @@ interface EnrichedBeneficiary extends Beneficiary {
 }
 
 export default function LoanHistory() {
+  const navigate = useNavigate();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
 
@@ -300,7 +302,7 @@ export default function LoanHistory() {
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Health</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
+                <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Days Overdue</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
               </tr>
             </thead>
@@ -313,10 +315,34 @@ export default function LoanHistory() {
                 const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status);
                 const createdDate = new Date(b.created_at);
 
+                // Calculate days overdue from actual due date
+                let daysOverdue = 0;
+                if (health !== 'liquidated' && b.status !== 'completed') {
+                  const today = stripTime(new Date());
+                  const comm = stripTime(new Date(b.commencement_date));
+                  // Find the earliest unpaid month's due date
+                  const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
+                  const monthsPaid = Math.floor(Number(b.total_paid) / Number(b.monthly_emi));
+                  if (monthsDue > monthsPaid && Number(b.monthly_emi) > 0) {
+                    // The earliest unpaid month's due date
+                    const unpaidMonthIndex = monthsPaid; // 0-based: month (monthsPaid+1) due date
+                    const dueDate = new Date(comm);
+                    dueDate.setMonth(dueDate.getMonth() + unpaidMonthIndex);
+                    const dueDateStripped = stripTime(dueDate);
+                    if (today > dueDateStripped) {
+                      daysOverdue = Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24));
+                    }
+                  }
+                }
+
                 return (
-                  <tr key={b.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={b.id}
+                    className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/beneficiaries/${b.id}`)}
+                  >
                     <td className="px-3 py-2.5 text-muted-foreground">{idx + 1}</td>
-                    <td className="px-3 py-2.5 font-medium">{b.name}</td>
+                    <td className="px-3 py-2.5 font-medium text-primary hover:underline">{b.name}</td>
                     <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground">{b.loan_reference_number || '—'}</td>
                     <td className="px-3 py-2.5 text-xs">{b.state || '—'} / {b.bank_branch || '—'}</td>
                     <td className="px-3 py-2.5 text-xs">{b.department}</td>
@@ -345,14 +371,15 @@ export default function LoanHistory() {
                       </Badge>
                     </td>
                     <td className="px-3 py-2.5 text-xs">
-                      {oa.monthsInArrears > 0 ? (
-                        <span className="text-destructive font-semibold animate-pulse">
-                          {oa.monthsInArrears} mth{oa.monthsInArrears !== 1 ? 's' : ''} — {formatCurrency(oa.arrearsAmount)}
+                      {daysOverdue > 0 ? (
+                        <span className={cn(
+                          'font-semibold',
+                          daysOverdue >= 90 ? 'text-destructive animate-pulse' : daysOverdue >= 30 ? 'text-orange-600' : 'text-warning'
+                        )}>
+                          {daysOverdue} day{daysOverdue !== 1 ? 's' : ''}
                         </span>
-                      ) : oa.overdueMonths > 0 ? (
-                        <span className="text-orange-600 font-medium">{oa.overdueMonths} mth overdue</span>
                       ) : (
-                        <span className="text-emerald-600">None</span>
+                        <span className="text-emerald-600">0 days</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-xs">
