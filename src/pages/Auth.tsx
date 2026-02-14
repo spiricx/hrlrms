@@ -128,6 +128,11 @@ export default function Auth() {
               'Enter your credentials to access the portal' :
               'Register to get started — first user gets admin access'}
             </p>
+            {!isLogin && (
+              <p className="mt-2 text-xs text-accent bg-accent/10 rounded-md px-3 py-2">
+                Staff: Use the same email address your admin registered in the Staff Directory to automatically link your account.
+              </p>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
