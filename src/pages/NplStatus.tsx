@@ -52,11 +52,14 @@ function calculateDPD(
 
   if (today < commDate) return 0;
 
-  // The entire current calendar month is a grace/repayment window.
-  // Only count months that are FULLY past (entered the month after the grace month).
-  const monthsDiff = (today.getFullYear() - commDate.getFullYear()) * 12 +
-    (today.getMonth() - commDate.getMonth());
-  const expectedMonths = Math.min(Math.max(0, monthsDiff - 1), beneficiary.tenor_months);
+  // Count how many instalments are due (due date <= today)
+  let expectedMonths = 0;
+  for (let i = 1; i <= beneficiary.tenor_months; i++) {
+    const dueDate = new Date(commDate);
+    dueDate.setMonth(dueDate.getMonth() + (i - 1));
+    if (today >= stripTime(dueDate)) expectedMonths = i;
+    else break;
+  }
 
   if (expectedMonths <= 0) return 0;
 
@@ -74,15 +77,14 @@ function calculateDPD(
 
   if (firstUnpaidMonth === 0) return 0;
 
-  // DPD starts from the 1st of the month AFTER the grace month
-  // Grace month = the month after the due month
+  // DPD = days since the due date of the first unpaid instalment (inclusive)
   const dueDate = new Date(commDate);
   dueDate.setMonth(dueDate.getMonth() + (firstUnpaidMonth - 1));
-  // Grace ends at the end of the month after dueDate's month
-  const graceEnd = new Date(dueDate.getFullYear(), dueDate.getMonth() + 2, 1); // 1st of month after grace
+  const dueDateStripped = stripTime(dueDate);
 
-  const diffMs = today.getTime() - stripTime(graceEnd).getTime();
-  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  const diffMs = today.getTime() - dueDateStripped.getTime();
+  // Inclusive: on the due date itself = 1 day past due
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24))) + 1;
 }
 
 function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[]): string | null {
@@ -95,11 +97,17 @@ function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[
 function getAmountInArrears(beneficiary: Beneficiary, transactions: Transaction[]): number {
   const today = stripTime(new Date());
   const commDate = stripTime(new Date(beneficiary.commencement_date));
-  const monthsDiff = (today.getFullYear() - commDate.getFullYear()) * 12 +
-    (today.getMonth() - commDate.getMonth());
-  // Only count months fully past grace (entire current month is repayment window)
-  const pastMonths = Math.min(Math.max(0, monthsDiff - 1), beneficiary.tenor_months);
-  const expectedTotal = pastMonths * Number(beneficiary.monthly_emi);
+
+  // Count how many instalments are due (due date <= today)
+  let dueMonths = 0;
+  for (let i = 1; i <= beneficiary.tenor_months; i++) {
+    const dueDate = new Date(commDate);
+    dueDate.setMonth(dueDate.getMonth() + (i - 1));
+    if (today >= stripTime(dueDate)) dueMonths = i;
+    else break;
+  }
+
+  const expectedTotal = dueMonths * Number(beneficiary.monthly_emi);
   const totalPaid = Number(beneficiary.total_paid);
   return Math.max(0, expectedTotal - totalPaid);
 }

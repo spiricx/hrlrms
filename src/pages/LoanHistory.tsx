@@ -329,8 +329,9 @@ export default function LoanHistory() {
                     const dueDate = new Date(comm);
                     dueDate.setMonth(dueDate.getMonth() + unpaidMonthIndex);
                     const dueDateStripped = stripTime(dueDate);
-                    if (today > dueDateStripped) {
-                      daysOverdue = Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24));
+                    if (today >= dueDateStripped) {
+                      // Inclusive: on the due date = 1 day overdue
+                      daysOverdue = Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                     }
                   }
                 }
