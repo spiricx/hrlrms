@@ -1,4 +1,4 @@
-import { FileText, FileSpreadsheet, Printer, Download } from 'lucide-react';
+import { FileText, FileSpreadsheet, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
@@ -10,6 +10,12 @@ import { saveAs } from 'file-saver';
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
 
+interface CreatorProfile {
+  full_name: string;
+  state: string;
+  bank_branch: string;
+}
+
 interface LoanStatementExportProps {
   beneficiary: Beneficiary;
   schedule: ScheduleEntry[];
@@ -19,6 +25,7 @@ interface LoanStatementExportProps {
   totalInterest: number;
   commencementDate: Date;
   terminationDate: Date;
+  creatorProfile?: CreatorProfile | null;
 }
 
 function buildStatementData(
@@ -54,18 +61,22 @@ function buildStatementData(
   });
 }
 
+function getCreatorLine(cp?: CreatorProfile | null): string {
+  if (!cp) return '—';
+  return `${cp.full_name || 'Unknown'} — ${cp.state || '—'}, ${cp.bank_branch || '—'}`;
+}
+
 export function exportToExcel(
   beneficiary: Beneficiary,
   schedule: ScheduleEntry[],
   transactions: Transaction[],
-  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate'>
+  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile'>
 ) {
   const wb = XLSX.utils.book_new();
   const data = buildStatementData(beneficiary, schedule, transactions);
 
-  // Summary sheet
   const summaryData = [
-    ['LOAN STATEMENT OF ACCOUNT'],
+    ['HOME RENOVATION LOAN STATEMENT OF ACCOUNT'],
     ['Federal Mortgage Bank of Nigeria'],
     [],
     ['Beneficiary Name', beneficiary.name],
@@ -88,13 +99,16 @@ export function exportToExcel(
     ['Termination Date', formatDate(props.terminationDate)],
     ['Status', beneficiary.status],
     [],
-    [`Generated on: ${formatDate(new Date())}`],
+    ['Loan Created By', getCreatorLine(props.creatorProfile)],
+    ['Originating State', props.creatorProfile?.state || beneficiary.state || '—'],
+    ['Originating Branch', props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—'],
+    ['Loan Creation Date', formatDate(new Date(beneficiary.created_at))],
+    ['Date Printed', formatDate(new Date())],
   ];
   const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-  summaryWs['!cols'] = [{ wch: 25 }, { wch: 30 }];
+  summaryWs['!cols'] = [{ wch: 25 }, { wch: 40 }];
   XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
 
-  // Schedule sheet
   const scheduleHeader = ['Month', 'Due Date', 'Opening Bal.', 'Principal', 'Interest', 'EMI', 'Amount Paid', 'Closing Bal.', 'Payment Date', 'RRR', 'Status'];
   const scheduleRows = data.map((r) => [
     r.month, r.dueDate, r.openingBalance, r.principal, r.interest, r.expectedEMI, r.amountPaid, r.closingBalance, r.paymentDate, r.rrr, r.status,
@@ -113,7 +127,7 @@ export async function exportToPDF(
   beneficiary: Beneficiary,
   schedule: ScheduleEntry[],
   transactions: Transaction[],
-  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate'>
+  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile'>
 ) {
   const { default: jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
@@ -121,32 +135,42 @@ export async function exportToPDF(
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const data = buildStatementData(beneficiary, schedule, transactions);
 
-  // Header
-  doc.setFontSize(16);
+  // Bold Title
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('LOAN STATEMENT OF ACCOUNT', 148, 15, { align: 'center' });
-  doc.setFontSize(10);
+  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', 148, 14, { align: 'center' });
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('Federal Mortgage Bank of Nigeria', 148, 22, { align: 'center' });
+  doc.text('Federal Mortgage Bank of Nigeria', 148, 21, { align: 'center' });
 
-  // Beneficiary info
-  doc.setFontSize(10);
+  // Left column info
+  const infoY = 30;
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  const infoY = 32;
   doc.text(`Beneficiary: ${beneficiary.name}`, 14, infoY);
-  doc.text(`Loan Ref: ${beneficiary.employee_id}`, 14, infoY + 6);
-  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 12);
+  doc.text(`Loan Ref: ${beneficiary.employee_id}`, 14, infoY + 5);
+  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 10);
+  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
 
+  // Right column info
   doc.setFont('helvetica', 'normal');
   doc.text(`Organization: ${beneficiary.department}`, 150, infoY);
-  doc.text(`Loan Amount: ${formatCurrency(Number(beneficiary.loan_amount))}`, 150, infoY + 6);
-  doc.text(`Monthly Repayment: ${formatCurrency(props.monthlyEMI)}`, 150, infoY + 12);
-  doc.text(`Outstanding: ${formatCurrency(Number(beneficiary.outstanding_balance))}`, 150, infoY + 18);
-  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 18);
+  doc.text(`Loan Amount: ${formatCurrency(Number(beneficiary.loan_amount))}`, 150, infoY + 5);
+  doc.text(`Monthly Repayment: ${formatCurrency(props.monthlyEMI)}`, 150, infoY + 10);
+  doc.text(`Outstanding: ${formatCurrency(Number(beneficiary.outstanding_balance))}`, 150, infoY + 15);
+
+  // Creator / Origin info line
+  const originY = infoY + 22;
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Loan Created By: ${getCreatorLine(props.creatorProfile)}`, 14, originY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Loan Creation Date: ${formatDate(new Date(beneficiary.created_at))}`, 14, originY + 5);
+  doc.text(`Originating State & Branch: ${props.creatorProfile?.state || beneficiary.state || '—'}, ${props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—'}`, 150, originY);
+  doc.text(`Date Printed: ${formatDate(new Date())}`, 150, originY + 5);
 
   // Table
   autoTable(doc, {
-    startY: infoY + 26,
+    startY: originY + 10,
     head: [['#', 'Due Date', 'Opening', 'Principal', 'Interest', 'EMI', 'Paid', 'Closing', 'Pay Date', 'RRR', 'Status']],
     body: data.map((r) => [
       r.month,
@@ -184,9 +208,12 @@ export function printStatement(
   beneficiary: Beneficiary,
   schedule: ScheduleEntry[],
   transactions: Transaction[],
-  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate'>
+  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile'>
 ) {
   const data = buildStatementData(beneficiary, schedule, transactions);
+  const creatorLine = getCreatorLine(props.creatorProfile);
+  const originState = props.creatorProfile?.state || beneficiary.state || '—';
+  const originBranch = props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—';
 
   const html = `
     <html>
@@ -194,12 +221,13 @@ export function printStatement(
       <title>Loan Statement - ${beneficiary.name}</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; font-size: 11px; }
-        h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+        h1 { font-size: 20px; text-align: center; margin-bottom: 4px; font-weight: bold; }
         h2 { font-size: 12px; text-align: center; font-weight: normal; color: #666; margin-top: 0; }
         .info { display: flex; justify-content: space-between; margin: 16px 0; }
         .info-col { }
         .info-row { margin: 3px 0; }
         .label { font-weight: bold; }
+        .origin-section { border-top: 1px solid #ccc; padding-top: 8px; margin: 12px 0; display: flex; justify-content: space-between; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
         th { background: #006040; color: white; padding: 6px 4px; text-align: left; font-size: 10px; }
         td { padding: 4px; border-bottom: 1px solid #ddd; font-size: 10px; }
@@ -212,7 +240,7 @@ export function printStatement(
       </style>
     </head>
     <body>
-      <h1>LOAN STATEMENT OF ACCOUNT</h1>
+      <h1>HOME RENOVATION LOAN STATEMENT OF ACCOUNT</h1>
       <h2>Federal Mortgage Bank of Nigeria</h2>
       <div class="info">
         <div class="info-col">
@@ -226,6 +254,16 @@ export function printStatement(
           <div class="info-row"><span class="label">Monthly Repayment:</span> ${formatCurrency(props.monthlyEMI)}</div>
           <div class="info-row"><span class="label">Total Paid:</span> ${formatCurrency(Number(beneficiary.total_paid))}</div>
           <div class="info-row"><span class="label">Outstanding:</span> ${formatCurrency(Number(beneficiary.outstanding_balance))}</div>
+        </div>
+      </div>
+      <div class="origin-section">
+        <div class="info-col">
+          <div class="info-row"><span class="label">Loan Created By:</span> ${creatorLine}</div>
+          <div class="info-row"><span class="label">Loan Creation Date:</span> ${formatDate(new Date(beneficiary.created_at))}</div>
+        </div>
+        <div class="info-col">
+          <div class="info-row"><span class="label">Originating State & Branch:</span> ${originState}, ${originBranch}</div>
+          <div class="info-row"><span class="label">Date Printed:</span> ${formatDate(new Date())}</div>
         </div>
       </div>
       <table>
@@ -279,8 +317,9 @@ export default function LoanStatementExportButtons({
   totalInterest,
   commencementDate,
   terminationDate,
+  creatorProfile,
 }: ExportButtonsProps) {
-  const exportProps = { totalExpected, monthlyEMI, totalInterest, commencementDate, terminationDate };
+  const exportProps = { totalExpected, monthlyEMI, totalInterest, commencementDate, terminationDate, creatorProfile };
 
   return (
     <div className="bg-card rounded-xl shadow-card p-4">
