@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
-  FileSpreadsheet, History
+  FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime } from '@/lib/loanCalculations';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -48,6 +49,16 @@ interface BatchBeneficiary {
   state: string;
   bank_branch: string;
   batch_id: string | null;
+  tenor_months: number;
+  interest_rate: number;
+  moratorium_months: number;
+  disbursement_date: string;
+  commencement_date: string;
+  termination_date: string;
+  nhf_number: string | null;
+  loan_reference_number: string | null;
+  department: string;
+  default_count: number;
 }
 
 interface BatchRepaymentRecord {
@@ -65,6 +76,7 @@ interface BatchRepaymentRecord {
 }
 
 export default function BatchRepayment() {
+  const navigate = useNavigate();
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
@@ -110,6 +122,8 @@ export default function BatchRepayment() {
   const [detailBatch, setDetailBatch] = useState<LoanBatch | null>(null);
   const [detailMembers, setDetailMembers] = useState<BatchBeneficiary[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [detailHistory, setDetailHistory] = useState<BatchRepaymentRecord[]>([]);
+  const [detailTransactions, setDetailTransactions] = useState<Record<string, any[]>>({});
 
   const fetchBatches = async () => {
     const { data, error } = await supabase
@@ -205,7 +219,7 @@ export default function BatchRepayment() {
     // Get unassigned beneficiaries in same state
     const { data } = await supabase
       .from('beneficiaries')
-      .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id')
+      .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id, tenor_months, interest_rate, moratorium_months, disbursement_date, commencement_date, termination_date, nhf_number, loan_reference_number, department, default_count')
       .is('batch_id', null)
       .eq('state', batch.state)
       .eq('status', 'active');
@@ -243,7 +257,7 @@ export default function BatchRepayment() {
     // Load batch members
     const { data } = await supabase
       .from('beneficiaries')
-      .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id')
+      .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id, tenor_months, interest_rate, moratorium_months, disbursement_date, commencement_date, termination_date, nhf_number, loan_reference_number, department, default_count')
       .eq('batch_id', batch.id)
       .eq('status', 'active');
     setBatchMembers((data as BatchBeneficiary[]) || []);
@@ -383,11 +397,37 @@ export default function BatchRepayment() {
   const openDetail = async (batch: LoanBatch) => {
     setDetailBatch(batch);
     setDetailLoading(true);
-    const { data } = await supabase
-      .from('beneficiaries')
-      .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id')
-      .eq('batch_id', batch.id);
-    setDetailMembers((data as BatchBeneficiary[]) || []);
+    const [membersRes, histRes] = await Promise.all([
+      supabase
+        .from('beneficiaries')
+        .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id, tenor_months, interest_rate, moratorium_months, disbursement_date, commencement_date, termination_date, nhf_number, loan_reference_number, department, default_count')
+        .eq('batch_id', batch.id),
+      supabase
+        .from('batch_repayments')
+        .select('*')
+        .eq('batch_id', batch.id)
+        .order('month_for', { ascending: true }),
+    ]);
+    const members = (membersRes.data as BatchBeneficiary[]) || [];
+    setDetailMembers(members);
+    setDetailHistory((histRes.data as BatchRepaymentRecord[]) || []);
+
+    // Fetch transactions for all members
+    if (members.length > 0) {
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('*')
+        .in('beneficiary_id', members.map(m => m.id))
+        .order('month_for', { ascending: true });
+      const grouped: Record<string, any[]> = {};
+      (txData || []).forEach((tx: any) => {
+        if (!grouped[tx.beneficiary_id]) grouped[tx.beneficiary_id] = [];
+        grouped[tx.beneficiary_id].push(tx);
+      });
+      setDetailTransactions(grouped);
+    } else {
+      setDetailTransactions({});
+    }
     setDetailLoading(false);
   };
 
@@ -421,6 +461,32 @@ export default function BatchRepayment() {
     toast({ title: 'Exported', description: 'Excel report downloaded.' });
   };
 
+  // Detail view computed stats
+  const batchTotalDisbursed = detailMembers.reduce((s, m) => s + Number(m.loan_amount), 0);
+  const batchTotalPaid = detailMembers.reduce((s, m) => s + Number(m.total_paid), 0);
+  const batchTotalOutstanding = detailMembers.reduce((s, m) => s + Number(m.outstanding_balance), 0);
+  const batchMonthlyDue = detailMembers.reduce((s, m) => s + Number(m.monthly_emi), 0);
+  const batchTotalExpected = detailMembers.reduce((s, m) => {
+    const loan = calculateLoan({ principal: Number(m.loan_amount), annualRate: Number(m.interest_rate), tenorMonths: m.tenor_months, moratoriumMonths: m.moratorium_months, disbursementDate: new Date(m.disbursement_date) });
+    return s + loan.totalPayment;
+  }, 0);
+  const batchRecoveryRate = batchTotalExpected > 0 ? Math.round((batchTotalPaid / batchTotalExpected) * 100) : 0;
+  const batchActiveCount = detailMembers.filter(m => m.status === 'active').length;
+  const batchCompletedCount = detailMembers.filter(m => m.status === 'completed').length;
+
+  // Count members in arrears
+  const today = stripTime(new Date());
+  const membersInArrears = detailMembers.filter(m => {
+    if (m.status === 'completed') return false;
+    const txs = detailTransactions[m.id] || [];
+    const paidMonths = new Set(txs.map((t: any) => t.month_for));
+    const loan = calculateLoan({ principal: Number(m.loan_amount), annualRate: Number(m.interest_rate), tenorMonths: m.tenor_months, moratoriumMonths: m.moratorium_months, disbursementDate: new Date(m.disbursement_date) });
+    return loan.schedule.some(entry => {
+      const dueDay = stripTime(entry.dueDate);
+      return dueDay < today && !paidMonths.has(entry.month);
+    });
+  }).length;
+
   // Detail view
   if (detailBatch) {
     return (
@@ -434,6 +500,7 @@ export default function BatchRepayment() {
           <h1 className="text-3xl font-bold font-display">{detailBatch.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {detailBatch.batch_code} • {detailBatch.state} {detailBatch.bank_branch && `• ${detailBatch.bank_branch}`}
+            {' • Created: '}{formatDate(new Date(detailBatch.created_at))}
           </p>
         </div>
 
@@ -443,54 +510,232 @@ export default function BatchRepayment() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Enhanced Summary Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary"><Package className="w-4 h-4" /></div>
+                </div>
                 <p className="text-xs text-muted-foreground">Members</p>
-                <p className="text-2xl font-bold">{detailMembers.length}</p>
+                <p className="text-xl font-bold">{detailMembers.length}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{batchActiveCount} active, {batchCompletedCount} completed</p>
               </div>
               <div className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary"><Banknote className="w-4 h-4" /></div>
+                </div>
                 <p className="text-xs text-muted-foreground">Total Disbursed</p>
-                <p className="text-2xl font-bold">{formatCurrency(detailMembers.reduce((s, m) => s + Number(m.loan_amount), 0))}</p>
+                <p className="text-xl font-bold">{formatCurrency(batchTotalDisbursed)}</p>
               </div>
               <div className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-1.5 rounded-lg bg-success/10 text-success"><CalendarCheck className="w-4 h-4" /></div>
+                </div>
+                <p className="text-xs text-muted-foreground">Total Repaid</p>
+                <p className="text-xl font-bold text-success">{formatCurrency(batchTotalPaid)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{batchRecoveryRate}% recovery</p>
+              </div>
+              <div className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`p-1.5 rounded-lg ${batchTotalOutstanding > 0 ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`}><TrendingDown className="w-4 h-4" /></div>
+                </div>
+                <p className="text-xs text-muted-foreground">Outstanding Balance</p>
+                <p className={`text-xl font-bold ${batchTotalOutstanding > 0 ? 'text-warning' : 'text-success'}`}>{formatCurrency(batchTotalOutstanding)}</p>
+              </div>
+              <div className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="p-1.5 rounded-lg bg-primary/10 text-primary"><Clock className="w-4 h-4" /></div>
+                </div>
                 <p className="text-xs text-muted-foreground">Monthly Due</p>
-                <p className="text-2xl font-bold">{formatCurrency(detailMembers.reduce((s, m) => s + Number(m.monthly_emi), 0))}</p>
+                <p className="text-xl font-bold">{formatCurrency(batchMonthlyDue)}</p>
+              </div>
+              <div className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`p-1.5 rounded-lg ${membersInArrears > 0 ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'}`}><AlertTriangle className="w-4 h-4" /></div>
+                </div>
+                <p className="text-xs text-muted-foreground">Members in Arrears</p>
+                <p className={`text-xl font-bold ${membersInArrears > 0 ? 'text-destructive' : 'text-success'}`}>{membersInArrears}</p>
               </div>
             </div>
 
-            <div className="bg-card rounded-xl shadow-card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border bg-secondary/50">
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Staff ID</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly EMI</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Paid</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {detailMembers.map(m => (
-                      <tr key={m.id} className="hover:bg-secondary/30 transition-colors">
-                        <td className="px-4 py-3 font-medium">{m.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{m.employee_id}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(Number(m.loan_amount))}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(Number(m.monthly_emi))}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(Number(m.total_paid))}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(m.outstanding_balance))}</td>
-                        <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
-                      </tr>
-                    ))}
-                    {detailMembers.length === 0 && (
-                      <tr><td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">No members in this batch yet.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {/* Tabs for detailed info */}
+            <Tabs defaultValue="members" className="space-y-4">
+              <TabsList className="bg-secondary">
+                <TabsTrigger value="members">Loan Register</TabsTrigger>
+                <TabsTrigger value="history">Repayment History</TabsTrigger>
+                <TabsTrigger value="schedule">Batch Amortization</TabsTrigger>
+              </TabsList>
+
+              {/* Members / Loan Register Tab */}
+              <TabsContent value="members">
+                <div className="bg-card rounded-xl shadow-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-secondary/50">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No.</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly EMI</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Paid</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {detailMembers.map(m => (
+                          <tr key={m.id} className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
+                            <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
+                            <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
+                            <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.loan_reference_number || m.employee_id}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{formatTenor(m.tenor_months)}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(Number(m.loan_amount))}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(Number(m.monthly_emi))}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(Number(m.total_paid))}</td>
+                            <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(m.outstanding_balance))}</td>
+                            <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
+                            <td className="px-4 py-3 text-center">
+                              <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => { e.stopPropagation(); navigate(`/beneficiary/${m.id}`); }}>
+                                <Eye className="w-3 h-3" /> View
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                        {detailMembers.length === 0 && (
+                          <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">No members in this batch yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* Batch Repayment History Tab */}
+              <TabsContent value="history">
+                <div className="bg-card rounded-xl shadow-card overflow-hidden">
+                  {detailHistory.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-8 text-center">No batch repayments recorded yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border bg-secondary/50">
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expected (₦)</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actual (₦)</th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variance (₦)</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">RRR</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Date</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Receipt</th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {detailHistory.map(r => {
+                            const variance = Number(r.actual_amount) - Number(r.expected_amount);
+                            return (
+                              <tr key={r.id} className="hover:bg-secondary/30">
+                                <td className="px-4 py-3 font-medium">Month {r.month_for}</td>
+                                <td className="px-4 py-3 text-right">{formatCurrency(Number(r.expected_amount))}</td>
+                                <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(r.actual_amount))}</td>
+                                <td className={`px-4 py-3 text-right font-medium ${variance < 0 ? 'text-destructive' : variance > 0 ? 'text-success' : ''}`}>
+                                  {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
+                                </td>
+                                <td className="px-4 py-3 font-mono text-xs">{r.rrr_number}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{r.payment_date}</td>
+                                <td className="px-4 py-3">
+                                  {r.receipt_url ? (
+                                    <a href={r.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                                      <ExternalLink className="w-3 h-3" /> View
+                                    </a>
+                                  ) : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate">{r.notes || '—'}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr className="border-t-2 border-border bg-secondary/30 font-semibold">
+                            <td className="px-4 py-3">Totals</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.expected_amount), 0))}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.actual_amount), 0))}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.actual_amount) - Number(r.expected_amount), 0))}</td>
+                            <td colSpan={4} className="px-4 py-3 text-muted-foreground text-xs">{detailHistory.length} payment(s) recorded</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Batch Amortization / Schedule Summary Tab */}
+              <TabsContent value="schedule">
+                <div className="bg-card rounded-xl shadow-card overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-secondary/50">
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organisation</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Disbursement</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Commencement</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Termination</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Principal</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Interest</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Payment</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly EMI</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {detailMembers.map(m => {
+                          const loan = calculateLoan({ principal: Number(m.loan_amount), annualRate: Number(m.interest_rate), tenorMonths: m.tenor_months, moratoriumMonths: m.moratorium_months, disbursementDate: new Date(m.disbursement_date) });
+                          return (
+                            <tr key={m.id} className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
+                              <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
+                              <td className="px-4 py-3 text-muted-foreground">{m.department}</td>
+                              <td className="px-4 py-3 text-muted-foreground">{formatTenor(m.tenor_months)}</td>
+                              <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(new Date(m.disbursement_date))}</td>
+                              <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(new Date(m.commencement_date))}</td>
+                              <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{formatDate(new Date(m.termination_date))}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(Number(m.loan_amount))}</td>
+                              <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(loan.totalInterest)}</td>
+                              <td className="px-4 py-3 text-right font-medium">{formatCurrency(loan.totalPayment)}</td>
+                              <td className="px-4 py-3 text-right">{formatCurrency(loan.monthlyEMI)}</td>
+                            </tr>
+                          );
+                        })}
+                        {detailMembers.length === 0 && (
+                          <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">No members in this batch.</td></tr>
+                        )}
+                      </tbody>
+                      {detailMembers.length > 0 && (
+                        <tfoot>
+                          <tr className="border-t-2 border-border bg-secondary/30 font-semibold">
+                            <td className="px-4 py-3">Totals ({detailMembers.length})</td>
+                            <td colSpan={5}></td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(batchTotalDisbursed)}</td>
+                            <td className="px-4 py-3 text-right text-muted-foreground">
+                              {formatCurrency(detailMembers.reduce((s, m) => {
+                                const l = calculateLoan({ principal: Number(m.loan_amount), annualRate: Number(m.interest_rate), tenorMonths: m.tenor_months, moratoriumMonths: m.moratorium_months, disbursementDate: new Date(m.disbursement_date) });
+                                return s + l.totalInterest;
+                              }, 0))}
+                            </td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(batchTotalExpected)}</td>
+                            <td className="px-4 py-3 text-right">{formatCurrency(batchMonthlyDue)}</td>
+                          </tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </div>
