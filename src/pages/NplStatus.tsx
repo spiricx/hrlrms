@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle, TrendingDown, Wallet, Users, ArrowLeft,
   RefreshCw, Download, ChevronRight, Filter, FileSpreadsheet, Loader2,
@@ -51,25 +52,20 @@ function calculateDPD(
 
   if (today < commDate) return 0;
 
-  // Calculate how many months' due dates have FULLY passed (strictly before today)
-  // This gives us the "arrears" months, not the "overdue" month
+  // The entire current calendar month is a grace/repayment window.
+  // Only count months that are FULLY past (entered the month after the grace month).
   const monthsDiff = (today.getFullYear() - commDate.getFullYear()) * 12 +
     (today.getMonth() - commDate.getMonth());
-  // Only count months whose due date is strictly before today
-  const expectedMonths = today.getDate() > commDate.getDate()
-    ? Math.min(monthsDiff + 1, beneficiary.tenor_months)
-    : Math.min(monthsDiff, beneficiary.tenor_months);
-  // Exclude current due month for arrears-based DPD
-  const arrearsMonths = Math.max(0, expectedMonths - (today.getDate() >= commDate.getDate() ? 1 : 0));
+  const expectedMonths = Math.min(Math.max(0, monthsDiff - 1), beneficiary.tenor_months);
 
-  if (arrearsMonths <= 0) return 0;
+  if (expectedMonths <= 0) return 0;
 
   // Find the highest month_for that has been paid
   const paidMonths = new Set(bTxns.map(t => t.month_for));
-  
-  // Find earliest unpaid month among arrears months
+
+  // Find earliest unpaid month among expected months
   let firstUnpaidMonth = 0;
-  for (let m = 1; m <= arrearsMonths; m++) {
+  for (let m = 1; m <= expectedMonths; m++) {
     if (!paidMonths.has(m)) {
       firstUnpaidMonth = m;
       break;
@@ -78,11 +74,14 @@ function calculateDPD(
 
   if (firstUnpaidMonth === 0) return 0;
 
-  // Calculate DPD from the due date of the first unpaid month
+  // DPD starts from the 1st of the month AFTER the grace month
+  // Grace month = the month after the due month
   const dueDate = new Date(commDate);
   dueDate.setMonth(dueDate.getMonth() + (firstUnpaidMonth - 1));
+  // Grace ends at the end of the month after dueDate's month
+  const graceEnd = new Date(dueDate.getFullYear(), dueDate.getMonth() + 2, 1); // 1st of month after grace
 
-  const diffMs = today.getTime() - stripTime(dueDate).getTime();
+  const diffMs = today.getTime() - stripTime(graceEnd).getTime();
   return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 }
 
@@ -98,10 +97,8 @@ function getAmountInArrears(beneficiary: Beneficiary, transactions: Transaction[
   const commDate = stripTime(new Date(beneficiary.commencement_date));
   const monthsDiff = (today.getFullYear() - commDate.getFullYear()) * 12 +
     (today.getMonth() - commDate.getMonth());
-  // Months whose due date has fully passed (excluding current due month)
-  const pastMonths = today.getDate() > commDate.getDate()
-    ? Math.min(monthsDiff, beneficiary.tenor_months)
-    : Math.min(Math.max(monthsDiff - 1, 0), beneficiary.tenor_months);
+  // Only count months fully past grace (entire current month is repayment window)
+  const pastMonths = Math.min(Math.max(0, monthsDiff - 1), beneficiary.tenor_months);
   const expectedTotal = pastMonths * Number(beneficiary.monthly_emi);
   const totalPaid = Number(beneficiary.total_paid);
   return Math.max(0, expectedTotal - totalPaid);
@@ -144,6 +141,8 @@ export default function NplStatus() {
   const [stateFilter, setStateFilter] = useState('all');
   const [parFilter, setParFilter] = useState<ParThreshold>('par90');
   const [searchQuery, setSearchQuery] = useState('');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState('all');
 
   const [drillLevel, setDrillLevel] = useState<DrillLevel>('state');
   const [selectedState, setSelectedState] = useState('');
@@ -189,12 +188,59 @@ export default function NplStatus() {
 
   const parDays = PAR_OPTIONS.find(p => p.value === parFilter)?.days ?? 90;
 
+  // Available years from commencement dates
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    beneficiaries.forEach(b => {
+      years.add(new Date(b.commencement_date).getFullYear());
+      years.add(new Date(b.termination_date).getFullYear());
+    });
+    // Also add current year
+    years.add(new Date().getFullYear());
+    return Array.from(years).sort((a, b) => b - a);
+  }, [beneficiaries]);
+
+  const MONTHS = [
+    { value: '1', label: 'January' }, { value: '2', label: 'February' },
+    { value: '3', label: 'March' }, { value: '4', label: 'April' },
+    { value: '5', label: 'May' }, { value: '6', label: 'June' },
+    { value: '7', label: 'July' }, { value: '8', label: 'August' },
+    { value: '9', label: 'September' }, { value: '10', label: 'October' },
+    { value: '11', label: 'November' }, { value: '12', label: 'December' },
+  ];
+
   // Apply filters
   const filteredAccounts = useMemo(() => {
     let accts = nplAccounts;
     if (stateFilter !== 'all') accts = accts.filter(a => a.state === stateFilter);
+    // Filter by month/year: show accounts that were active (commencement <= end of period, termination >= start of period)
+    if (yearFilter !== 'all') {
+      const yr = parseInt(yearFilter);
+      if (monthFilter !== 'all') {
+        const mo = parseInt(monthFilter) - 1; // 0-indexed
+        const periodStart = new Date(yr, mo, 1);
+        const periodEnd = new Date(yr, mo + 1, 0); // last day of month
+        accts = accts.filter(a => {
+          const b = beneficiaries.find(b => b.id === a.id);
+          if (!b) return false;
+          const comm = new Date(b.commencement_date);
+          const term = new Date(b.termination_date);
+          return comm <= periodEnd && term >= periodStart;
+        });
+      } else {
+        const periodStart = new Date(yr, 0, 1);
+        const periodEnd = new Date(yr, 11, 31);
+        accts = accts.filter(a => {
+          const b = beneficiaries.find(b => b.id === a.id);
+          if (!b) return false;
+          const comm = new Date(b.commencement_date);
+          const term = new Date(b.termination_date);
+          return comm <= periodEnd && term >= periodStart;
+        });
+      }
+    }
     return accts;
-  }, [nplAccounts, stateFilter]);
+  }, [nplAccounts, stateFilter, monthFilter, yearFilter, beneficiaries]);
 
   const activePortfolio = filteredAccounts;
   const totalActiveAmount = activePortfolio.reduce((s, a) => s + a.outstandingBalance, 0);
@@ -481,6 +527,24 @@ export default function NplStatus() {
               </SelectContent>
             </Select>
           )}
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={monthFilter} onValueChange={setMonthFilter}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Month" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={parFilter} onValueChange={(v) => setParFilter(v as ParThreshold)}>
             <SelectTrigger className="w-36">
               <SelectValue />
