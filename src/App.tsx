@@ -18,6 +18,7 @@ import StaffDirectory from "./pages/StaffDirectory";
 import StaffPerformance from "./pages/StaffPerformance";
 import LoanReconciliation from "./pages/LoanReconciliation";
 import LoanHistory from "./pages/LoanHistory";
+import BulkUpload from "./pages/BulkUpload";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -55,6 +56,7 @@ const App = () => (
                       <Route path="/beneficiaries" element={<Beneficiaries />} />
                       <Route path="/beneficiary/:id" element={<BeneficiaryDetail />} />
                       <Route path="/add-beneficiary" element={<AddBeneficiary />} />
+                      <Route path="/bulk-upload" element={<BulkUpload />} />
                       <Route path="/bio-data" element={<BioData />} />
                       <Route path="/loan-repayment" element={<LoanRepayment />} />
                       <Route path="/batch-repayment" element={<BatchRepayment />} />
