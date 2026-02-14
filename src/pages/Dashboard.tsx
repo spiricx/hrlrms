@@ -58,7 +58,7 @@ export default function Dashboard() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold font-display text-foreground">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Home Renovation Loan portfolio overviewX
+        <p className="mt-1 text-sm text-muted-foreground">Home Renovation Loan portfolio overview
 
         </p>
       </div>
