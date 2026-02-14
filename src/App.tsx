@@ -17,6 +17,7 @@ import BioData from "./pages/BioData";
 import StaffDirectory from "./pages/StaffDirectory";
 import StaffPerformance from "./pages/StaffPerformance";
 import LoanReconciliation from "./pages/LoanReconciliation";
+import LoanHistory from "./pages/LoanHistory";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -61,6 +62,7 @@ const App = () => (
                       <Route path="/staff-directory" element={<StaffDirectory />} />
                       <Route path="/staff-performance" element={<StaffPerformance />} />
                       <Route path="/loan-reconciliation" element={<LoanReconciliation />} />
+                      <Route path="/loan-history" element={<LoanHistory />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
