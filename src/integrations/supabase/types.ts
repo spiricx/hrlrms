@@ -311,6 +311,97 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_audit_logs: {
+        Row: {
+          action: string
+          field_changed: string
+          id: string
+          modified_at: string
+          modified_by: string | null
+          new_value: string | null
+          old_value: string | null
+          staff_id: string
+        }
+        Insert: {
+          action?: string
+          field_changed?: string
+          id?: string
+          modified_at?: string
+          modified_by?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          staff_id: string
+        }
+        Update: {
+          action?: string
+          field_changed?: string
+          id?: string
+          modified_at?: string
+          modified_by?: string | null
+          new_value?: string | null
+          old_value?: string | null
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_audit_logs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_leaves: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days_entitled: number
+          days_used: number
+          end_date: string
+          id: string
+          leave_year: number
+          notes: string | null
+          staff_id: string
+          start_date: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days_entitled?: number
+          days_used?: number
+          end_date: string
+          id?: string
+          leave_year?: number
+          notes?: string | null
+          staff_id: string
+          start_date: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days_entitled?: number
+          days_used?: number
+          end_date?: string
+          id?: string
+          leave_year?: number
+          notes?: string | null
+          staff_id?: string
+          start_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_leaves_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_members: {
         Row: {
           branch: string
@@ -403,6 +494,74 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      staff_transfers: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          from_branch: string
+          from_department: string
+          from_state: string
+          from_unit: string
+          id: string
+          reason: string
+          staff_id: string
+          status: string
+          to_branch: string
+          to_department: string
+          to_state: string
+          to_unit: string
+          transfer_date: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_branch?: string
+          from_department?: string
+          from_state?: string
+          from_unit?: string
+          id?: string
+          reason?: string
+          staff_id: string
+          status?: string
+          to_branch?: string
+          to_department?: string
+          to_state?: string
+          to_unit?: string
+          transfer_date?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_branch?: string
+          from_department?: string
+          from_state?: string
+          from_unit?: string
+          id?: string
+          reason?: string
+          staff_id?: string
+          status?: string
+          to_branch?: string
+          to_department?: string
+          to_state?: string
+          to_unit?: string
+          transfer_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_transfers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff_members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transactions: {
         Row: {
