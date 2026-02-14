@@ -47,7 +47,7 @@ const navItems = [
   { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/bio-data', label: 'Bio Data', icon: FileText },
   { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
-  { path: '/batch-repayment', label: 'Batch Repayment', icon: Package, roles: ['admin', 'loan_officer'] as string[] },
+  { path: '/batch-repayment', label: 'Batch Loan Repayment', icon: Package, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/loan-reconciliation', label: 'Reconciliation', icon: ArrowLeftRight, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/loan-history', label: 'Loan History', icon: FileText },
   { path: '/staff-directory', label: 'Staff Management', icon: UserCog, roles: ['admin', 'loan_officer'] as string[] },
