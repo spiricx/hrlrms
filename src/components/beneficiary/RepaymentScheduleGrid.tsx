@@ -1,5 +1,5 @@
 import { CheckCircle, AlertTriangle, Clock, MinusCircle } from 'lucide-react';
-import { formatDate, formatCurrency } from '@/lib/loanCalculations';
+import { formatDate, formatCurrency, stripTime } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
 import type { Tables } from '@/integrations/supabase/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,12 +20,14 @@ function getMonthStatus(
   isCurrentMonth: boolean
 ): MonthStatus {
   const totalPaid = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
+  const todayDay = stripTime(now);
+  const dueDay = stripTime(entry.dueDate);
 
   if (totalPaid >= entry.emi) {
     // Check if this is an advance payment (paid before due date and in the future)
-    const isPaidInAdvance = entry.dueDate > now;
+    const isPaidInAdvance = dueDay > todayDay;
     if (isPaidInAdvance) return 'paid-advance';
-    const anyLate = monthTxns.some((t) => new Date(t.date_paid) > entry.dueDate);
+    const anyLate = monthTxns.some((t) => stripTime(new Date(t.date_paid)) > dueDay);
     return anyLate ? 'late-paid' : 'paid';
   }
 
@@ -35,7 +37,8 @@ function getMonthStatus(
 
   if (isCurrentMonth) return 'current';
 
-  if (entry.dueDate < now) return 'overdue';
+  // Overdue only if due date is STRICTLY before today (at day level)
+  if (dueDay < todayDay) return 'overdue';
 
   return 'upcoming';
 }

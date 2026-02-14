@@ -1,5 +1,5 @@
-import { Banknote, CalendarCheck, AlertTriangle, TrendingDown } from 'lucide-react';
-import { formatCurrency } from '@/lib/loanCalculations';
+import { Banknote, CalendarCheck, AlertTriangle, TrendingDown, Clock } from 'lucide-react';
+import { formatCurrency, stripTime } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -22,15 +22,23 @@ export default function RepaymentSummaryCard({
   transactions,
   schedule,
 }: RepaymentSummaryCardProps) {
-  const now = new Date();
+  const today = stripTime(new Date());
 
   // Count months fully paid (at least one transaction recorded for that month)
   const paidMonthSet = new Set(transactions.map((t) => t.month_for));
   const monthsPaid = paidMonthSet.size;
 
-  // Count months in arrears: due date passed and no payment recorded
+  // Overdue: due date <= today (at day level), not paid
+  const overdueMonths = schedule.filter((entry) => {
+    const dueDay = stripTime(entry.dueDate);
+    return dueDay <= today && !paidMonthSet.has(entry.month);
+  }).length;
+
+  // In Arrears: due date < today (strictly before, at day level), not paid
+  // This excludes the month whose due date IS today
   const monthsInArrears = schedule.filter((entry) => {
-    return entry.dueDate < now && !paidMonthSet.has(entry.month);
+    const dueDay = stripTime(entry.dueDate);
+    return dueDay < today && !paidMonthSet.has(entry.month);
   }).length;
 
   const percentPaid = totalExpected > 0 ? Math.round((totalPaid / totalExpected) * 100) : 0;
@@ -38,7 +46,7 @@ export default function RepaymentSummaryCard({
   return (
     <div className="bg-card rounded-xl shadow-card p-6">
       <h2 className="text-lg font-bold font-display mb-4">Loan Repayment Summary</h2>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Total Repaid */}
         <div className="flex items-start gap-3">
           <div className="p-2.5 rounded-lg bg-success/10 text-success">
@@ -59,6 +67,20 @@ export default function RepaymentSummaryCard({
           <div>
             <p className="text-xs text-muted-foreground">Months Paid</p>
             <p className="text-xl font-bold">{monthsPaid} <span className="text-sm font-normal text-muted-foreground">of {tenorMonths}</span></p>
+          </div>
+        </div>
+
+        {/* Months Overdue */}
+        <div className="flex items-start gap-3">
+          <div className={`p-2.5 rounded-lg ${overdueMonths > 0 ? 'bg-warning/10 text-warning' : 'bg-secondary text-muted-foreground'}`}>
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Months Overdue</p>
+            <p className={`text-xl font-bold ${overdueMonths > 0 ? 'text-warning' : ''}`}>
+              {overdueMonths}
+              {overdueMonths > 0 && monthsInArrears === 0 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-warning animate-pulse-dot" />}
+            </p>
           </div>
         </div>
 

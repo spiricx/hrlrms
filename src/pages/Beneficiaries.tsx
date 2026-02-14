@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle } from 'lucide-react';
-import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue, stripTime } from '@/lib/loanCalculations';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,49 +18,33 @@ interface BeneficiaryWithPayment extends Beneficiary {
   lastTransaction?: Transaction | null;
 }
 
-
-function getDaysPastDue(b: Beneficiary): number {
-  if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return -1;
-  const now = new Date();
-  const commencement = new Date(b.commencement_date);
-  const monthsElapsed = Math.max(
-    0,
-    (now.getFullYear() - commencement.getFullYear()) * 12 +
-      (now.getMonth() - commencement.getMonth())
-  );
-  if (monthsElapsed === 0) return -2;
-  const expectedPaid = monthsElapsed * Number(b.monthly_emi);
-  const actualPaid = Number(b.total_paid);
-  const deficit = expectedPaid - actualPaid;
-  if (deficit <= 0) return 0;
-  const monthsBehind = Math.ceil(deficit / Number(b.monthly_emi));
-  return monthsBehind * 30;
-}
-
-function getMonthsInArrears(b: Beneficiary): number {
-  const dpd = getDaysPastDue(b);
-  if (dpd <= 0) return 0;
-  return Math.ceil(dpd / 30);
-}
-
-function getArrearsAmount(b: Beneficiary): number {
-  const months = getMonthsInArrears(b);
-  return months * Number(b.monthly_emi);
-}
-
 type StatusInfo = { label: string; className: string };
 
 function getStatusInfo(b: Beneficiary): StatusInfo {
-  const dpd = getDaysPastDue(b);
+  const oa = getOverdueAndArrears(
+    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+    Number(b.total_paid), Number(b.outstanding_balance), b.status
+  );
+
   if (Number(b.outstanding_balance) <= 0 || b.status === 'completed') {
     return { label: 'Fully Repaid', className: 'bg-primary/10 text-primary border-primary/20' };
   }
-  if (dpd === -2) {
+
+  const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
+  if (monthsDue === 0) {
     return { label: 'Active', className: 'bg-muted text-muted-foreground border-border' };
   }
-  if (dpd === 0) {
+
+  if (oa.overdueMonths === 0) {
     return { label: 'Current', className: 'bg-success/10 text-success border-success/20' };
   }
+
+  if (oa.monthsInArrears === 0 && oa.overdueMonths > 0) {
+    return { label: 'Overdue', className: 'bg-warning/10 text-warning border-warning/20' };
+  }
+
+  // Calculate DPD from arrears months
+  const dpd = oa.monthsInArrears * 30;
   if (dpd >= 90) {
     return { label: `NPL / ${dpd} Days`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
   }
@@ -184,8 +168,10 @@ export default function Beneficiaries() {
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Repayment Amt</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-warning">Overdue Amt</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground text-warning">Months Overdue</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-destructive">Arrears Amt</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground text-destructive">Months in Arrears</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
               </tr>
@@ -193,8 +179,10 @@ export default function Beneficiaries() {
             <tbody className="divide-y divide-border">
               {filtered.map((b, idx) => {
                 const statusInfo = getStatusInfo(b);
-                const arrears = getArrearsAmount(b);
-                const monthsArr = getMonthsInArrears(b);
+                const oa = getOverdueAndArrears(
+                  b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+                  Number(b.total_paid), Number(b.outstanding_balance), b.status
+                );
                 const lastPayment = b.lastTransaction
                   ? formatPaymentDate(b.lastTransaction.date_paid)
                   : 'No payment recorded';
@@ -223,14 +211,28 @@ export default function Beneficiaries() {
                         ? formatCurrency(Number(b.lastTransaction.amount))
                         : <span className="text-muted-foreground">—</span>}
                     </td>
+                    {/* Overdue Amount */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {arrears > 0
-                        ? <span className="text-destructive font-medium">{formatCurrency(arrears)}</span>
+                      {oa.overdueAmount > 0
+                        ? <span className="text-warning font-medium">{formatCurrency(oa.overdueAmount)}</span>
                         : <span className="text-muted-foreground">₦0</span>}
                     </td>
+                    {/* Months Overdue */}
                     <td className="px-4 py-3 text-center">
-                      {monthsArr > 0
-                        ? <span className="text-destructive font-semibold">{monthsArr}</span>
+                      {oa.overdueMonths > 0
+                        ? <span className="text-warning font-semibold">{oa.overdueMonths}</span>
+                        : <span className="text-success font-semibold">0</span>}
+                    </td>
+                    {/* Arrears Amount */}
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {oa.arrearsAmount > 0
+                        ? <span className="text-destructive font-medium animate-pulse">{formatCurrency(oa.arrearsAmount)}</span>
+                        : <span className="text-muted-foreground">₦0</span>}
+                    </td>
+                    {/* Months in Arrears */}
+                    <td className="px-4 py-3 text-center">
+                      {oa.monthsInArrears > 0
+                        ? <span className="text-destructive font-semibold animate-pulse">{oa.monthsInArrears}</span>
                         : <span className="text-success font-semibold">0</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{lastPayment}</td>
@@ -247,7 +249,7 @@ export default function Beneficiaries() {
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={14} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={16} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>

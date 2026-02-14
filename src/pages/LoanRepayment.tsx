@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, ExternalLink, Banknote, Pencil, Trash2, MessageSquare } from 'lucide-react';
-import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor, getOverdueAndArrears } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -355,17 +355,16 @@ export default function LoanRepayment() {
 
   // Compute arrears info
   const getArrearsInfo = (b: Beneficiary) => {
-    const now = new Date();
-    const commencement = new Date(b.commencement_date);
-    // Months elapsed since commencement
-    const monthsElapsed = Math.max(0,
-      (now.getFullYear() - commencement.getFullYear()) * 12 + (now.getMonth() - commencement.getMonth())
+    const oa = getOverdueAndArrears(
+      b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+      Number(b.total_paid), Number(b.outstanding_balance), b.status
     );
-    const monthsDue = Math.min(monthsElapsed, b.tenor_months);
-    const expectedTotal = monthsDue * Number(b.monthly_emi);
-    const arrears = Math.max(0, expectedTotal - Number(b.total_paid));
-    const monthsInArrears = Number(b.monthly_emi) > 0 ? Math.round(arrears / Number(b.monthly_emi)) : 0;
-    return { arrearsAmount: arrears, monthsInArrears };
+    return {
+      overdueAmount: oa.overdueAmount,
+      overdueMonths: oa.overdueMonths,
+      arrearsAmount: oa.arrearsAmount,
+      monthsInArrears: oa.monthsInArrears,
+    };
   };
 
   // Compute running loan balance for history
@@ -435,6 +434,8 @@ export default function LoanRepayment() {
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Repayment</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-warning">Overdue Amt</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground text-warning">Months Overdue</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-destructive">Arrears Amount</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground text-destructive">Months in Arrears</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment Date</th>
@@ -443,9 +444,9 @@ export default function LoanRepayment() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((b) => {
-                const { arrearsAmount, monthsInArrears } = getArrearsInfo(b);
+                const { overdueAmount, overdueMonths, arrearsAmount, monthsInArrears } = getArrearsInfo(b);
                 return (
-                  <tr key={b.id} className={cn("hover:bg-secondary/30 transition-colors", monthsInArrears > 0 && "bg-destructive/5")}>
+                  <tr key={b.id} className={cn("hover:bg-secondary/30 transition-colors", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.bank_branch || '—'}</td>
@@ -456,6 +457,10 @@ export default function LoanRepayment() {
                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(b.outstanding_balance))}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right">{b.lastPaymentAmount != null ? formatCurrency(b.lastPaymentAmount) : '—'}</td>
+                    {/* Overdue */}
+                    <td className={cn("px-4 py-3 text-right font-semibold", overdueAmount > 0 ? "text-warning" : "text-success")}>{overdueAmount > 0 ? formatCurrency(overdueAmount) : '₦0'}</td>
+                    <td className={cn("px-4 py-3 text-center font-semibold", overdueMonths > 0 ? "text-warning" : "text-success")}>{overdueMonths > 0 ? overdueMonths : '0'}</td>
+                    {/* Arrears */}
                     <td className={cn("px-4 py-3 text-right font-semibold", arrearsAmount > 0 ? "text-destructive animate-pulse" : "text-success")}>{arrearsAmount > 0 ? formatCurrency(arrearsAmount) : '₦0'}</td>
                     <td className={cn("px-4 py-3 text-center font-semibold", monthsInArrears > 0 ? "text-destructive animate-pulse" : "text-success")}>{monthsInArrears > 0 ? monthsInArrears : '0'}</td>
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{b.lastPaymentDate ? formatDate(new Date(b.lastPaymentDate)) : '—'}</td>
