@@ -77,15 +77,15 @@ export default function RepaymentSummaryCard({
 
         {/* Days Overdue */}
         <div className="flex items-start gap-3">
-          <div className={`p-2.5 rounded-lg ${daysOverdue > 0 ? (daysOverdue >= 90 ? 'bg-destructive/10 text-destructive' : daysOverdue >= 30 ? 'bg-orange-500/10 text-orange-500' : 'bg-warning/10 text-warning') : 'bg-secondary text-muted-foreground'}`}>
+          <div className={`p-2.5 rounded-lg ${daysOverdue > 0 ? (daysOverdue >= 90 ? 'bg-destructive/10 text-destructive' : daysOverdue >= 30 ? 'bg-orange-500/10 text-orange-500' : 'bg-destructive/10 text-destructive') : 'bg-success/10 text-success'}`}>
             <Clock className="w-5 h-5" />
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Days Overdue</p>
-            <p className={`text-xl font-bold ${daysOverdue >= 90 ? 'text-destructive' : daysOverdue >= 30 ? 'text-orange-500' : daysOverdue > 0 ? 'text-warning' : ''}`}>
+            <p className={`text-xl font-bold ${daysOverdue >= 90 ? 'text-destructive' : daysOverdue >= 30 ? 'text-orange-500' : daysOverdue > 0 ? 'text-destructive' : 'text-success'}`}>
               {daysOverdue}
-              {daysOverdue >= 90 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-destructive animate-pulse-dot" />}
-              {daysOverdue > 0 && daysOverdue < 90 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-warning animate-pulse-dot" />}
+              {daysOverdue > 0 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-destructive animate-pulse-dot" />}
+              {daysOverdue === 0 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-success" />}
             </p>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { ExternalLink, CheckCircle, AlertTriangle, Clock, MinusCircle } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, stripTime } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -21,10 +21,11 @@ function getMonthStatus(
   now: Date
 ): MonthStatus {
   const totalPaidForMonth = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
+  const todayDay = stripTime(now);
+  const dueDay = stripTime(entry.dueDate);
 
   if (totalPaidForMonth >= entry.emi) {
-    // Check if any payment was after due date
-    const anyLate = monthTxns.some((t) => new Date(t.date_paid) > entry.dueDate);
+    const anyLate = monthTxns.some((t) => stripTime(new Date(t.date_paid)) > dueDay);
     return anyLate ? 'late-paid' : 'paid';
   }
 
@@ -32,7 +33,8 @@ function getMonthStatus(
     return 'partial';
   }
 
-  if (entry.dueDate < now) {
+  // Overdue only if today is STRICTLY after the due date (not on the due date itself)
+  if (todayDay > dueDay) {
     return 'overdue';
   }
 
