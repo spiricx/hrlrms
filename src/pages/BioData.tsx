@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Download, FileText, Printer, Eye } from 'lucide-react';
-import { formatCurrency } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -19,13 +19,6 @@ const columns = [
   'Monthly Repayment', 'Disbursement Date',
 ];
 
-function formatTenor(months: number) {
-  const y = Math.floor(months / 12);
-  const m = months % 12;
-  if (y === 0) return `${m} Month${m !== 1 ? 's' : ''}`;
-  if (m === 0) return `${y} Year${y !== 1 ? 's' : ''}`;
-  return `${y} Year${y !== 1 ? 's' : ''} ${m} Month${m !== 1 ? 's' : ''}`;
-}
 
 type Beneficiary = {
   id: string;

@@ -48,7 +48,7 @@ export function calculateLoan(params: LoanParams): LoanSummary {
 
   for (let i = 1; i <= n; i++) {
     const dueDate = new Date(commencementDate);
-    dueDate.setMonth(dueDate.getMonth() + i);
+    dueDate.setMonth(dueDate.getMonth() + (i - 1));
 
     const interest = balance * monthlyRate;
     const principalPart = adjustedEMI - interest;
@@ -93,6 +93,14 @@ export function formatDate(date: Date): string {
     month: 'short',
     day: 'numeric',
   }).format(date);
+}
+
+export function formatTenor(months: number): string {
+  const years = Math.floor(months / 12);
+  const rem = months % 12;
+  if (years === 0) return `${rem} Month${rem !== 1 ? 's' : ''}`;
+  if (rem === 0) return `${years} Year${years !== 1 ? 's' : ''}`;
+  return `${years} Year${years !== 1 ? 's' : ''} ${rem} Month${rem !== 1 ? 's' : ''}`;
 }
 
 export type LoanStatus = 'active' | 'completed' | 'defaulted' | 'pending';

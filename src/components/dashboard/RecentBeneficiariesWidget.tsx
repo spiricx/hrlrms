@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCurrency } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -25,13 +25,6 @@ interface BeneficiaryWithPayment extends Beneficiary {
   lastTransaction?: Transaction | null;
 }
 
-function formatTenor(months: number): string {
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  if (rem === 0) return `${years} Year${years !== 1 ? 's' : ''}`;
-  if (years === 0) return `${rem} Month${rem !== 1 ? 's' : ''}`;
-  return `${years}Y ${rem}M`;
-}
 
 function formatPaymentDate(date: string): string {
   return new Intl.DateTimeFormat('en-GB', {

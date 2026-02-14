@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle } from 'lucide-react';
-import { formatCurrency } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,13 +18,6 @@ interface BeneficiaryWithPayment extends Beneficiary {
   lastTransaction?: Transaction | null;
 }
 
-function formatTenor(months: number): string {
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  if (rem === 0) return `${years} Year${years !== 1 ? 's' : ''}`;
-  if (years === 0) return `${rem} Month${rem !== 1 ? 's' : ''}`;
-  return `${years} Years ${rem} Months`;
-}
 
 function getDaysPastDue(b: Beneficiary): number {
   if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return -1;
