@@ -127,8 +127,8 @@ export function getMonthsDue(commencementDate: string | Date, tenorMonths: numbe
     (today.getFullYear() - comm.getFullYear()) * 12 +
     (today.getMonth() - comm.getMonth());
 
-  // A month is only due once today is STRICTLY past its due date (not on the due date itself)
-  const monthsDue = today.getDate() > comm.getDate() ? monthsDiff + 1 : monthsDiff;
+  // Check if today's day-of-month >= commencement's day-of-month
+  const monthsDue = today.getDate() >= comm.getDate() ? monthsDiff + 1 : monthsDiff;
   return Math.min(Math.max(monthsDue, 0), tenorMonths);
 }
 
@@ -175,9 +175,12 @@ export function getOverdueAndArrears(
   const overdueMonths = Math.min(Math.ceil(overdueDeficit / emi), monthsDue);
   const overdueAmount = Math.round(overdueDeficit * 100) / 100;
 
-  // Arrears: same as overdue — once a due date passes without payment, it's in arrears
-  const monthsInArrears = overdueMonths;
-  const arrearsAmount = overdueAmount;
+  // Arrears: months due EXCLUDING the current (most recent) due month
+  const monthsPast = Math.max(0, monthsDue - 1);
+  const expectedPast = monthsPast * emi;
+  const arrearsDeficit = Math.max(0, expectedPast - totalPaid);
+  const monthsInArrears = Math.min(Math.ceil(arrearsDeficit / emi), monthsPast);
+  const arrearsAmount = Math.round(arrearsDeficit * 100) / 100;
 
   return { overdueMonths, overdueAmount, monthsInArrears, arrearsAmount };
 }
