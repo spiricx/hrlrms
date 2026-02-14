@@ -339,7 +339,7 @@ export default function LoanHistory() {
                   <tr
                     key={b.id}
                     className="border-b border-border hover:bg-muted/30 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/beneficiaries/${b.id}`)}
+                    onClick={() => navigate(`/beneficiary/${b.id}`)}
                   >
                     <td className="px-3 py-2.5 text-muted-foreground">{idx + 1}</td>
                     <td className="px-3 py-2.5 font-medium text-primary hover:underline">{b.name}</td>
