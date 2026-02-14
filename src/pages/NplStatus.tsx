@@ -6,7 +6,7 @@ import {
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import StatCard from '@/components/StatCard';
-import { formatCurrency } from '@/lib/loanCalculations';
+import { formatCurrency, stripTime } from '@/lib/loanCalculations';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,24 +46,30 @@ function calculateDPD(
   transactions: Transaction[]
 ): number {
   const bTxns = transactions.filter(t => t.beneficiary_id === beneficiary.id);
-  const today = new Date();
-  const commDate = new Date(beneficiary.commencement_date);
+  const today = stripTime(new Date());
+  const commDate = stripTime(new Date(beneficiary.commencement_date));
 
-  if (commDate > today) return 0;
+  if (today < commDate) return 0;
 
-  // Calculate how many months should have been paid
+  // Calculate how many months' due dates have FULLY passed (strictly before today)
+  // This gives us the "arrears" months, not the "overdue" month
   const monthsDiff = (today.getFullYear() - commDate.getFullYear()) * 12 +
     (today.getMonth() - commDate.getMonth());
-  const expectedMonths = Math.min(monthsDiff, beneficiary.tenor_months);
+  // Only count months whose due date is strictly before today
+  const expectedMonths = today.getDate() > commDate.getDate()
+    ? Math.min(monthsDiff + 1, beneficiary.tenor_months)
+    : Math.min(monthsDiff, beneficiary.tenor_months);
+  // Exclude current due month for arrears-based DPD
+  const arrearsMonths = Math.max(0, expectedMonths - (today.getDate() >= commDate.getDate() ? 1 : 0));
 
-  if (expectedMonths <= 0) return 0;
+  if (arrearsMonths <= 0) return 0;
 
   // Find the highest month_for that has been paid
   const paidMonths = new Set(bTxns.map(t => t.month_for));
   
-  // Find earliest unpaid month
+  // Find earliest unpaid month among arrears months
   let firstUnpaidMonth = 0;
-  for (let m = 1; m <= expectedMonths; m++) {
+  for (let m = 1; m <= arrearsMonths; m++) {
     if (!paidMonths.has(m)) {
       firstUnpaidMonth = m;
       break;
@@ -74,9 +80,9 @@ function calculateDPD(
 
   // Calculate DPD from the due date of the first unpaid month
   const dueDate = new Date(commDate);
-  dueDate.setMonth(dueDate.getMonth() + firstUnpaidMonth);
+  dueDate.setMonth(dueDate.getMonth() + (firstUnpaidMonth - 1));
 
-  const diffMs = today.getTime() - dueDate.getTime();
+  const diffMs = today.getTime() - stripTime(dueDate).getTime();
   return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 }
 
@@ -88,12 +94,15 @@ function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[
 }
 
 function getAmountInArrears(beneficiary: Beneficiary, transactions: Transaction[]): number {
-  const today = new Date();
-  const commDate = new Date(beneficiary.commencement_date);
+  const today = stripTime(new Date());
+  const commDate = stripTime(new Date(beneficiary.commencement_date));
   const monthsDiff = (today.getFullYear() - commDate.getFullYear()) * 12 +
     (today.getMonth() - commDate.getMonth());
-  const expectedMonths = Math.min(Math.max(monthsDiff, 0), beneficiary.tenor_months);
-  const expectedTotal = expectedMonths * Number(beneficiary.monthly_emi);
+  // Months whose due date has fully passed (excluding current due month)
+  const pastMonths = today.getDate() > commDate.getDate()
+    ? Math.min(monthsDiff, beneficiary.tenor_months)
+    : Math.min(Math.max(monthsDiff - 1, 0), beneficiary.tenor_months);
+  const expectedTotal = pastMonths * Number(beneficiary.monthly_emi);
   const totalPaid = Number(beneficiary.total_paid);
   return Math.max(0, expectedTotal - totalPaid);
 }

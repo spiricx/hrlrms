@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue } from '@/lib/loanCalculations';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,42 +34,32 @@ function formatPaymentDate(date: string): string {
   }).format(new Date(date));
 }
 
-function getDaysPastDue(b: Beneficiary): number {
-  if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return -1;
-
-  const now = new Date();
-  const commencement = new Date(b.commencement_date);
-  const monthsElapsed = Math.max(
-    0,
-    (now.getFullYear() - commencement.getFullYear()) * 12 +
-      (now.getMonth() - commencement.getMonth())
-  );
-
-  if (monthsElapsed === 0) return -2;
-
-  const expectedPaid = monthsElapsed * Number(b.monthly_emi);
-  const actualPaid = Number(b.total_paid);
-  const deficit = expectedPaid - actualPaid;
-
-  if (deficit <= 0) return 0;
-
-  const monthsBehind = Math.ceil(deficit / Number(b.monthly_emi));
-  return monthsBehind * 30;
-}
-
 type StatusInfo = { label: string; className: string };
 
 function getStatusInfo(b: Beneficiary): StatusInfo {
-  const dpd = getDaysPastDue(b);
+  const oa = getOverdueAndArrears(
+    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+    Number(b.total_paid), Number(b.outstanding_balance), b.status
+  );
+
   if (Number(b.outstanding_balance) <= 0 || b.status === 'completed') {
     return { label: 'Fully Repaid', className: 'bg-primary/10 text-primary border-primary/20' };
   }
-  if (dpd === -2) {
+
+  const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
+  if (monthsDue === 0) {
     return { label: 'Active', className: 'bg-muted text-muted-foreground border-border' };
   }
-  if (dpd === 0) {
+
+  if (oa.overdueMonths === 0) {
     return { label: 'Current', className: 'bg-success/10 text-success border-success/20' };
   }
+
+  if (oa.monthsInArrears === 0 && oa.overdueMonths > 0) {
+    return { label: 'Overdue', className: 'bg-warning/10 text-warning border-warning/20' };
+  }
+
+  const dpd = oa.monthsInArrears * 30;
   if (dpd >= 90) {
     return { label: `NPL / ${dpd} Days`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
   }
@@ -77,9 +67,11 @@ function getStatusInfo(b: Beneficiary): StatusInfo {
 }
 
 function getArrearsAmount(b: Beneficiary): number {
-  const dpd = getDaysPastDue(b);
-  if (dpd <= 0) return 0;
-  return Math.ceil(dpd / 30) * Number(b.monthly_emi);
+  const oa = getOverdueAndArrears(
+    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+    Number(b.total_paid), Number(b.outstanding_balance), b.status
+  );
+  return oa.arrearsAmount;
 }
 
 type FilterType = 'all' | 'current' | 'arrears' | 'npl' | 'repaid';
@@ -174,11 +166,15 @@ export default function RecentBeneficiariesWidget() {
 
     if (filter !== 'all') {
       list = list.filter((b) => {
-        const dpd = getDaysPastDue(b);
+        const oa = getOverdueAndArrears(
+          b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+          Number(b.total_paid), Number(b.outstanding_balance), b.status
+        );
+        const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
         switch (filter) {
-          case 'current': return dpd === 0;
-          case 'arrears': return dpd > 0 && dpd < 90;
-          case 'npl': return dpd >= 90;
+          case 'current': return monthsDue > 0 && oa.overdueMonths === 0;
+          case 'arrears': return oa.monthsInArrears > 0 && oa.monthsInArrears * 30 < 90;
+          case 'npl': return oa.monthsInArrears * 30 >= 90;
           case 'repaid': return Number(b.outstanding_balance) <= 0 || b.status === 'completed';
           default: return true;
         }
