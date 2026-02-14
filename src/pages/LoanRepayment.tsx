@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, ExternalLink, Banknote, Pencil, Trash2, MessageSquare } from 'lucide-react';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,13 +24,6 @@ import type { Tables } from '@/integrations/supabase/types';
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
 
-function formatTenor(months: number): string {
-  const years = Math.floor(months / 12);
-  const rem = months % 12;
-  if (years === 0) return `${rem} Month${rem !== 1 ? 's' : ''}`;
-  if (rem === 0) return `${years} Year${years !== 1 ? 's' : ''}`;
-  return `${years} Year${years !== 1 ? 's' : ''} ${rem} Month${rem !== 1 ? 's' : ''}`;
-}
 
 interface BeneficiaryWithTxnInfo extends Beneficiary {
   lastPaymentDate: string | null;

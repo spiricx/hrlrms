@@ -1,6 +1,6 @@
 import { FileText, FileSpreadsheet, Printer, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
 import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
@@ -77,7 +77,7 @@ export function exportToExcel(
     [],
     ['Loan Amount', Number(beneficiary.loan_amount)],
     ['Interest Rate', `${beneficiary.interest_rate}% Annuity`],
-    ['Tenor (Months)', beneficiary.tenor_months],
+    ['Tenor', formatTenor(beneficiary.tenor_months)],
     ['Monthly Repayment', props.monthlyEMI],
     ['Total Interest', props.totalInterest],
     ['Total Expected Payment', props.totalExpected],

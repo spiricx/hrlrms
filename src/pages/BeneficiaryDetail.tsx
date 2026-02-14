@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Calendar, Banknote, Clock, AlertTriangle, Copy, Check } from 'lucide-react';
-import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { calculateLoan, formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,7 +119,7 @@ export default function BeneficiaryDetail() {
     { label: 'Disbursed On', value: formatDate(new Date(beneficiary.disbursement_date)), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Commencement', value: formatDate(loan.commencementDate), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Termination Date', value: formatDate(loan.terminationDate), icon: <Calendar className="w-4 h-4" /> },
-    { label: 'Tenor', value: `${beneficiary.tenor_months} months`, icon: <Clock className="w-4 h-4" /> },
+    { label: 'Tenor', value: formatTenor(beneficiary.tenor_months), icon: <Clock className="w-4 h-4" /> },
     { label: 'Total Interest', value: formatCurrency(loan.totalInterest), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Total Payment', value: formatCurrency(loan.totalPayment), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Defaults', value: String(beneficiary.default_count), icon: <AlertTriangle className="w-4 h-4" /> },
