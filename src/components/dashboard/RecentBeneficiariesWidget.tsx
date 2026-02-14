@@ -66,12 +66,12 @@ function getStatusInfo(b: Beneficiary): StatusInfo {
   return { label: `${dpd} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
 }
 
-function getArrearsAmount(b: Beneficiary): number {
+function getMonthsInArrears(b: Beneficiary): number {
   const oa = getOverdueAndArrears(
     b.commencement_date, b.tenor_months, Number(b.monthly_emi),
     Number(b.total_paid), Number(b.outstanding_balance), b.status
   );
-  return oa.arrearsAmount;
+  return oa.monthsInArrears;
 }
 
 type FilterType = 'all' | 'current' | 'arrears' | 'npl' | 'repaid';
@@ -202,7 +202,7 @@ export default function RecentBeneficiariesWidget() {
       'Tenor': formatTenor(b.tenor_months),
       'Loan Amount': Number(b.loan_amount),
       'Outstanding Balance': Number(b.outstanding_balance),
-      'Arrears': getArrearsAmount(b),
+      'Months in Arrears': getMonthsInArrears(b),
       'Last Payment': getLastPaymentDisplay(b),
       'Status': getStatusInfo(b).label,
     }));
@@ -310,7 +310,7 @@ export default function RecentBeneficiariesWidget() {
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
             </tr>
@@ -333,7 +333,7 @@ export default function RecentBeneficiariesWidget() {
             {!loading &&
               filtered.map((b, idx) => {
                 const statusInfo = getStatusInfo(b);
-                const arrears = getArrearsAmount(b);
+                const monthsArr = getMonthsInArrears(b);
                 return (
                   <tr key={b.id} className="hover:bg-secondary/30 transition-colors group">
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
@@ -373,11 +373,17 @@ export default function RecentBeneficiariesWidget() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {formatCurrency(Number(b.outstanding_balance))}
                     </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {arrears > 0 ? (
-                        <span className="text-destructive font-medium">{formatCurrency(arrears)}</span>
+                    <td className="px-4 py-3 text-center whitespace-nowrap">
+                      {monthsArr > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-destructive font-semibold animate-pulse">
+                          {monthsArr}
+                          <span className="inline-block w-2 h-2 rounded-full bg-destructive animate-pulse-dot" />
+                        </span>
                       ) : (
-                        <span className="text-muted-foreground">₦0</span>
+                        <span className="inline-flex items-center gap-1 text-success font-semibold">
+                          0
+                          <span className="inline-block w-2 h-2 rounded-full bg-success" />
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
