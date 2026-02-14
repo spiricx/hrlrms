@@ -11,8 +11,8 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  SelectValue } from
+'@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 import * as XLSX from 'xlsx';
@@ -30,11 +30,11 @@ function formatPaymentDate(date: string): string {
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: 'short',
-    year: 'numeric',
+    year: 'numeric'
   }).format(new Date(date));
 }
 
-type StatusInfo = { label: string; className: string };
+type StatusInfo = {label: string;className: string;};
 
 function getStatusInfo(b: Beneficiary): StatusInfo {
   const oa = getOverdueAndArrears(
@@ -86,20 +86,20 @@ export default function RecentBeneficiariesWidget() {
   const [branchFilter, setBranchFilter] = useState('all');
 
   const fetchData = useCallback(async () => {
-    const { data: bens } = await supabase
-      .from('beneficiaries')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(20);
+    const { data: bens } = await supabase.
+    from('beneficiaries').
+    select('*').
+    order('created_at', { ascending: false }).
+    limit(20);
 
-    if (!bens) { setLoading(false); return; }
+    if (!bens) {setLoading(false);return;}
 
     const benIds = bens.map((b) => b.id);
-    const { data: txns } = await supabase
-      .from('transactions')
-      .select('*')
-      .in('beneficiary_id', benIds)
-      .order('date_paid', { ascending: false });
+    const { data: txns } = await supabase.
+    from('transactions').
+    select('*').
+    in('beneficiary_id', benIds).
+    order('date_paid', { ascending: false });
 
     const latestTxMap = new Map<string, Transaction>();
     txns?.forEach((t) => {
@@ -132,7 +132,7 @@ export default function RecentBeneficiariesWidget() {
     });
     return {
       states: Array.from(stSet).sort(),
-      branches: Array.from(brSet).sort(),
+      branches: Array.from(brSet).sort()
     };
   }, [beneficiaries]);
 
@@ -172,11 +172,11 @@ export default function RecentBeneficiariesWidget() {
         );
         const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
         switch (filter) {
-          case 'current': return monthsDue > 0 && oa.overdueMonths === 0;
-          case 'arrears': return oa.monthsInArrears > 0 && oa.monthsInArrears * 30 < 90;
-          case 'npl': return oa.monthsInArrears * 30 >= 90;
-          case 'repaid': return Number(b.outstanding_balance) <= 0 || b.status === 'completed';
-          default: return true;
+          case 'current':return monthsDue > 0 && oa.overdueMonths === 0;
+          case 'arrears':return oa.monthsInArrears > 0 && oa.monthsInArrears * 30 < 90;
+          case 'npl':return oa.monthsInArrears * 30 >= 90;
+          case 'repaid':return Number(b.outstanding_balance) <= 0 || b.status === 'completed';
+          default:return true;
         }
       });
     }
@@ -204,7 +204,7 @@ export default function RecentBeneficiariesWidget() {
       'Outstanding Balance': Number(b.outstanding_balance),
       'Arrears': getArrearsAmount(b),
       'Last Payment': getLastPaymentDisplay(b),
-      'Status': getStatusInfo(b).label,
+      'Status': getStatusInfo(b).label
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -251,8 +251,8 @@ export default function RecentBeneficiariesWidget() {
               placeholder="Search by name or loan ref..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9"
-            />
+              className="pl-9 h-9" />
+
           </div>
           <Select value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
             <SelectTrigger className="w-full sm:w-[150px] h-9">
@@ -277,9 +277,9 @@ export default function RecentBeneficiariesWidget() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All States</SelectItem>
-              {states.map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
+              {states.map((s) =>
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+              )}
             </SelectContent>
           </Select>
           <Select value={branchFilter} onValueChange={setBranchFilter}>
@@ -289,9 +289,9 @@ export default function RecentBeneficiariesWidget() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Branches</SelectItem>
-              {filteredBranches.map((br) => (
-                <SelectItem key={br} value={br}>{br}</SelectItem>
-              ))}
+              {filteredBranches.map((br) =>
+              <SelectItem key={br} value={br}>{br}</SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -304,7 +304,7 @@ export default function RecentBeneficiariesWidget() {
             <tr className="border-b border-border bg-secondary/50">
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
@@ -316,26 +316,26 @@ export default function RecentBeneficiariesWidget() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {loading && (
-              <tr>
+            {loading &&
+            <tr>
                 <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                   <div className="animate-pulse">Loading recent beneficiaries...</div>
                 </td>
               </tr>
-            )}
-            {!loading && filtered.length === 0 && (
-              <tr>
+            }
+            {!loading && filtered.length === 0 &&
+            <tr>
                 <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
                   No beneficiaries found.
                 </td>
               </tr>
-            )}
+            }
             {!loading &&
-              filtered.map((b, idx) => {
-                const statusInfo = getStatusInfo(b);
-                const arrears = getArrearsAmount(b);
-                return (
-                  <tr key={b.id} className="hover:bg-secondary/30 transition-colors group">
+            filtered.map((b, idx) => {
+              const statusInfo = getStatusInfo(b);
+              const arrears = getArrearsAmount(b);
+              return (
+                <tr key={b.id} className="hover:bg-secondary/30 transition-colors group">
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="flex items-center gap-2.5 group-hover:underline">
@@ -374,29 +374,29 @@ export default function RecentBeneficiariesWidget() {
                       {formatCurrency(Number(b.outstanding_balance))}
                     </td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {arrears > 0 ? (
-                        <span className="text-destructive font-medium">{formatCurrency(arrears)}</span>
-                      ) : (
-                        <span className="text-muted-foreground">₦0</span>
-                      )}
+                      {arrears > 0 ?
+                    <span className="text-destructive font-medium">{formatCurrency(arrears)}</span> :
+
+                    <span className="text-muted-foreground">₦0</span>
+                    }
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       {getLastPaymentDisplay(b)}
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn(
-                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap',
-                        statusInfo.className
-                      )}>
+                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap',
+                      statusInfo.className
+                    )}>
                         {statusInfo.label}
                       </span>
                     </td>
-                  </tr>
-                );
-              })}
+                  </tr>);
+
+            })}
           </tbody>
         </table>
       </div>
-    </div>
-  );
+    </div>);
+
 }
