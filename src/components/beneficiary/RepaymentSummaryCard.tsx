@@ -28,14 +28,19 @@ export default function RepaymentSummaryCard({
   const paidMonthSet = new Set(transactions.map((t) => t.month_for));
   const monthsPaid = paidMonthSet.size;
 
-  // Overdue: due date <= today (at day level), not paid
-  const overdueMonths = schedule.filter((entry) => {
-    const dueDay = stripTime(entry.dueDate);
-    return dueDay <= today && !paidMonthSet.has(entry.month);
-  }).length;
+  // Find the earliest unpaid installment's due date
+  const earliestUnpaidEntry = schedule.find((entry) => !paidMonthSet.has(entry.month));
+  
+  // Days overdue: difference between today and earliest unpaid due date (only if past due)
+  let daysOverdue = 0;
+  if (earliestUnpaidEntry) {
+    const dueDay = stripTime(earliestUnpaidEntry.dueDate);
+    if (today > dueDay) {
+      daysOverdue = Math.floor((today.getTime() - dueDay.getTime()) / (1000 * 60 * 60 * 24));
+    }
+  }
 
   // In Arrears: due date < today (strictly before, at day level), not paid
-  // This excludes the month whose due date IS today
   const monthsInArrears = schedule.filter((entry) => {
     const dueDay = stripTime(entry.dueDate);
     return dueDay < today && !paidMonthSet.has(entry.month);
@@ -70,16 +75,17 @@ export default function RepaymentSummaryCard({
           </div>
         </div>
 
-        {/* Months Overdue */}
+        {/* Days Overdue */}
         <div className="flex items-start gap-3">
-          <div className={`p-2.5 rounded-lg ${overdueMonths > 0 ? 'bg-warning/10 text-warning' : 'bg-secondary text-muted-foreground'}`}>
+          <div className={`p-2.5 rounded-lg ${daysOverdue > 0 ? (daysOverdue >= 90 ? 'bg-destructive/10 text-destructive' : daysOverdue >= 30 ? 'bg-orange-500/10 text-orange-500' : 'bg-destructive/10 text-destructive') : 'bg-success/10 text-success'}`}>
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Months Overdue</p>
-            <p className={`text-xl font-bold ${overdueMonths > 0 ? 'text-warning' : ''}`}>
-              {overdueMonths}
-              {overdueMonths > 0 && monthsInArrears === 0 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-warning animate-pulse-dot" />}
+            <p className="text-xs text-muted-foreground">Days Overdue</p>
+            <p className={`text-xl font-bold ${daysOverdue >= 90 ? 'text-destructive' : daysOverdue >= 30 ? 'text-orange-500' : daysOverdue > 0 ? 'text-destructive' : 'text-success'}`}>
+              {daysOverdue}
+              {daysOverdue > 0 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-destructive animate-pulse-dot" />}
+              {daysOverdue === 0 && <span className="inline-block ml-2 w-2 h-2 rounded-full bg-success" />}
             </p>
           </div>
         </div>
