@@ -127,8 +127,9 @@ export function getMonthsDue(commencementDate: string | Date, tenorMonths: numbe
     (today.getFullYear() - comm.getFullYear()) * 12 +
     (today.getMonth() - comm.getMonth());
 
-  // Check if today's day-of-month >= commencement's day-of-month
-  const monthsDue = today.getDate() >= comm.getDate() ? monthsDiff + 1 : monthsDiff;
+  // A month is only "due" (and potentially overdue) once today is STRICTLY AFTER its due date.
+  // On the due date itself, the payment is not yet overdue.
+  const monthsDue = today.getDate() > comm.getDate() ? monthsDiff + 1 : monthsDiff;
   return Math.min(Math.max(monthsDue, 0), tenorMonths);
 }
 
