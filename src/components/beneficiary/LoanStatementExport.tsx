@@ -6,6 +6,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import fmbnLogo from '@/assets/fmbn_logo.png';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -26,6 +27,10 @@ interface LoanStatementExportProps {
   commencementDate: Date;
   terminationDate: Date;
   creatorProfile?: CreatorProfile | null;
+}
+
+function formatDateTime(d: Date): string {
+  return `${formatDate(d)} at ${d.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
 }
 
 function buildStatementData(
@@ -66,6 +71,20 @@ function getCreatorLine(cp?: CreatorProfile | null): string {
   return `${cp.full_name || 'Unknown'} — ${cp.state || '—'}, ${cp.bank_branch || '—'}`;
 }
 
+async function getLogoBase64(): Promise<string> {
+  try {
+    const response = await fetch(fmbnLogo);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
+}
+
 export function exportToExcel(
   beneficiary: Beneficiary,
   schedule: ScheduleEntry[],
@@ -74,10 +93,11 @@ export function exportToExcel(
 ) {
   const wb = XLSX.utils.book_new();
   const data = buildStatementData(beneficiary, schedule, transactions);
+  const now = new Date();
 
   const summaryData = [
     ['HOME RENOVATION LOAN STATEMENT OF ACCOUNT'],
-    ['Federal Mortgage Bank of Nigeria'],
+    ['FEDERAL MORTGAGE BANK OF NIGERIA'],
     [],
     ['Beneficiary Name', beneficiary.name],
     ['Loan Reference Number', beneficiary.employee_id],
@@ -103,7 +123,7 @@ export function exportToExcel(
     ['Originating State', props.creatorProfile?.state || beneficiary.state || '—'],
     ['Originating Branch', props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—'],
     ['Loan Creation Date', formatDate(new Date(beneficiary.created_at))],
-    ['Date Printed', formatDate(new Date())],
+    ['Date & Time Printed', formatDateTime(now)],
   ];
   const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
   summaryWs['!cols'] = [{ wch: 25 }, { wch: 40 }];
@@ -134,17 +154,27 @@ export async function exportToPDF(
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const data = buildStatementData(beneficiary, schedule, transactions);
+  const now = new Date();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const centerX = pageWidth / 2;
+
+  // Logo centered at top
+  const logoBase64 = await getLogoBase64();
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', centerX - 8, 4, 16, 16);
+  }
 
   // Bold Title
-  doc.setFontSize(18);
+  const titleY = logoBase64 ? 24 : 14;
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', 148, 14, { align: 'center' });
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Federal Mortgage Bank of Nigeria', 148, 21, { align: 'center' });
+  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', centerX, titleY, { align: 'center' });
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, titleY + 7, { align: 'center' });
 
   // Left column info
-  const infoY = 30;
+  const infoY = titleY + 15;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(`Beneficiary: ${beneficiary.name}`, 14, infoY);
@@ -166,7 +196,7 @@ export async function exportToPDF(
   doc.setFont('helvetica', 'normal');
   doc.text(`Loan Creation Date: ${formatDate(new Date(beneficiary.created_at))}`, 14, originY + 5);
   doc.text(`Originating State & Branch: ${props.creatorProfile?.state || beneficiary.state || '—'}, ${props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—'}`, 150, originY);
-  doc.text(`Date Printed: ${formatDate(new Date())}`, 150, originY + 5);
+  doc.text(`Date & Time Printed: ${formatDateTime(now)}`, 150, originY + 5);
 
   // Table
   autoTable(doc, {
@@ -197,7 +227,7 @@ export async function exportToPDF(
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'italic');
-    doc.text(`Generated: ${formatDate(new Date())} | Page ${i} of ${pageCount}`, 148, 200, { align: 'center' });
+    doc.text(`Generated: ${formatDateTime(now)} | Page ${i} of ${pageCount}`, centerX, 200, { align: 'center' });
   }
 
   doc.save(`Loan_Statement_${beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.pdf`);
@@ -214,6 +244,11 @@ export function printStatement(
   const creatorLine = getCreatorLine(props.creatorProfile);
   const originState = props.creatorProfile?.state || beneficiary.state || '—';
   const originBranch = props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—';
+  const now = new Date();
+  const dateTimePrinted = formatDateTime(now);
+
+  // Resolve logo URL for print
+  const logoUrl = new URL(fmbnLogo, window.location.origin).href;
 
   const html = `
     <html>
@@ -221,8 +256,10 @@ export function printStatement(
       <title>Loan Statement - ${beneficiary.name}</title>
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; font-size: 11px; }
+        .header { text-align: center; margin-bottom: 12px; }
+        .header img { width: 60px; height: 60px; margin-bottom: 6px; }
         h1 { font-size: 20px; text-align: center; margin-bottom: 4px; font-weight: bold; }
-        h2 { font-size: 12px; text-align: center; font-weight: normal; color: #666; margin-top: 0; }
+        h2 { font-size: 14px; text-align: center; font-weight: bold; color: #006040; margin-top: 0; margin-bottom: 12px; }
         .info { display: flex; justify-content: space-between; margin: 16px 0; }
         .info-col { }
         .info-row { margin: 3px 0; }
@@ -240,8 +277,11 @@ export function printStatement(
       </style>
     </head>
     <body>
+      <div class="header">
+        <img src="${logoUrl}" alt="FMBN Logo" />
+      </div>
       <h1>HOME RENOVATION LOAN STATEMENT OF ACCOUNT</h1>
-      <h2>Federal Mortgage Bank of Nigeria</h2>
+      <h2>FEDERAL MORTGAGE BANK OF NIGERIA</h2>
       <div class="info">
         <div class="info-col">
           <div class="info-row"><span class="label">Beneficiary:</span> ${beneficiary.name}</div>
@@ -263,7 +303,7 @@ export function printStatement(
         </div>
         <div class="info-col">
           <div class="info-row"><span class="label">Originating State & Branch:</span> ${originState}, ${originBranch}</div>
-          <div class="info-row"><span class="label">Date Printed:</span> ${formatDate(new Date())}</div>
+          <div class="info-row"><span class="label">Date & Time Printed:</span> ${dateTimePrinted}</div>
         </div>
       </div>
       <table>
@@ -292,7 +332,7 @@ export function printStatement(
           `).join('')}
         </tbody>
       </table>
-      <div class="footer">Generated: ${formatDate(new Date())}</div>
+      <div class="footer">Generated: ${dateTimePrinted}</div>
     </body>
     </html>
   `;
