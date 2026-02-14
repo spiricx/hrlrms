@@ -42,16 +42,16 @@ function useTheme() {
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/add-beneficiary', label: 'New Loan', icon: PlusCircle },
+  { path: '/beneficiaries', label: 'Beneficiaries', icon: Users },
   { path: '/bio-data', label: 'Bio Data', icon: FileText },
   { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/batch-repayment', label: 'Batch Repayment', icon: Package, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/loan-reconciliation', label: 'Reconciliation', icon: ArrowLeftRight, roles: ['admin', 'loan_officer'] as string[] },
-  { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
+  { path: '/loan-history', label: 'Loan History', icon: FileText },
   { path: '/staff-directory', label: 'Staff Management', icon: UserCog, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/staff-performance', label: 'Staff Performance', icon: BarChart3, roles: ['admin', 'loan_officer'] as string[] },
-  { path: '/loan-history', label: 'Loan History', icon: FileText },
+  { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
   { path: '/reports', label: 'Reports', icon: FileText },
 ];
 
