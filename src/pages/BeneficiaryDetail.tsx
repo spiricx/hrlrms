@@ -158,7 +158,7 @@ export default function BeneficiaryDetail() {
             {creatorProfile.full_name || 'Unknown'} — {creatorProfile.state || '—'}, {creatorProfile.bank_branch || '—'}
             {' | '}
             <span className="font-semibold text-foreground">Account Created:</span>{' '}
-            {formatDate(new Date(beneficiary.created_at))}
+            {formatDate(new Date(beneficiary.created_at))} at {new Date(beneficiary.created_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}
           </div>
         )}
 
