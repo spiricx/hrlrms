@@ -42,6 +42,7 @@ export default function BeneficiaryDetail() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creatorProfile, setCreatorProfile] = useState<{ full_name: string; state: string; bank_branch: string } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -58,6 +59,18 @@ export default function BeneficiaryDetail() {
         setError('Beneficiary not found.');
       } else {
         setBeneficiary(benRes.data);
+
+        // Fetch creator profile if created_by exists
+        if (benRes.data.created_by) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('full_name, state, bank_branch')
+            .eq('user_id', benRes.data.created_by)
+            .maybeSingle();
+          if (profileData) {
+            setCreatorProfile(profileData);
+          }
+        }
       }
 
       if (!txRes.error && txRes.data) {
@@ -138,6 +151,13 @@ export default function BeneficiaryDetail() {
           </div>
           <StatusBadge status={beneficiary.status} />
         </div>
+
+        {creatorProfile && (
+          <div className="mt-3 text-sm text-muted-foreground border-t border-border pt-3">
+            <span className="font-semibold text-foreground">Loan Created By:</span>{' '}
+            {creatorProfile.full_name || 'Unknown'} — {creatorProfile.state || '—'}, {creatorProfile.bank_branch || '—'}
+          </div>
+        )}
 
         <div className="grid gap-4 mt-6 sm:grid-cols-2 lg:grid-cols-4">
           {infoItems.map((item) => (
