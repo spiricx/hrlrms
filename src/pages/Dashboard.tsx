@@ -73,8 +73,9 @@ export default function Dashboard() {
           const firstUnpaidMonth = paidMonths + 1;
           const firstUnpaidDate = new Date(comm);
           firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() + (firstUnpaidMonth - 1));
-          const graceEnd = new Date(firstUnpaidDate.getFullYear(), firstUnpaidDate.getMonth() + 1, 1);
-          const dpd = Math.max(0, Math.floor((today.getTime() - graceEnd.getTime()) / (1000 * 60 * 60 * 24)));
+          const dueDateStripped = stripTime(firstUnpaidDate);
+          // DPD is inclusive: on the due date = 1 day past due
+          const dpd = Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
 
           if (dpd >= 90) {
             defaulted++;

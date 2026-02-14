@@ -117,22 +117,28 @@ export function stripTime(d: Date): Date {
  * Calculate how many monthly instalments are due as of today (day-level).
  * A month's payment is due when today >= its due date.
  * Month i due date = commencement + (i-1) months.
+ *
+ * On the commencement date itself, the first instalment is already due (1 month due).
  */
 export function getMonthsDue(commencementDate: string | Date, tenorMonths: number): number {
   const today = stripTime(new Date());
   const comm = stripTime(new Date(commencementDate));
   if (today < comm) return 0;
 
-  const monthsDiff =
-    (today.getFullYear() - comm.getFullYear()) * 12 +
-    (today.getMonth() - comm.getMonth());
-
-  // The ENTIRE current calendar month is the repayment window.
-  // A month's installment is only considered "due" (past grace) once the
-  // current month has fully ended and we've entered the next calendar month.
-  // E.g. comm Jan 14 → month-1 due in Jan → grace through Feb → overdue on Mar 1.
-  const monthsDue = Math.max(0, monthsDiff - 1);
-  return Math.min(monthsDue, tenorMonths);
+  // Iterate through the schedule to count instalments whose due date has arrived.
+  // This handles month-end edge cases correctly and is consistent with
+  // the amortization schedule generation in calculateLoan().
+  let count = 0;
+  for (let i = 1; i <= tenorMonths; i++) {
+    const dueDate = new Date(comm);
+    dueDate.setMonth(dueDate.getMonth() + (i - 1));
+    if (today >= stripTime(dueDate)) {
+      count = i;
+    } else {
+      break;
+    }
+  }
+  return count;
 }
 
 export interface OverdueArrearsInfo {
