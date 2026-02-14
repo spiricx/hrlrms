@@ -156,6 +156,9 @@ export default function BeneficiaryDetail() {
           <div className="mt-3 text-sm text-muted-foreground border-t border-border pt-3">
             <span className="font-semibold text-foreground">Loan Created By:</span>{' '}
             {creatorProfile.full_name || 'Unknown'} — {creatorProfile.state || '—'}, {creatorProfile.bank_branch || '—'}
+            {' | '}
+            <span className="font-semibold text-foreground">Account Created:</span>{' '}
+            {formatDate(new Date(beneficiary.created_at))}
           </div>
         )}
 
@@ -192,6 +195,7 @@ export default function BeneficiaryDetail() {
         totalInterest={loan.totalInterest}
         commencementDate={loan.commencementDate}
         terminationDate={loan.terminationDate}
+        creatorProfile={creatorProfile}
       />
 
       {/* Tabs */}
