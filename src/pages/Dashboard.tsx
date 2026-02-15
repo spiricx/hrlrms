@@ -127,7 +127,13 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard
+          label="Total Loan Facilities"
+          value={String(beneficiaries.length)}
+          icon={<Users className="w-5 h-5" />}
+          trend={`${activeCount} active · ${defaultedCount} defaulted`} />
+
         <StatCard
           label="Total Disbursed"
           value={formatCurrency(totalDisbursed)}
