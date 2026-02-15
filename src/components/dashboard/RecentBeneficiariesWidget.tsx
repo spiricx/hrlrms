@@ -334,7 +334,8 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
             <tr className="border-b border-border bg-secondary/50">
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
@@ -348,14 +349,14 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
           <tbody className="divide-y divide-border">
             {loading &&
             <tr>
-                <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">
                   <div className="animate-pulse">Loading recent beneficiaries...</div>
                 </td>
               </tr>
             }
             {!loading && filtered.length === 0 &&
             <tr>
-                <td colSpan={11} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">
                   No beneficiaries found.
                 </td>
               </tr>
@@ -387,6 +388,9 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
                       <Link to={`/beneficiary/${b.id}`} className="text-accent hover:underline font-mono text-xs">
                         {b.employee_id}
                       </Link>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-xs font-mono text-muted-foreground">
+                      {b.loan_reference_number || '—'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs hidden sm:table-cell">
                       {b.state || '—'}
