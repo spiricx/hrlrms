@@ -145,8 +145,8 @@ Developed by: SpiricX Dev (Loan Processing Unit) FMBN</p>
             </div>
             <span className="hidden text-sm font-medium sm:block">
               {user?.user_metadata?.surname && user?.user_metadata?.first_name ?
-              `${user.user_metadata.surname}, ${user.user_metadata.first_name}` :
-              user?.email?.split('@')[0]}
+              `Logged in as: ${user.user_metadata.surname}, ${user.user_metadata.first_name}` :
+              `Logged in as: ${user?.email?.split('@')[0]}`}
             </span>
             <button
               onClick={signOut}

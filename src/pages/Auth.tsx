@@ -44,12 +44,13 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: form.email,
           password: form.password
         });
         if (error) throw error;
-        toast({ title: 'Welcome back!', description: 'Signed in successfully.' });
+        const surname = data.user?.user_metadata?.surname || data.user?.email?.split('@')[0] || 'User';
+        toast({ title: `Welcome back, ${surname}!`, description: 'You have signed in successfully.' });
       } else {
         if (!form.surname || !form.firstName || !form.staffIdNo || !form.state || !form.bankBranch) {
           toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
