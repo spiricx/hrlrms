@@ -222,20 +222,35 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
     return `${formatPaymentDate(b.lastTransaction.date_paid)} (${formatCurrency(Number(b.lastTransaction.amount))})`;
   };
 
-  const handleExport = () => {
-    const rows = filtered.map((b, idx) => ({
-      '#': idx + 1,
-      'Beneficiary Name': b.name,
-      'Loan Ref': b.employee_id,
-      'State': b.state || '—',
-      'Branch': b.bank_branch || '—',
-      'Tenor': formatTenor(b.tenor_months),
-      'Loan Amount': Number(b.loan_amount),
-      'Outstanding Balance': Number(b.outstanding_balance),
-      'Arrears': getArrearsAmount(b),
-      'Last Payment': getLastPaymentDisplay(b),
-      'Status': getStatusInfo(b).label
-    }));
+   const handleExport = () => {
+    const rows = filtered.map((b, idx) => {
+      const oa = getOverdueAndArrears(
+        b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+        Number(b.total_paid), Number(b.outstanding_balance), b.status
+      );
+      const dpd = oa.monthsInArrears * 30;
+      return {
+        '#': idx + 1,
+        'Beneficiary': b.name,
+        'Organization': b.department || '—',
+        'Loan Reference Number': b.loan_reference_number || '—',
+        'NHF No': b.employee_id,
+        'Gender': b.gender || '—',
+        'State': b.state || '—',
+        'Branch': b.bank_branch || '—',
+        'Tenor': formatTenor(b.tenor_months),
+        'Loan Amount': Number(b.loan_amount),
+        'Monthly Repayment': Number(b.monthly_emi),
+        'Outstanding': Number(b.outstanding_balance),
+        'Total Amount Paid': Number(b.total_paid),
+        'Last Payment Amount': b.lastTransaction ? Number(b.lastTransaction.amount) : 0,
+        'Last Payment Date': b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—',
+        'Age of Arrears': dpd > 0 ? `${dpd} Days` : '—',
+        'Months of Arrears': oa.monthsInArrears,
+        'Amount in Arrears': oa.arrearsAmount,
+        'Status': getStatusInfo(b).label
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Recent Beneficiaries');
@@ -334,29 +349,36 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
             <tr className="border-b border-border bg-secondary/50">
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref No</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Gender</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">State</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Branch</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
               <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Arrears</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Paid</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Pmt Amt</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Pmt Date</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Age of Arrears</th>
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mths Arrears</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amt in Arrears</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {loading &&
             <tr>
-                <td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={19} className="px-4 py-12 text-center text-muted-foreground">
                   <div className="animate-pulse">Loading recent beneficiaries...</div>
                 </td>
               </tr>
             }
             {!loading && filtered.length === 0 &&
             <tr>
-                <td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={19} className="px-4 py-12 text-center text-muted-foreground">
                   No beneficiaries found.
                 </td>
               </tr>
@@ -364,10 +386,16 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
             {!loading &&
             filtered.map((b, idx) => {
               const statusInfo = getStatusInfo(b);
-              const arrears = getArrearsAmount(b);
+              const oa = getOverdueAndArrears(
+                b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+                Number(b.total_paid), Number(b.outstanding_balance), b.status
+              );
+              const dpd = oa.monthsInArrears * 30;
               return (
                 <tr key={b.id} className="table-row-highlight group">
+                    {/* # */}
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
+                    {/* Beneficiary */}
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="flex items-center gap-2.5 group-hover:underline">
                         <Avatar className="h-7 w-7 text-[10px]">
@@ -377,51 +405,83 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
                         </Avatar>
                         <div className="min-w-0">
                           <span className="font-medium whitespace-nowrap block">{b.name}</span>
-                          {/* On small screens show state/branch under name */}
                           <span className="text-[11px] text-muted-foreground sm:hidden block">
                             {b.state || '—'} · {b.bank_branch || '—'}
                           </span>
                         </div>
                       </Link>
                     </td>
+                    {/* Organization */}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{b.department || '—'}</td>
+                    {/* Loan Reference Number */}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs font-mono text-muted-foreground">
+                      {b.loan_reference_number || '—'}
+                    </td>
+                    {/* NHF No */}
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="text-accent hover:underline font-mono text-xs">
                         {b.employee_id}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs font-mono text-muted-foreground">
-                      {b.loan_reference_number || '—'}
-                    </td>
+                    {/* Gender */}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{b.gender || '—'}</td>
+                    {/* State */}
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs hidden sm:table-cell">
                       {b.state || '—'}
                     </td>
+                    {/* Branch */}
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs hidden sm:table-cell">
                       {b.bank_branch || '—'}
                     </td>
+                    {/* Tenor */}
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                       {formatTenor(b.tenor_months)}
                     </td>
+                    {/* Loan Amount */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {formatCurrency(Number(b.loan_amount))}
                     </td>
+                    {/* Monthly Repayment */}
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {formatCurrency(Number(b.monthly_emi))}
+                    </td>
+                    {/* Outstanding */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {formatCurrency(Number(b.outstanding_balance))}
                     </td>
+                    {/* Total Amount Paid */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {arrears > 0 ?
-                    <span className="text-destructive font-medium">{formatCurrency(arrears)}</span> :
-
-                    <span className="text-muted-foreground">₦0</span>
-                    }
+                      {formatCurrency(Number(b.total_paid))}
                     </td>
+                    {/* Last Payment Amount */}
+                    <td className="px-4 py-3 text-right whitespace-nowrap text-xs">
+                      {b.lastTransaction ? formatCurrency(Number(b.lastTransaction.amount)) : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    {/* Last Payment Date */}
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
-                      {getLastPaymentDisplay(b)}
+                      {b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—'}
                     </td>
+                    {/* Age of Arrears (DPD) */}
+                    <td className={cn('px-4 py-3 whitespace-nowrap text-xs', dpd > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground')}>
+                      {dpd > 0 ? `${dpd} Days` : '—'}
+                    </td>
+                    {/* Months of Arrears */}
+                    <td className={cn('px-4 py-3 text-center whitespace-nowrap text-xs', oa.monthsInArrears > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground')}>
+                      {oa.monthsInArrears}
+                    </td>
+                    {/* Amount in Arrears */}
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {oa.arrearsAmount > 0 ?
+                        <span className="text-destructive font-medium">{formatCurrency(oa.arrearsAmount)}</span> :
+                        <span className="text-muted-foreground">₦0</span>
+                      }
+                    </td>
+                    {/* Status */}
                     <td className="px-4 py-3">
                       <span className={cn(
-                      'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap',
-                      statusInfo.className
-                    )}>
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap',
+                        statusInfo.className
+                      )}>
                         {statusInfo.label}
                       </span>
                     </td>
