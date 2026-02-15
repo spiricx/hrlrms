@@ -4,7 +4,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, Award, Target, BarChart3, Download, Printer } from 'lucide-react';
+import { TrendingUp, Award, Target, BarChart3, Download, Printer, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -13,7 +14,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 
-type StaffMember = { id: string; title: string; surname: string; first_name: string; staff_id: string; state: string; branch: string; designation: string; email: string; status: string; };
+type StaffMember = { id: string; title: string; surname: string; first_name: string; staff_id: string; state: string; branch: string; designation: string; email: string; status: string; nhf_number: string | null; };
 type Beneficiary = { id: string; state: string; bank_branch: string; status: string; loan_amount: number; outstanding_balance: number; total_paid: number; monthly_emi: number; created_by: string | null; name: string; employee_id: string; tenor_months: number; interest_rate: number; commencement_date: string; termination_date: string; loan_reference_number: string | null; };
 type Transaction = { id: string; beneficiary_id: string; amount: number; date_paid: string; recorded_by: string | null; };
 
@@ -35,12 +36,13 @@ export default function StaffPerformance() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     (async () => {
       const [s, b, t] = await Promise.all([
-        supabase.from('staff_members').select('id,title,surname,first_name,staff_id,state,branch,designation,email,status'),
+        supabase.from('staff_members').select('id,title,surname,first_name,staff_id,state,branch,designation,email,status,nhf_number'),
         supabase.from('beneficiaries').select('id,state,bank_branch,status,loan_amount,outstanding_balance,total_paid,monthly_emi,created_by,name,employee_id,tenor_months,interest_rate,commencement_date,termination_date,loan_reference_number'),
         supabase.from('transactions').select('id,beneficiary_id,amount,date_paid,recorded_by'),
       ]);
@@ -56,7 +58,14 @@ export default function StaffPerformance() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    return staff.filter(s => filterState === 'all' || s.state === filterState).map(s => {
+    const q = searchQuery.toLowerCase().trim();
+    return staff.filter(s => {
+      const matchesState = filterState === 'all' || s.state === filterState;
+      if (!matchesState) return false;
+      if (!q) return true;
+      const fullName = `${s.title} ${s.surname} ${s.first_name}`.toLowerCase();
+      return fullName.includes(q) || s.staff_id.toLowerCase().includes(q) || (s.nhf_number || '').toLowerCase().includes(q);
+    }).map(s => {
       const myBeneficiaries = beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
       const nplBens = myBeneficiaries.filter(b => b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3);
@@ -88,7 +97,7 @@ export default function StaffPerformance() {
         beneficiaries: myBeneficiaries,
       };
     }).sort((a, b) => b.recoveryMTD - a.recoveryMTD);
-  }, [staff, beneficiaries, transactions, filterState]);
+  }, [staff, beneficiaries, transactions, filterState, searchQuery]);
 
   // Loan portfolio by staff
   const staffPortfolio = useMemo(() => {
@@ -337,6 +346,10 @@ export default function StaffPerformance() {
           <p className="text-sm text-muted-foreground">Live metrics computed from loan & transaction data</p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search by Staff ID, Name or NHF..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+          </div>
           <Select value={filterState} onValueChange={setFilterState}>
             <SelectTrigger className="w-48"><SelectValue placeholder="Filter by State" /></SelectTrigger>
             <SelectContent>
