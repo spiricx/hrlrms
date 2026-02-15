@@ -128,9 +128,15 @@ Developed by: SpiricX Dev (Loan Processing Unit) FMBN</p>
           <button
             className="lg:hidden p-2 rounded-lg hover:bg-secondary"
             onClick={() => setMobileOpen(!mobileOpen)}>
-
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-semibold text-foreground">
+              {user?.user_metadata?.surname && user?.user_metadata?.first_name
+                ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
+                : user?.email?.split('@')[0] || 'User'}
+            </span>
+          </div>
           <div className="flex-1" />
           <div className="flex items-center gap-3">
             <button
