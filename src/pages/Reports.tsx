@@ -6,11 +6,12 @@ import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import ReportsExportButtons from '@/components/reports/ReportsExport';
 
 type Beneficiary = Tables<'beneficiaries'>;
 
 export default function Reports() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const isAdmin = hasRole('admin');
 
   const [stateFilter, setStateFilter] = useState('all');
@@ -20,6 +21,15 @@ export default function Reports() {
   const [yearFilter, setYearFilter] = useState('all');
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [staffName, setStaffName] = useState('');
+
+  // Fetch current user's profile name
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+      if (data?.full_name) setStaffName(data.full_name);
+    });
+  }, [user]);
 
   useEffect(() => {
     const fetch = async () => {
@@ -141,6 +151,19 @@ export default function Reports() {
           <h1 className="text-3xl font-bold font-display">Reports & Analytics</h1>
           <p className="mt-1 text-sm text-muted-foreground">Loan performance and portfolio insights</p>
         </div>
+        <ReportsExportButtons data={{
+          totalFacilities,
+          computedActive,
+          computedDefaulted,
+          completedCount,
+          totalDisbursed,
+          totalCollected,
+          totalOutstanding,
+          recoveryRate: totalDisbursed > 0 ? `${Math.round(totalCollected / totalDisbursed * 100)}%` : '0%',
+          deptChartData,
+          filters: { month: monthFilter, year: yearFilter, state: stateFilter, branch: branchFilter, organisation: orgFilter },
+          staffName: staffName || 'N/A',
+        }} />
       </div>
 
       {/* Filters */}
