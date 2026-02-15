@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Download, FileText, Printer, Eye, Pencil } from 'lucide-react';
-import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor, getOverdueAndArrears } from '@/lib/loanCalculations';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -21,7 +21,6 @@ const columns = [
   'State', 'Bank Branch', 'Loan Ref No.', 'Loan Amount', 'Tenor (Months)',
   'Monthly Repayment', 'Disbursement Date',
 ];
-
 
 type Beneficiary = {
   id: string;
@@ -56,10 +55,6 @@ type Beneficiary = {
   outstanding_balance: number;
   total_paid: number;
 };
-
-function getField(b: Beneficiary, label: string, value: string) {
-  return { label, value };
-}
 
 function buildFields(b: Beneficiary) {
   return [
@@ -100,6 +95,18 @@ function buildFields(b: Beneficiary) {
       { label: 'Total Paid', value: formatCurrency(Number(b.total_paid)) },
       { label: 'Outstanding Balance', value: formatCurrency(Number(b.outstanding_balance)) },
     ]},
+  ];
+}
+
+function getArrearsFields(b: Beneficiary, lastPaymentDate: string | null) {
+  const oa = getOverdueAndArrears(
+    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+    Number(b.total_paid), Number(b.outstanding_balance), 'active'
+  );
+  return [
+    { label: 'Date of Last Loan Repayment', value: lastPaymentDate ? format(new Date(lastPaymentDate), 'dd/MM/yyyy') : '—' },
+    { label: 'Arrears Amount', value: oa.arrearsAmount > 0 ? formatCurrency(oa.arrearsAmount) : '₦0' },
+    { label: 'Months in Arrears', value: String(oa.monthsInArrears) },
   ];
 }
 
@@ -172,6 +179,98 @@ function printIndividual(b: Beneficiary) {
     </body></html>`;
   const win = window.open('', '_blank');
   if (win) { win.document.write(html); win.document.close(); win.print(); }
+}
+
+function BioDataDetailContent({ beneficiary, editing, setEditing, setSelected, queryClient }: {
+  beneficiary: Beneficiary;
+  editing: boolean;
+  setEditing: (v: boolean) => void;
+  setSelected: (v: Beneficiary | null) => void;
+  queryClient: ReturnType<typeof useQueryClient>;
+}) {
+  const { data: lastPaymentDate } = useQuery({
+    queryKey: ['last-payment', beneficiary.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('transactions')
+        .select('date_paid')
+        .eq('beneficiary_id', beneficiary.id)
+        .order('date_paid', { ascending: false })
+        .limit(1)
+        .single();
+      return data?.date_paid || null;
+    },
+  });
+
+  const fullName = `${beneficiary.surname || beneficiary.name?.split(' ')[0] || ''} ${beneficiary.first_name || beneficiary.name?.split(' ')[1] || ''} ${beneficiary.other_name || ''}`.trim();
+  const sections = buildFields(beneficiary);
+  const arrearsFields = getArrearsFields(beneficiary, lastPaymentDate ?? null);
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="text-xl">{fullName}</DialogTitle>
+        <p className="text-sm text-muted-foreground">Individual Loan Applicant Bio Data</p>
+      </DialogHeader>
+
+      {editing ? (
+        <BioDataEditForm
+          beneficiary={beneficiary}
+          onSaved={() => {
+            setEditing(false);
+            setSelected(null);
+            queryClient.invalidateQueries({ queryKey: ['bio-data'] });
+          }}
+          onCancel={() => setEditing(false)}
+        />
+      ) : (
+        <>
+          <div className="flex gap-2 mb-4">
+            <Button variant="default" size="sm" onClick={() => setEditing(true)}>
+              <Pencil className="w-4 h-4 mr-1.5" /> Edit
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportIndividualExcel(beneficiary)}>
+              <Download className="w-4 h-4 mr-1.5" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportIndividualPDF(beneficiary)}>
+              <FileText className="w-4 h-4 mr-1.5" /> PDF
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => printIndividual(beneficiary)}>
+              <Printer className="w-4 h-4 mr-1.5" /> Print
+            </Button>
+          </div>
+
+          <div className="space-y-5">
+            {sections.map(s => (
+              <div key={s.section}>
+                <h3 className="text-sm font-semibold text-primary mb-2 border-b border-border pb-1">{s.section}</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  {s.fields.map(f => (
+                    <div key={f.label} className="flex justify-between py-1.5 border-b border-border/40">
+                      <span className="text-xs text-muted-foreground">{f.label}</span>
+                      <span className="text-sm font-medium text-right">{f.value || '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {/* Repayment & Arrears Section */}
+            <div>
+              <h3 className="text-sm font-semibold text-destructive mb-2 border-b border-destructive/30 pb-1">Repayment & Arrears</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                {arrearsFields.map(f => (
+                  <div key={f.label} className="flex justify-between py-1.5 border-b border-border/40">
+                    <span className="text-xs text-muted-foreground">{f.label}</span>
+                    <span className="text-sm font-medium text-right">{f.value || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
 }
 
 export default function BioData() {
@@ -355,63 +454,13 @@ export default function BioData() {
       {/* Individual Bio Data Detail Dialog */}
       <Dialog open={!!selected} onOpenChange={(open) => { if (!open) { setSelected(null); setEditing(false); } }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          {selected && (() => {
-            const fullName = `${selected.surname || selected.name?.split(' ')[0] || ''} ${selected.first_name || selected.name?.split(' ')[1] || ''} ${selected.other_name || ''}`.trim();
-            const sections = buildFields(selected);
-            return (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="text-xl">{fullName}</DialogTitle>
-                  <p className="text-sm text-muted-foreground">Individual Loan Applicant Bio Data</p>
-                </DialogHeader>
-
-                {editing ? (
-                  <BioDataEditForm
-                    beneficiary={selected}
-                    onSaved={() => {
-                      setEditing(false);
-                      setSelected(null);
-                      queryClient.invalidateQueries({ queryKey: ['bio-data'] });
-                    }}
-                    onCancel={() => setEditing(false)}
-                  />
-                ) : (
-                  <>
-                    <div className="flex gap-2 mb-4">
-                      <Button variant="default" size="sm" onClick={() => setEditing(true)}>
-                        <Pencil className="w-4 h-4 mr-1.5" /> Edit
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => exportIndividualExcel(selected)}>
-                        <Download className="w-4 h-4 mr-1.5" /> Excel
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => exportIndividualPDF(selected)}>
-                        <FileText className="w-4 h-4 mr-1.5" /> PDF
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => printIndividual(selected)}>
-                        <Printer className="w-4 h-4 mr-1.5" /> Print
-                      </Button>
-                    </div>
-
-                    <div className="space-y-5">
-                      {sections.map(s => (
-                        <div key={s.section}>
-                          <h3 className="text-sm font-semibold text-primary mb-2 border-b border-border pb-1">{s.section}</h3>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-                            {s.fields.map(f => (
-                              <div key={f.label} className="flex justify-between py-1.5 border-b border-border/40">
-                                <span className="text-xs text-muted-foreground">{f.label}</span>
-                                <span className="text-sm font-medium text-right">{f.value || '—'}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </>
-            );
-          })()}
+          {selected && <BioDataDetailContent
+            beneficiary={selected}
+            editing={editing}
+            setEditing={setEditing}
+            setSelected={setSelected}
+            queryClient={queryClient}
+          />}
         </DialogContent>
       </Dialog>
     </div>
