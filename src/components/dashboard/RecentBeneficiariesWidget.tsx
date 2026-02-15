@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue, stripTime } from '@/lib/loanCalculations';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -76,7 +76,30 @@ function getArrearsAmount(b: Beneficiary): number {
 
 type FilterType = 'all' | 'current' | 'arrears' | 'npl' | 'repaid';
 
-export default function RecentBeneficiariesWidget() {
+function isDefaulted(b: Beneficiary): boolean {
+  if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
+  const comm = stripTime(new Date(b.commencement_date));
+  const today = stripTime(new Date());
+  const monthlyEmi = Number(b.monthly_emi);
+  const totalPaid = Number(b.total_paid);
+  if (monthlyEmi <= 0 || today < comm) return false;
+  const arrears = getOverdueAndArrears(b.commencement_date, b.tenor_months, monthlyEmi, totalPaid, Number(b.outstanding_balance), b.status);
+  if (arrears.overdueMonths > 0) {
+    const paidMonths = Math.floor(totalPaid / monthlyEmi);
+    const firstUnpaidDate = new Date(comm);
+    firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() + paidMonths);
+    const dueDateStripped = stripTime(firstUnpaidDate);
+    const dpd = Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
+    return dpd >= 90;
+  }
+  return false;
+}
+
+interface WidgetProps {
+  healthFilter?: 'all' | 'active' | 'defaulted';
+}
+
+export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: WidgetProps) {
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -181,8 +204,15 @@ export default function RecentBeneficiariesWidget() {
       });
     }
 
+    // Apply dashboard-level health filter
+    if (healthFilter === 'active') {
+      list = list.filter((b) => !isDefaulted(b) && Number(b.outstanding_balance) > 0 && b.status !== 'completed');
+    } else if (healthFilter === 'defaulted') {
+      list = list.filter((b) => isDefaulted(b));
+    }
+
     return list;
-  }, [beneficiaries, search, filter, stateFilter, branchFilter]);
+  }, [beneficiaries, search, filter, stateFilter, branchFilter, healthFilter]);
 
   const getLastPaymentDisplay = (b: BeneficiaryWithPayment): string => {
     if (Number(b.outstanding_balance) <= 0 && b.lastTransaction) {
