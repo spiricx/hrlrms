@@ -188,7 +188,7 @@ export default function Beneficiaries() {
                 'No payment recorded';
 
                 return (
-                  <tr key={b.id} className="hover:bg-secondary/30 transition-colors">
+                  <tr key={b.id} className="table-row-highlight">
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="font-medium hover:underline text-accent whitespace-nowrap">

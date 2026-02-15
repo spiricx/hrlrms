@@ -302,7 +302,7 @@ export default function BioData() {
                 <tr><td colSpan={columns.length + 1} className="px-4 py-12 text-center text-muted-foreground">No records found.</td></tr>
               ) : (
                 filtered.map((b, i) => (
-                  <tr key={b.id} className="border-b hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => setSelected(b as any)}>
+                  <tr key={b.id} className="border-b table-row-highlight cursor-pointer" onClick={() => setSelected(b as any)}>
                     <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{(b as any).title || ''}</td>
                     <td className="px-3 py-2.5 font-medium whitespace-nowrap">{b.surname || b.name?.split(' ')[0] || ''}</td>

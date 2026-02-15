@@ -365,7 +365,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
               const statusInfo = getStatusInfo(b);
               const arrears = getArrearsAmount(b);
               return (
-                <tr key={b.id} className="hover:bg-secondary/30 transition-colors group">
+                <tr key={b.id} className="table-row-highlight group">
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="flex items-center gap-2.5 group-hover:underline">
