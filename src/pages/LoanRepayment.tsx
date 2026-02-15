@@ -446,7 +446,7 @@ export default function LoanRepayment() {
               {filtered.map((b) => {
                 const { overdueAmount, overdueMonths, arrearsAmount, monthsInArrears } = getArrearsInfo(b);
                 return (
-                  <tr key={b.id} className={cn("hover:bg-secondary/30 transition-colors", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
+                  <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.bank_branch || '—'}</td>
@@ -647,7 +647,7 @@ export default function LoanRepayment() {
                           ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.moratorium_months)
                           : historyTxns.map(t => ({ ...t, loanBalance: 0 }));
                         return withBalances.map((t) => (
-                          <tr key={t.id} className="hover:bg-secondary/30 transition-colors">
+                          <tr key={t.id} className="table-row-highlight">
                             <td className="px-4 py-3.5 font-semibold text-base">Month {t.month_for}</td>
                             <td className="px-4 py-3.5">{formatDate(new Date(t.date_paid))}</td>
                             <td className="px-4 py-3.5 text-right font-semibold text-base">{formatCurrency(Number(t.amount))}</td>

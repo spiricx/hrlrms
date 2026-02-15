@@ -451,7 +451,7 @@ export default function StaffPerformance() {
                   </tr></thead>
                   <tbody>
                     {staffPortfolio.map((s, i) => (
-                      <tr key={i} className="border-b hover:bg-muted/30">
+                      <tr key={i} className="border-b table-row-highlight">
                         <td className="px-3 py-2 font-bold">{i + 1}</td>
                         <td className="px-3 py-2 whitespace-nowrap font-medium">{s.staffName}</td>
                         <td className="px-3 py-2 font-mono text-xs">{s.staffId}</td>
@@ -488,7 +488,7 @@ export default function StaffPerformance() {
                   </tr></thead>
                   <tbody>
                     {statePortfolio.map((s, i) => (
-                      <tr key={s.state} className="border-b hover:bg-muted/30">
+                      <tr key={s.state} className="border-b table-row-highlight">
                         <td className="px-3 py-2 font-bold">{i + 1}</td>
                         <td className="px-3 py-2 font-medium">{s.state}</td>
                         <td className="px-3 py-2">{s.totalStaff}</td>
@@ -521,7 +521,7 @@ export default function StaffPerformance() {
                   </tr></thead>
                   <tbody>
                     {branchPortfolio.map((b, i) => (
-                      <tr key={`${b.state}-${b.branch}`} className="border-b hover:bg-muted/30">
+                      <tr key={`${b.state}-${b.branch}`} className="border-b table-row-highlight">
                         <td className="px-3 py-2 font-bold">{i + 1}</td>
                         <td className="px-3 py-2">{b.state}</td>
                         <td className="px-3 py-2 font-medium">{b.branch}</td>
@@ -559,7 +559,7 @@ export default function StaffPerformance() {
                         s.beneficiaries.map(b => {
                           idx++;
                           return (
-                            <tr key={b.id} className="border-b hover:bg-muted/30">
+                            <tr key={b.id} className="border-b table-row-highlight">
                               <td className="px-3 py-2">{idx}</td>
                               <td className="px-3 py-2 whitespace-nowrap">{s.staffName}</td>
                               <td className="px-3 py-2 font-mono text-xs">{s.staffId}</td>

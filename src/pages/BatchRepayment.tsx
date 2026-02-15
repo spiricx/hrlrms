@@ -587,7 +587,7 @@ export default function BatchRepayment() {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {detailMembers.map(m => (
-                          <tr key={m.id} className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
+                          <tr key={m.id} className="table-row-highlight cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
                             <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.loan_reference_number || m.employee_id}</td>
@@ -637,7 +637,7 @@ export default function BatchRepayment() {
                           {detailHistory.map(r => {
                             const variance = Number(r.actual_amount) - Number(r.expected_amount);
                             return (
-                              <tr key={r.id} className="hover:bg-secondary/30">
+                              <tr key={r.id} className="table-row-highlight">
                                 <td className="px-4 py-3 font-medium">Month {r.month_for}</td>
                                 <td className="px-4 py-3 text-right">{formatCurrency(Number(r.expected_amount))}</td>
                                 <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(r.actual_amount))}</td>
@@ -696,7 +696,7 @@ export default function BatchRepayment() {
                         {detailMembers.map(m => {
                           const loan = calculateLoan({ principal: Number(m.loan_amount), annualRate: Number(m.interest_rate), tenorMonths: m.tenor_months, moratoriumMonths: m.moratorium_months, disbursementDate: new Date(m.disbursement_date) });
                           return (
-                            <tr key={m.id} className="hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
+                            <tr key={m.id} className="table-row-highlight cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
                               <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                               <td className="px-4 py-3 text-muted-foreground">{m.department}</td>
                               <td className="px-4 py-3 text-muted-foreground">{formatTenor(m.tenor_months)}</td>
@@ -809,7 +809,7 @@ export default function BatchRepayment() {
               {filtered.map(batch => {
                 const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0 };
                 return (
-                  <tr key={batch.id} className="hover:bg-secondary/30 transition-colors">
+                  <tr key={batch.id} className="table-row-highlight">
                     <td className="px-4 py-3 font-mono text-xs">{batch.batch_code}</td>
                     <td className="px-4 py-3 font-medium">
                       <button onClick={() => openDetail(batch)} className="text-left hover:underline text-primary">
@@ -1064,7 +1064,7 @@ export default function BatchRepayment() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {historyRecords.map(r => (
-                    <tr key={r.id} className="hover:bg-secondary/30">
+                    <tr key={r.id} className="table-row-highlight">
                       <td className="px-3 py-2">Month {r.month_for}</td>
                       <td className="px-3 py-2 text-right">{formatCurrency(Number(r.expected_amount))}</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(Number(r.actual_amount))}</td>

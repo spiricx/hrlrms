@@ -240,7 +240,7 @@ export default function BeneficiaryDetail() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {loan.schedule.map((entry) => (
-                    <tr key={entry.month} className="hover:bg-secondary/30 transition-colors">
+                    <tr key={entry.month} className="table-row-highlight">
                       <td className="px-4 py-3 text-muted-foreground">{entry.month}</td>
                       <td className="px-4 py-3 whitespace-nowrap">{formatDate(entry.dueDate)}</td>
                       <td className="px-4 py-3 text-right">{formatCurrency(entry.openingBalance)}</td>

@@ -689,7 +689,7 @@ export default function StaffDirectory() {
                   const nearRetire = isNearRetirement(s.date_of_birth);
                   const bdaySoon = isUpcomingBirthday(s.date_of_birth);
                   return (
-                    <tr key={s.id} className={`border-b hover:bg-muted/30 transition-colors ${nearRetire ? 'retire-blink' : ''} ${bdaySoon ? 'rgb-blink' : ''}`}>
+                    <tr key={s.id} className={`border-b table-row-highlight ${nearRetire ? 'retire-blink' : ''} ${bdaySoon ? 'rgb-blink' : ''}`}>
                       <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         <div className="font-medium">{s.title} {s.surname} {s.first_name}</div>
