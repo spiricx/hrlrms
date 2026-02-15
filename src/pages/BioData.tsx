@@ -19,7 +19,8 @@ const columns = [
   'Address', 'Phone Number', 'Email', 'BVN', 'NIN', 'NHF Number',
   'Organization', 'Employer No.', 'Staff ID', 'Date of Employment',
   'State', 'Bank Branch', 'Loan Ref No.', 'Loan Amount', 'Tenor (Months)',
-  'Monthly Repayment', 'Disbursement Date',
+  'Monthly Repayment', 'Disbursement Date', 'Outstanding Balance',
+  'Last Repayment Date', 'Arrears Amount', 'Months in Arrears',
 ];
 
 type Beneficiary = {
@@ -301,6 +302,24 @@ export default function BioData() {
     },
   });
 
+  // Fetch last payment dates for all beneficiaries
+  const { data: lastPayments = {} } = useQuery({
+    queryKey: ['bio-data-last-payments', beneficiaries.map(b => b.id).join(',')],
+    queryFn: async () => {
+      if (beneficiaries.length === 0) return {};
+      const { data } = await supabase
+        .from('transactions')
+        .select('beneficiary_id, date_paid')
+        .order('date_paid', { ascending: false });
+      const map: Record<string, string> = {};
+      (data || []).forEach(t => {
+        if (!map[t.beneficiary_id]) map[t.beneficiary_id] = t.date_paid;
+      });
+      return map;
+    },
+    enabled: beneficiaries.length > 0,
+  });
+
   const filtered = beneficiaries.filter((b) => {
     const q = search.toLowerCase();
     return (
@@ -339,6 +358,10 @@ export default function BioData() {
     formatTenor(b.tenor_months),
     Number(b.monthly_emi).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
     b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : '',
+    formatCurrency(Number(b.outstanding_balance)),
+    (lastPayments as Record<string, string>)[b.id] ? format(new Date((lastPayments as Record<string, string>)[b.id]), 'dd/MM/yyyy') : '—',
+    (() => { const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status); return oa.arrearsAmount > 0 ? formatCurrency(oa.arrearsAmount) : '₦0'; })(),
+    (() => { const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status); return String(oa.monthsInArrears); })(),
   ];
 
   const exportExcel = () => {
@@ -435,6 +458,17 @@ export default function BioData() {
                     <td className="px-3 py-2.5 whitespace-nowrap">{formatTenor(b.tenor_months)}</td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-3 py-2.5 whitespace-nowrap">{b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : ''}</td>
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
+                    <td className="px-3 py-2.5 whitespace-nowrap">{(lastPayments as Record<string, string>)[b.id] ? format(new Date((lastPayments as Record<string, string>)[b.id]), 'dd/MM/yyyy') : '—'}</td>
+                    {(() => {
+                      const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status);
+                      return (
+                        <>
+                          <td className={`px-3 py-2.5 text-right whitespace-nowrap ${oa.arrearsAmount > 0 ? 'text-destructive font-semibold' : ''}`}>{oa.arrearsAmount > 0 ? formatCurrency(oa.arrearsAmount) : '₦0'}</td>
+                          <td className={`px-3 py-2.5 text-center whitespace-nowrap ${oa.monthsInArrears > 0 ? 'text-destructive font-semibold' : ''}`}>{oa.monthsInArrears}</td>
+                        </>
+                      );
+                    })()}
                     <td className="px-3 py-2.5">
                       <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelected(b as any); }}>
                         <Eye className="w-4 h-4" />
