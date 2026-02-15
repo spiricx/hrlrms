@@ -20,6 +20,7 @@ import LoanReconciliation from "./pages/LoanReconciliation";
 import LoanHistory from "./pages/LoanHistory";
 import BulkUpload from "./pages/BulkUpload";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,7 @@ const App = () => (
                       <Route path="/loan-reconciliation" element={<LoanReconciliation />} />
                       <Route path="/loan-history" element={<LoanHistory />} />
                       <Route path="/reports" element={<Reports />} />
+                      <Route path="/admin" element={<Admin />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </AppLayout>
