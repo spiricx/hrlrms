@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuth } from '@/contexts/AuthContext';
+import BioDataExportButtons from '@/components/biodata/BioDataExport';
 
 const columns = [
   'S/N', 'Title', 'Surname', 'First Name', 'Other Name', 'Gender', 'Marital Status', 'Date of Birth',
@@ -174,6 +176,17 @@ function printIndividual(b: Beneficiary) {
 export default function BioData() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Beneficiary | null>(null);
+  const { user } = useAuth();
+
+  const { data: staffName = '' } = useQuery({
+    queryKey: ['profile-name', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return '';
+      const { data } = await supabase.from('profiles').select('full_name').eq('user_id', user.id).single();
+      return data?.full_name || user.email || '';
+    },
+    enabled: !!user?.id,
+  });
 
   const { data: beneficiaries = [], isLoading } = useQuery({
     queryKey: ['bio-data'],
@@ -272,14 +285,7 @@ export default function BioData() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportExcel}>
-            <Download className="w-4 h-4 mr-1.5" /> Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportPDF}>
-            <FileText className="w-4 h-4 mr-1.5" /> PDF
-          </Button>
-        </div>
+        <BioDataExportButtons data={{ beneficiaries: filtered as any, staffName }} />
       </div>
 
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
