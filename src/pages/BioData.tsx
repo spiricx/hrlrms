@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Download, FileText, Printer, Eye } from 'lucide-react';
+import { Search, Download, FileText, Printer, Eye, Pencil } from 'lucide-react';
 import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -12,6 +12,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/contexts/AuthContext';
 import BioDataExportButtons from '@/components/biodata/BioDataExport';
+import BioDataEditForm from '@/components/biodata/BioDataEditForm';
 
 const columns = [
   'S/N', 'Title', 'Surname', 'First Name', 'Other Name', 'Gender', 'Marital Status', 'Date of Birth',
@@ -176,8 +177,9 @@ function printIndividual(b: Beneficiary) {
 export default function BioData() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Beneficiary | null>(null);
+  const [editing, setEditing] = useState(false);
   const { user } = useAuth();
-
+  const queryClient = useQueryClient();
   const { data: staffName = '' } = useQuery({
     queryKey: ['profile-name', user?.id],
     queryFn: async () => {
@@ -351,7 +353,7 @@ export default function BioData() {
       </div>
 
       {/* Individual Bio Data Detail Dialog */}
-      <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
+      <Dialog open={!!selected} onOpenChange={(open) => { if (!open) { setSelected(null); setEditing(false); } }}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           {selected && (() => {
             const fullName = `${selected.surname || selected.name?.split(' ')[0] || ''} ${selected.first_name || selected.name?.split(' ')[1] || ''} ${selected.other_name || ''}`.trim();
@@ -363,33 +365,50 @@ export default function BioData() {
                   <p className="text-sm text-muted-foreground">Individual Loan Applicant Bio Data</p>
                 </DialogHeader>
 
-                <div className="flex gap-2 mb-4">
-                  <Button variant="outline" size="sm" onClick={() => exportIndividualExcel(selected)}>
-                    <Download className="w-4 h-4 mr-1.5" /> Excel
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => exportIndividualPDF(selected)}>
-                    <FileText className="w-4 h-4 mr-1.5" /> PDF
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => printIndividual(selected)}>
-                    <Printer className="w-4 h-4 mr-1.5" /> Print
-                  </Button>
-                </div>
-
-                <div className="space-y-5">
-                  {sections.map(s => (
-                    <div key={s.section}>
-                      <h3 className="text-sm font-semibold text-primary mb-2 border-b border-border pb-1">{s.section}</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-                        {s.fields.map(f => (
-                          <div key={f.label} className="flex justify-between py-1.5 border-b border-border/40">
-                            <span className="text-xs text-muted-foreground">{f.label}</span>
-                            <span className="text-sm font-medium text-right">{f.value || '—'}</span>
-                          </div>
-                        ))}
-                      </div>
+                {editing ? (
+                  <BioDataEditForm
+                    beneficiary={selected}
+                    onSaved={() => {
+                      setEditing(false);
+                      setSelected(null);
+                      queryClient.invalidateQueries({ queryKey: ['bio-data'] });
+                    }}
+                    onCancel={() => setEditing(false)}
+                  />
+                ) : (
+                  <>
+                    <div className="flex gap-2 mb-4">
+                      <Button variant="default" size="sm" onClick={() => setEditing(true)}>
+                        <Pencil className="w-4 h-4 mr-1.5" /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => exportIndividualExcel(selected)}>
+                        <Download className="w-4 h-4 mr-1.5" /> Excel
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => exportIndividualPDF(selected)}>
+                        <FileText className="w-4 h-4 mr-1.5" /> PDF
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => printIndividual(selected)}>
+                        <Printer className="w-4 h-4 mr-1.5" /> Print
+                      </Button>
                     </div>
-                  ))}
-                </div>
+
+                    <div className="space-y-5">
+                      {sections.map(s => (
+                        <div key={s.section}>
+                          <h3 className="text-sm font-semibold text-primary mb-2 border-b border-border pb-1">{s.section}</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                            {s.fields.map(f => (
+                              <div key={f.label} className="flex justify-between py-1.5 border-b border-border/40">
+                                <span className="text-xs text-muted-foreground">{f.label}</span>
+                                <span className="text-sm font-medium text-right">{f.value || '—'}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
             );
           })()}
