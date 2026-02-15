@@ -294,18 +294,14 @@ export default function NplStatus() {
     const map = new Map<string, {
       branch: string; totalLoans: number; activeAmount: number;
       nplAmount: number; nplCount: number; worstDpd: number;
-      totalMonthlyEmi: number; totalMonthsInArrears: number; arrearsAccountCount: number;
     }>();
     for (const a of stateAccounts) {
       const br = a.branch || 'Unknown';
-      const entry = map.get(br) || { branch: br, totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, worstDpd: 0, totalMonthlyEmi: 0, totalMonthsInArrears: 0, arrearsAccountCount: 0 };
+      const entry = map.get(br) || { branch: br, totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, worstDpd: 0 };
       entry.totalLoans++;
       entry.activeAmount += a.outstandingBalance;
       if (a.dpd >= 90) { entry.nplAmount += a.outstandingBalance; entry.nplCount++; }
       entry.worstDpd = Math.max(entry.worstDpd, a.dpd);
-      entry.totalMonthlyEmi += a.monthlyEmi;
-      const monthsInArrears = a.monthlyEmi > 0 ? Math.ceil(a.amountInArrears / a.monthlyEmi) : 0;
-      if (monthsInArrears > 0) { entry.totalMonthsInArrears += monthsInArrears; entry.arrearsAccountCount++; }
       map.set(br, entry);
     }
     return Array.from(map.values()).sort((a, b) => b.nplAmount - a.nplAmount);
@@ -558,11 +554,9 @@ export default function NplStatus() {
                       <TableHead>Branch</TableHead>
                       <TableHead className="text-right">Total Loans</TableHead>
                       <TableHead className="text-right">Active Amount</TableHead>
-                      <TableHead className="text-right">Monthly Repayment</TableHead>
                       <TableHead className="text-right">NPL Amount</TableHead>
                       <TableHead className="text-right">NPL Count</TableHead>
                       <TableHead className="text-right">NPL Ratio</TableHead>
-                      <TableHead className="text-right">Months in Arrears</TableHead>
                       <TableHead className="text-right">Worst DPD</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
@@ -570,7 +564,7 @@ export default function NplStatus() {
                   <TableBody>
                     {branchData.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                           No branches found
                         </TableCell>
                       </TableRow>
@@ -582,14 +576,10 @@ export default function NplStatus() {
                           <TableCell className="font-medium">{row.branch}</TableCell>
                           <TableCell className="text-right">{row.totalLoans}</TableCell>
                           <TableCell className="text-right">{formatCurrency(row.activeAmount)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.totalMonthlyEmi)}</TableCell>
                           <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.nplAmount)}</TableCell>
                           <TableCell className="text-right">{row.nplCount}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={nplRatioColor(ratio)}>{ratio.toFixed(1)}%</Badge>
-                          </TableCell>
-                          <TableCell className={`text-right ${row.totalMonthsInArrears > 0 ? 'font-semibold text-destructive' : 'text-muted-foreground'}`}>
-                            {row.totalMonthsInArrears > 0 ? `${row.totalMonthsInArrears} (${row.arrearsAccountCount} accts)` : '—'}
                           </TableCell>
                           <TableCell className={`text-right ${riskColor(row.worstDpd)}`}>{row.worstDpd} days</TableCell>
                           <TableCell>
