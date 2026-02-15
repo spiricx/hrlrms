@@ -138,8 +138,10 @@ export default function BeneficiaryDetail() {
             <h1 className="text-2xl font-bold font-display">{beneficiary.name}</h1>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 mt-2">
               <span className="text-sm font-bold text-foreground inline-flex items-center">
-                Loan Ref: <span className="font-mono ml-1">{beneficiary.employee_id}</span>
-                <CopyButton value={beneficiary.employee_id} label="Loan Reference" />
+                Loan Ref: <span className="font-mono ml-1">{beneficiary.loan_reference_number || 'Not Set'}</span>
+                {beneficiary.loan_reference_number && (
+                  <CopyButton value={beneficiary.loan_reference_number} label="Loan Reference" />
+                )}
               </span>
               <span className="text-sm font-bold text-foreground inline-flex items-center">
                 NHF Number: <span className="font-mono ml-1">{beneficiary.nhf_number || 'Not Set'}</span>
