@@ -120,9 +120,9 @@ export default function RepaymentHistoryTable({
               return (
                 <tr
                   key={entry.month}
-                  className={`transition-colors ${
-                    status === 'overdue' ? 'bg-destructive/5 hover:bg-destructive/10' :
-                    status === 'paid' || status === 'late-paid' ? 'hover:bg-success/5' :
+                  className={`table-row-highlight transition-all duration-150 ${
+                    status === 'overdue' ? 'bg-destructive/5 hover:bg-destructive/10 hover:!border-l-destructive' :
+                    status === 'paid' || status === 'late-paid' ? 'hover:bg-success/5 hover:!border-l-success' :
                     'hover:bg-secondary/30'
                   }`}
                 >
