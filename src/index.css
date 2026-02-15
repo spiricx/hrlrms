@@ -157,6 +157,14 @@
   .dark .table-row-highlight:hover {
     background-color: hsl(var(--primary) / 0.15);
   }
+  .table-row-highlight:hover.\!border-l-destructive {
+    border-left-color: hsl(var(--destructive)) !important;
+    box-shadow: inset 0 0 0 1px hsl(var(--destructive) / 0.1);
+  }
+  .table-row-highlight:hover.\!border-l-success {
+    border-left-color: hsl(var(--success)) !important;
+    box-shadow: inset 0 0 0 1px hsl(var(--success) / 0.1);
+  }
 }
 
 @keyframes pulse-dot {
