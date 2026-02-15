@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote } from 'lucide-react';
+import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote, Filter } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import StatCard from '@/components/StatCard';
 import { formatCurrency, getOverdueAndArrears, stripTime } from '@/lib/loanCalculations';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,10 +8,12 @@ import type { Tables } from '@/integrations/supabase/types';
 import RecentBeneficiariesWidget from '@/components/dashboard/RecentBeneficiariesWidget';
 
 type Beneficiary = Tables<'beneficiaries'>;
+export type LoanHealthFilter = 'all' | 'active' | 'defaulted';
 
 export default function Dashboard() {
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [healthFilter, setHealthFilter] = useState<LoanHealthFilter>('all');
 
   useEffect(() => {
     const fetchBeneficiaries = async () => {
@@ -105,11 +108,22 @@ export default function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold font-display text-foreground">Dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Home Renovation Loan portfolio overview
-
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold font-display text-foreground">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Home Renovation Loan portfolio overview</p>
+        </div>
+        <ToggleGroup type="single" value={healthFilter} onValueChange={(v) => { if (v) setHealthFilter(v as LoanHealthFilter); }} className="bg-secondary/50 rounded-lg p-1">
+          <ToggleGroupItem value="all" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-card data-[state=on]:shadow-sm">
+            All ({beneficiaries.length})
+          </ToggleGroupItem>
+          <ToggleGroupItem value="active" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-card data-[state=on]:shadow-sm data-[state=on]:text-success">
+            Active ({loanMetrics.active})
+          </ToggleGroupItem>
+          <ToggleGroupItem value="defaulted" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-card data-[state=on]:shadow-sm data-[state=on]:text-destructive">
+            Defaulted ({loanMetrics.defaulted})
+          </ToggleGroupItem>
+        </ToggleGroup>
       </div>
 
       {/* Stats */}
@@ -172,7 +186,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Beneficiaries Widget */}
-      <RecentBeneficiariesWidget />
+      <RecentBeneficiariesWidget healthFilter={healthFilter} />
     </div>);
 
 }
