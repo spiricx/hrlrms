@@ -2,10 +2,9 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle, TrendingDown, Wallet, Users, ArrowLeft,
-  RefreshCw, Download, ChevronRight, Filter, FileSpreadsheet, Loader2,
+  RefreshCw, ChevronRight,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
+import NplExportButtons, { type NplReportData } from '@/components/npl/NplExport';
 import StatCard from '@/components/StatCard';
 import { formatCurrency, stripTime } from '@/lib/loanCalculations';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -151,6 +150,7 @@ export default function NplStatus() {
   const [searchQuery, setSearchQuery] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
+  const [staffName, setStaffName] = useState('');
 
   const [drillLevel, setDrillLevel] = useState<DrillLevel>('state');
   const [selectedState, setSelectedState] = useState('');
@@ -175,6 +175,17 @@ export default function NplStatus() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchData]);
+
+  // Fetch staff name
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle();
+        if (profile?.full_name) setStaffName(profile.full_name);
+      }
+    })();
+  }, []);
 
   // Build NPL account data
   const nplAccounts: NplAccount[] = useMemo(() => {
@@ -319,172 +330,18 @@ export default function NplStatus() {
     }));
   }, [nplRatio]);
 
-  const [exporting, setExporting] = useState(false);
-
-  const handleExport = () => {
-    setExporting(true);
-    setTimeout(() => {
-      try {
-        const wb = XLSX.utils.book_new();
-        const today = new Date().toISOString().slice(0, 10);
-
-        // --- Sheet 1: Summary ---
-        const summaryRows = [
-          ['NPL Status Report'],
-          ['Generated', new Date().toLocaleDateString('en-NG', { day: '2-digit', month: '2-digit', year: 'numeric' })],
-          [],
-          ['Metric', 'Value'],
-          ['Total Active Portfolio', totalActiveAmount],
-          ['Total NPL Amount', totalNplAmount],
-          ['NPL Ratio (%)', nplRatio / 100],
-          ['Total NPL Accounts', nplList.length],
-          ['PAR 30+ Days Amount', par30Amount],
-          ['PAR 90+ Days Amount', par90Amount],
-        ];
-        const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-        wsSummary['!cols'] = [{ wch: 25 }, { wch: 22 }];
-        // Bold title
-        if (wsSummary['A1']) wsSummary['A1'].s = { font: { bold: true, sz: 14 } };
-        // Bold headers row
-        ['A4', 'B4'].forEach(c => { if (wsSummary[c]) wsSummary[c].s = { font: { bold: true } }; });
-        // Currency format
-        ['B5', 'B6', 'B9', 'B10'].forEach(c => {
-          if (wsSummary[c]) wsSummary[c].z = '₦#,##0.00';
-        });
-        // Percentage format
-        if (wsSummary['B7']) wsSummary['B7'].z = '0.0%';
-        XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-
-        // --- Sheet 2: By State ---
-        const stateHeaders = ['State', 'Total Active Loans', 'Active Amount (₦)', 'NPL Amount (₦)', 'NPL Count', 'NPL Ratio (%)', 'PAR 30+ (₦)', 'PAR 90+ (₦)'];
-        const stateRows = stateData.map(r => {
-          const ratio = r.activeAmount > 0 ? r.nplAmount / r.activeAmount : 0;
-          return [r.state, r.totalLoans, r.activeAmount, r.nplAmount, r.nplCount, ratio, r.par30, r.par90];
-        });
-        const wsState = XLSX.utils.aoa_to_sheet([stateHeaders, ...stateRows]);
-        wsState['!cols'] = [{ wch: 20 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 18 }];
-        // Bold headers
-        stateHeaders.forEach((_, i) => {
-          const cell = XLSX.utils.encode_cell({ r: 0, c: i });
-          if (wsState[cell]) wsState[cell].s = { font: { bold: true } };
-        });
-        // Format currency & percentage columns
-        stateRows.forEach((_, ri) => {
-          const row = ri + 1;
-          [2, 3, 6, 7].forEach(col => {
-            const cell = XLSX.utils.encode_cell({ r: row, c: col });
-            if (wsState[cell]) wsState[cell].z = '₦#,##0.00';
-          });
-          const ratioCell = XLSX.utils.encode_cell({ r: row, c: 5 });
-          if (wsState[ratioCell]) wsState[ratioCell].z = '0.0%';
-          // Conditional fill for NPL Ratio
-          const ratioVal = stateRows[ri][5] as number;
-          const fill = ratioVal > 0.1 ? { fgColor: { rgb: 'FFCCCC' } } : ratioVal >= 0.05 ? { fgColor: { rgb: 'FFE0B2' } } : { fgColor: { rgb: 'C8E6C9' } };
-          if (wsState[ratioCell]) wsState[ratioCell].s = { ...(wsState[ratioCell].s || {}), fill };
-        });
-        XLSX.utils.book_append_sheet(wb, wsState, 'By State');
-
-        // --- Sheet 3: By Branch (all states) ---
-        const branchHeaders = ['State', 'Branch', 'Total Loans', 'Active Amount (₦)', 'NPL Amount (₦)', 'NPL Count', 'NPL Ratio (%)', 'Worst DPD'];
-        const allBranchRows: any[][] = [];
-        const allStates = [...new Set(filteredAccounts.map(a => a.state))].sort();
-        for (const st of allStates) {
-          const stAccts = filteredAccounts.filter(a => a.state === st);
-          const brMap = new Map<string, { branch: string; total: number; active: number; npl: number; nplCount: number; worstDpd: number }>();
-          for (const a of stAccts) {
-            const br = a.branch || 'Unknown';
-            const e = brMap.get(br) || { branch: br, total: 0, active: 0, npl: 0, nplCount: 0, worstDpd: 0 };
-            e.total++;
-            e.active += a.outstandingBalance;
-            if (a.dpd >= 90) { e.npl += a.outstandingBalance; e.nplCount++; }
-            e.worstDpd = Math.max(e.worstDpd, a.dpd);
-            brMap.set(br, e);
-          }
-          for (const e of brMap.values()) {
-            const ratio = e.active > 0 ? e.npl / e.active : 0;
-            allBranchRows.push([st, e.branch, e.total, e.active, e.npl, e.nplCount, ratio, e.worstDpd]);
-          }
-        }
-        const wsBranch = XLSX.utils.aoa_to_sheet([branchHeaders, ...allBranchRows]);
-        wsBranch['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 12 }, { wch: 20 }, { wch: 20 }, { wch: 12 }, { wch: 14 }, { wch: 12 }];
-        branchHeaders.forEach((_, i) => {
-          const cell = XLSX.utils.encode_cell({ r: 0, c: i });
-          if (wsBranch[cell]) wsBranch[cell].s = { font: { bold: true } };
-        });
-        allBranchRows.forEach((row, ri) => {
-          const r = ri + 1;
-          [3, 4].forEach(col => {
-            const cell = XLSX.utils.encode_cell({ r, c: col });
-            if (wsBranch[cell]) wsBranch[cell].z = '₦#,##0.00';
-          });
-          const ratioCell = XLSX.utils.encode_cell({ r, c: 6 });
-          if (wsBranch[ratioCell]) wsBranch[ratioCell].z = '0.0%';
-        });
-        XLSX.utils.book_append_sheet(wb, wsBranch, 'By Branch');
-
-        // --- Sheet 4: Detailed NPL Accounts ---
-        const detailHeaders = [
-          'Employee ID', 'Beneficiary Name', 'State', 'Branch',
-          'Principal Amount (₦)', 'Outstanding Balance (₦)', 'Days Past Due',
-          'Classification', 'Last Payment Date', 'Amount in Arrears (₦)',
-          'Monthly EMI (₦)', 'Disbursement Date', 'Termination Date',
-        ];
-        const detailRows = accountsList.map(a => {
-          const bRec = beneficiaries.find(b => b.id === a.id);
-          const classification = a.dpd >= 180 ? 'PAR 180+' : a.dpd >= 120 ? 'PAR 120+' : a.dpd >= 90 ? 'NPL (PAR 90+)' : a.dpd >= 60 ? 'PAR 60+' : a.dpd >= 30 ? 'PAR 30+' : 'Performing';
-          return [
-            a.employeeId, a.name, a.state, a.branch,
-            a.loanAmount, a.outstandingBalance, a.dpd,
-            classification,
-            a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-GB') : 'N/A',
-            a.amountInArrears, a.monthlyEmi,
-            bRec ? new Date(bRec.disbursement_date).toLocaleDateString('en-GB') : '',
-            bRec ? new Date(bRec.termination_date).toLocaleDateString('en-GB') : '',
-          ];
-        });
-        const wsDetail = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailRows]);
-        wsDetail['!cols'] = [
-          { wch: 16 }, { wch: 24 }, { wch: 16 }, { wch: 22 },
-          { wch: 20 }, { wch: 20 }, { wch: 14 },
-          { wch: 16 }, { wch: 16 }, { wch: 20 },
-          { wch: 16 }, { wch: 16 }, { wch: 16 },
-        ];
-        detailHeaders.forEach((_, i) => {
-          const cell = XLSX.utils.encode_cell({ r: 0, c: i });
-          if (wsDetail[cell]) wsDetail[cell].s = { font: { bold: true } };
-        });
-        detailRows.forEach((row, ri) => {
-          const r = ri + 1;
-          [4, 5, 9, 10].forEach(col => {
-            const cell = XLSX.utils.encode_cell({ r, c: col });
-            if (wsDetail[cell]) wsDetail[cell].z = '₦#,##0.00';
-          });
-          // Red font for DPD > 90
-          const dpdCell = XLSX.utils.encode_cell({ r, c: 6 });
-          const dpdVal = row[6] as number;
-          if (wsDetail[dpdCell] && dpdVal >= 90) {
-            wsDetail[dpdCell].s = { font: { color: { rgb: 'CC0000' }, bold: true } };
-          }
-        });
-        XLSX.utils.book_append_sheet(wb, wsDetail, 'Detailed Accounts');
-
-        // Determine file name based on current view
-        let fileName: string;
-        if (drillLevel === 'accounts' && selectedBranch) {
-          fileName = `NPL_Report_${selectedState}_${selectedBranch}_${today}.xlsx`;
-        } else if (drillLevel === 'branch' && selectedState) {
-          fileName = `NPL_Report_By_State_${selectedState}_${today}.xlsx`;
-        } else {
-          fileName = `NPL_Report_Nigeria_${today}.xlsx`;
-        }
-
-        const wbOut = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        saveAs(new Blob([wbOut], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), fileName);
-      } finally {
-        setExporting(false);
-      }
-    }, 100);
-  };
+  const nplReportData: NplReportData = useMemo(() => ({
+    totalActiveAmount,
+    totalNplAmount,
+    nplRatio,
+    nplCount: nplList.length,
+    par30Amount,
+    par90Amount,
+    stateData,
+    accountsList,
+    staffName,
+    filters: { state: stateFilter, month: monthFilter, year: yearFilter, par: parFilter },
+  }), [totalActiveAmount, totalNplAmount, nplRatio, nplList.length, par30Amount, par90Amount, stateData, accountsList, staffName, stateFilter, monthFilter, yearFilter, parFilter]);
 
   const navigateTo = (level: DrillLevel, state?: string, branch?: string) => {
     setDrillLevel(level);
@@ -564,10 +421,7 @@ export default function NplStatus() {
           <Button variant="outline" size="icon" onClick={fetchData} title="Refresh">
             <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={exporting}>
-            {exporting ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-1" />}
-            {exporting ? 'Preparing…' : 'Export to Excel'}
-          </Button>
+          <NplExportButtons data={nplReportData} />
         </div>
       </div>
 
