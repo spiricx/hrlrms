@@ -234,7 +234,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
         'Beneficiary': b.name,
         'Organization': b.department || '—',
         'Loan Reference Number': b.loan_reference_number || '—',
-        'NHF No': b.employee_id,
+        'NHF No': b.nhf_number || '—',
         'Gender': b.gender || '—',
         'State': b.state || '—',
         'Branch': b.bank_branch || '—',
@@ -420,7 +420,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
                     {/* NHF No */}
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="text-accent hover:underline font-mono text-xs">
-                        {b.employee_id}
+                        {b.nhf_number || '—'}
                       </Link>
                     </td>
                     {/* Gender */}
