@@ -425,6 +425,7 @@ export default function LoanRepayment() {
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF Number</th>
@@ -448,6 +449,7 @@ export default function LoanRepayment() {
                 return (
                   <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-[160px] truncate">{b.department || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.bank_branch || '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs font-semibold">{b.nhf_number || '—'}</td>
@@ -477,7 +479,7 @@ export default function LoanRepayment() {
               })}
               {filtered.length === 0 &&
                 <tr>
-                  <td colSpan={14} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={15} className="px-6 py-12 text-center text-muted-foreground">
                     No active loans found.
                   </td>
                 </tr>
