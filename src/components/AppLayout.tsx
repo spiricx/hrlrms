@@ -21,6 +21,7 @@ import {
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -60,6 +61,7 @@ const navItems = [
 
 export default function AppLayout({ children }: {children: ReactNode;}) {
   const { user, roles, signOut } = useAuth();
+  const { hasModuleAccess } = useModuleAccess();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
@@ -84,6 +86,9 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             if (item.roles && !item.roles.some((r) => roles.includes(r as any))) return null;
+            // Module access check (skip for admin page which is role-gated)
+            const moduleKey = item.path.replace('/', '') || 'dashboard';
+            if (moduleKey !== 'admin' && !hasModuleAccess(moduleKey)) return null;
             const active = location.pathname === item.path;
             return (
               <Link
