@@ -69,11 +69,51 @@ export default function Reports() {
   const completedCount = filtered.filter(b => b.status === 'completed').length;
   const defaultedCount = filtered.filter(b => b.status === 'defaulted').length;
 
+  // Compute defaulted using 90+ DPD aging logic (consistent with Dashboard)
+  const computedDefaulted = useMemo(() => {
+    const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+    return filtered.filter(b => {
+      if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
+      const comm = new Date(b.commencement_date);
+      const commStripped = new Date(comm.getFullYear(), comm.getMonth(), comm.getDate());
+      if (today < commStripped) return false;
+      // Find earliest unpaid installment
+      const emi = Number(b.monthly_emi);
+      if (emi <= 0) return false;
+      let monthsDue = 0;
+      for (let i = 1; i <= b.tenor_months; i++) {
+        const dueDate = new Date(commStripped);
+        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        if (today >= dueDate) monthsDue = i; else break;
+      }
+      const expectedTotal = monthsDue * emi;
+      const deficit = expectedTotal - Number(b.total_paid);
+      if (deficit <= 0) return false;
+      const overdueMonths = Math.min(Math.ceil(deficit / emi), monthsDue);
+      // Find due date of earliest unpaid month
+      const earliestUnpaidMonth = monthsDue - overdueMonths + 1;
+      const earliestDue = new Date(commStripped);
+      earliestDue.setMonth(earliestDue.getMonth() + (earliestUnpaidMonth - 1));
+      const diffMs = today.getTime() - earliestDue.getTime();
+      const dpd = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24))) + 1;
+      return dpd >= 90;
+    }).length;
+  }, [filtered]);
+
+  const computedActive = filtered.filter(b => b.status !== 'completed' && Number(b.outstanding_balance) > 0).length - computedDefaulted;
+  const totalFacilities = filtered.length;
+
   const statusData = [
-    { name: 'Active', value: activeCount, color: 'hsl(152, 60%, 40%)' },
+    { name: 'Active', value: computedActive, color: 'hsl(152, 60%, 40%)' },
     { name: 'Completed', value: completedCount, color: 'hsl(222, 60%, 22%)' },
-    { name: 'Defaulted', value: defaultedCount, color: 'hsl(0, 72%, 51%)' },
+    { name: 'Defaulted', value: computedDefaulted, color: 'hsl(0, 72%, 51%)' },
   ];
+
+  // Collection efficiency data for pie chart
+  const collectionData = useMemo(() => [
+    { name: 'Collected', value: totalCollected, color: 'hsl(152, 60%, 40%)' },
+    { name: 'Outstanding', value: totalOutstanding, color: 'hsl(0, 72%, 51%)' },
+  ], [totalCollected, totalOutstanding]);
 
   const deptChartData = useMemo(() => {
     const deptData = filtered.reduce<Record<string, number>>((acc, b) => {
@@ -158,10 +198,28 @@ export default function Reports() {
         </Select>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         <div className="bg-card rounded-xl shadow-card p-6">
           <h2 className="text-lg font-bold font-display mb-4">Loan Status Distribution</h2>
+          {/* Summary stats */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="p-3 rounded-lg bg-secondary text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Facilities</p>
+              <p className="text-xl font-bold font-display">{totalFacilities}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-secondary text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Active Loans</p>
+              <p className="text-xl font-bold font-display text-success">{computedActive}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-secondary text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Defaulted</p>
+              <p className="text-xl font-bold font-display text-destructive">{computedDefaulted}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-secondary text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Completed</p>
+              <p className="text-xl font-bold font-display text-primary">{completedCount}</p>
+            </div>
+          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -174,6 +232,39 @@ export default function Reports() {
           </div>
           <div className="flex justify-center gap-6 mt-2">
             {statusData.map(s => (
+              <div key={s.name} className="flex items-center gap-2 text-xs">
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
+                {s.name} ({s.value})
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Collection Efficiency Pie Chart */}
+        <div className="bg-card rounded-xl shadow-card p-6">
+          <h2 className="text-lg font-bold font-display mb-4">Collection Efficiency</h2>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="p-3 rounded-lg bg-secondary text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Collected</p>
+              <p className="text-lg font-bold font-display text-success">{formatCurrency(totalCollected)}</p>
+            </div>
+            <div className="p-3 rounded-lg bg-secondary text-center">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider">Outstanding</p>
+              <p className="text-lg font-bold font-display text-destructive">{formatCurrency(totalOutstanding)}</p>
+            </div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={collectionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, value }) => `${name}: ${Math.round(value / totalDisbursed * 100)}%`}>
+                  {collectionData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                </Pie>
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-center gap-6 mt-2">
+            {collectionData.map(s => (
               <div key={s.name} className="flex items-center gap-2 text-xs">
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color }} />
                 {s.name}
