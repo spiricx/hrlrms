@@ -311,6 +311,45 @@ export type Database = {
         }
         Relationships: []
       }
+      staff_activity_logs: {
+        Row: {
+          action: string
+          bank_branch: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          ip_address: string | null
+          state: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          bank_branch?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          ip_address?: string | null
+          state?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          bank_branch?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          ip_address?: string | null
+          state?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_audit_logs: {
         Row: {
           action: string
