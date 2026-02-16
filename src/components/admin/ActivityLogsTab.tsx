@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RefreshCw, Search, LogIn, LogOut } from 'lucide-react';
 import { format } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import ActivityLogsExportButtons from './ActivityLogsExport';
 
 interface ActivityLog {
   id: string;
@@ -21,12 +23,21 @@ interface ActivityLog {
 }
 
 export default function ActivityLogsTab() {
+  const { user } = useAuth();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [totalLogins, setTotalLogins] = useState(0);
   const [totalLogouts, setTotalLogouts] = useState(0);
   const [activeToday, setActiveToday] = useState(0);
+  const [staffName, setStaffName] = useState('');
+
+  useEffect(() => {
+    if (user) {
+      supabase.from('profiles').select('full_name').eq('user_id', user.id).single()
+        .then(({ data }) => setStaffName(data?.full_name || user.email || ''));
+    }
+  }, [user]);
 
   useEffect(() => { fetchLogs(); }, []);
 
@@ -95,6 +106,7 @@ export default function ActivityLogsTab() {
         <Button variant="outline" size="sm" onClick={fetchLogs}>
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
+        <ActivityLogsExportButtons data={{ logs: filtered, staffName, totalLogins, totalLogouts, activeToday }} />
       </div>
 
       <Card>
