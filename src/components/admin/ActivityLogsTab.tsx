@@ -5,8 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RefreshCw, Search, LogIn, LogOut } from 'lucide-react';
-import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { RefreshCw, Search, LogIn, LogOut, CalendarIcon, X } from 'lucide-react';
+import { format, startOfDay, endOfDay } from 'date-fns';
+import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityLogsExportButtons from './ActivityLogsExport';
 
@@ -31,6 +34,8 @@ export default function ActivityLogsTab() {
   const [totalLogouts, setTotalLogouts] = useState(0);
   const [activeToday, setActiveToday] = useState(0);
   const [staffName, setStaffName] = useState('');
+  const [fromDate, setFromDate] = useState<Date | undefined>(undefined);
+  const [toDate, setToDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     if (user) {
@@ -39,15 +44,24 @@ export default function ActivityLogsTab() {
     }
   }, [user]);
 
-  useEffect(() => { fetchLogs(); }, []);
+  useEffect(() => { fetchLogs(); }, [fromDate, toDate]);
 
   const fetchLogs = async () => {
     setLoading(true);
-    const { data } = await supabase
+    let query = supabase
       .from('staff_activity_logs')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(500);
+
+    if (fromDate) {
+      query = query.gte('created_at', startOfDay(fromDate).toISOString());
+    }
+    if (toDate) {
+      query = query.lte('created_at', endOfDay(toDate).toISOString());
+    }
+
+    const { data } = await query;
 
     const items = (data || []) as ActivityLog[];
     setLogs(items);
@@ -98,11 +112,42 @@ export default function ActivityLogsTab() {
         </Card>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <div className="relative flex-1 w-full">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+        <div className="relative flex-1 w-full sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name, email, state, branch..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("gap-2 min-w-[140px] justify-start", !fromDate && "text-muted-foreground")}>
+              <CalendarIcon className="w-4 h-4" />
+              {fromDate ? format(fromDate, 'dd MMM yyyy') : 'From date'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={fromDate} onSelect={setFromDate} initialFocus className={cn("p-3 pointer-events-auto")} disabled={(date) => (toDate ? date > toDate : false) || date > new Date()} />
+          </PopoverContent>
+        </Popover>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className={cn("gap-2 min-w-[140px] justify-start", !toDate && "text-muted-foreground")}>
+              <CalendarIcon className="w-4 h-4" />
+              {toDate ? format(toDate, 'dd MMM yyyy') : 'To date'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar mode="single" selected={toDate} onSelect={setToDate} initialFocus className={cn("p-3 pointer-events-auto")} disabled={(date) => (fromDate ? date < fromDate : false) || date > new Date()} />
+          </PopoverContent>
+        </Popover>
+
+        {(fromDate || toDate) && (
+          <Button variant="ghost" size="sm" onClick={() => { setFromDate(undefined); setToDate(undefined); }} className="gap-1 text-muted-foreground">
+            <X className="w-4 h-4" /> Clear dates
+          </Button>
+        )}
+
         <Button variant="outline" size="sm" onClick={fetchLogs}>
           <RefreshCw className="w-4 h-4 mr-1" /> Refresh
         </Button>
