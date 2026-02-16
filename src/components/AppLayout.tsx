@@ -115,8 +115,8 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
               Role: {roles.join(', ')}
             </p>
           }
-          <p className="text-xs text-sidebar-foreground/40">© FEB 2026 HRL LMS Portal
-Developed by: SpiricX Dev (Loan Processing Unit) FMBN</p>
+          <p className="text-xs text-sidebar-foreground/40">© FEB 2026 HRL LMS Portal Developed by: SpiricX Dev (Loan Processing Unit) FMBN, Ogun State.
+          </p>
         </div>
       </aside>
 
@@ -137,9 +137,9 @@ Developed by: SpiricX Dev (Loan Processing Unit) FMBN</p>
           </button>
           <div className="flex items-center gap-2">
             <span className="text-base font-semibold text-foreground">
-              {user?.user_metadata?.surname && user?.user_metadata?.first_name
-                ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
-                : user?.email?.split('@')[0] || 'User'}
+              {user?.user_metadata?.surname && user?.user_metadata?.first_name ?
+              `${user.user_metadata.surname}, ${user.user_metadata.first_name}` :
+              user?.email?.split('@')[0] || 'User'}
             </span>
           </div>
           <div className="flex-1" />
