@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, useRef, ReactNode } fro
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-type AppRole = 'admin' | 'loan_officer' | 'staff';
+type AppRole = 'admin' | 'manager' | 'loan_officer';
 
 interface AuthContextType {
   user: User | null;
