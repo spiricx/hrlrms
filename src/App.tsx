@@ -20,6 +20,7 @@ import LoanReconciliation from "./pages/LoanReconciliation";
 import LoanHistory from "./pages/LoanHistory";
 import LoanRepaymentReport from "./pages/LoanRepaymentReport";
 import BulkUpload from "./pages/BulkUpload";
+import FeedbackSupport from "./pages/FeedbackSupport";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
@@ -69,6 +70,7 @@ const App = () => (
                       <Route path="/loan-history" element={<LoanHistory />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/loan-repayment-report" element={<LoanRepaymentReport />} />
+                      <Route path="/feedback-support" element={<FeedbackSupport />} />
                       <Route path="/admin" element={<Admin />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>

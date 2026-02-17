@@ -25,6 +25,7 @@ export const MODULE_KEYS = [
   { key: 'npl-status', label: 'NPL Status' },
   { key: 'reports', label: 'Reports' },
   { key: 'loan-repayment-report', label: 'Repayment Report' },
+  { key: 'feedback-support', label: 'Feedback & Support' },
 ] as const;
 
 interface UserProfile {

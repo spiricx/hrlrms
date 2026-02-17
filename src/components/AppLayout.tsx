@@ -9,6 +9,7 @@ import {
   Package,
   AlertTriangle,
   ArrowLeftRight,
+  MessageSquareMore,
   Menu,
   X,
   LogOut,
@@ -57,6 +58,7 @@ const navItems = [
 { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/reports', label: 'Reports', icon: FileText },
 { path: '/loan-repayment-report', label: 'Repayment Report', icon: FileText },
+{ path: '/feedback-support', label: 'Feedback & Support', icon: MessageSquareMore },
 { path: '/admin', label: 'Admin', icon: Shield, roles: ['admin'] as string[] }];
 
 
