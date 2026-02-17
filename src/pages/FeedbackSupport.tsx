@@ -350,7 +350,7 @@ export default function FeedbackSupport() {
                                     {/* Star Rating - visible to the submitter when admin has responded */}
                                     {s.admin_response && !isAdmin && (
                                       <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">Rate this response</Label>
+                                        <Label className="text-xs text-muted-foreground">Rate the Feedback & Support team</Label>
                                         <div className="flex gap-1">
                                           {[1, 2, 3, 4, 5].map((star) => (
                                             <button
@@ -379,7 +379,7 @@ export default function FeedbackSupport() {
                                     {/* Show rating to admin */}
                                     {isAdmin && (s as any).rating && (
                                       <div className="space-y-1">
-                                        <Label className="text-xs text-muted-foreground">Staff Rating</Label>
+                                        <Label className="text-xs text-muted-foreground">Support Team Rating</Label>
                                         <div className="flex gap-1">
                                           {[1, 2, 3, 4, 5].map((star) => (
                                             <Star
