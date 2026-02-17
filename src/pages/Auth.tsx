@@ -231,9 +231,32 @@ export default function Auth() {
               type="submit"
               disabled={submitting}
               className="w-full gradient-accent text-accent-foreground border-0 font-semibold">
-
               {submitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
             </Button>
+
+            {isLogin && (
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!form.email) {
+                    toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
+                    return;
+                  }
+                  try {
+                    const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+                      redirectTo: `${window.location.origin}/reset-password`,
+                    });
+                    if (error) throw error;
+                    toast({ title: 'Check your email', description: 'A password reset link has been sent to your email.' });
+                  } catch (err: any) {
+                    toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                  }
+                }}
+                className="w-full text-center text-sm text-accent hover:underline"
+              >
+                Forgot Password?
+              </button>
+            )}
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
@@ -241,7 +264,6 @@ export default function Auth() {
             <button
               onClick={() => setIsLogin(!isLogin)}
               className="font-medium text-accent hover:underline">
-
               {isLogin ? 'Sign Up' : 'Sign In'}
             </button>
           </p>
