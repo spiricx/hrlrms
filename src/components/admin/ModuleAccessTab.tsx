@@ -203,7 +203,7 @@ export default function ModuleAccessTab() {
                       <TableCell className="text-center px-2">
                         <div className="flex flex-wrap gap-1 justify-center">
                           {(rolesMap[p.user_id] || []).map((r) => (
-                            <Badge key={r} variant={r === 'admin' ? 'destructive' : 'secondary'} className="text-xs capitalize">{r.replace('_', ' ')}</Badge>
+                            <Badge key={r} variant={r === 'admin' ? 'destructive' : r === 'loan_officer' ? 'default' : 'secondary'} className="text-xs capitalize">{r.replace('_', ' ')}</Badge>
                           ))}
                           {(!rolesMap[p.user_id] || rolesMap[p.user_id].length === 0) && (
                             <span className="text-xs text-muted-foreground">—</span>
