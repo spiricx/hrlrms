@@ -735,6 +735,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_default_count: {
+        Args: {
+          p_commencement_date: string
+          p_monthly_emi: number
+          p_outstanding_balance: number
+          p_status: string
+          p_tenor_months: number
+          p_total_paid: number
+        }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
