@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, formatDate, getOverdueAndArrears, getMonthsDue } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor, getOverdueAndArrears, getMonthsDue } from '@/lib/loanCalculations';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -393,6 +393,7 @@ export default function LoanRepaymentReport() {
                   <TableHead>State</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead className="text-right">Loan Amount</TableHead>
+                  <TableHead className="text-center">Tenor</TableHead>
                   <TableHead className="text-right">Monthly Repayment</TableHead>
                   <TableHead className="text-right">Expected Repayment</TableHead>
                   <TableHead>RRR</TableHead>
@@ -422,6 +423,7 @@ export default function LoanRepaymentReport() {
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.loanAmount)}</TableCell>
+                    <TableCell className="text-center whitespace-nowrap">{formatTenor(r.tenorMonths)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.monthlyEmi)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.expectedRepayment)}</TableCell>
                     <TableCell className="font-mono text-xs">{r.rrrNumber}</TableCell>
