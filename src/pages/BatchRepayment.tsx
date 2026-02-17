@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
-  FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye, Trash2
+  FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye, Trash2,
+  Pencil, ChevronDown, ChevronRight
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -131,6 +132,13 @@ export default function BatchRepayment() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailHistory, setDetailHistory] = useState<BatchRepaymentRecord[]>([]);
   const [detailTransactions, setDetailTransactions] = useState<Record<string, any[]>>({});
+
+  // Expanded history rows and edit state
+  const [expandedHistoryIds, setExpandedHistoryIds] = useState<Set<string>>(new Set());
+  const [editTxOpen, setEditTxOpen] = useState(false);
+  const [editTx, setEditTx] = useState<{ id: string; beneficiary_id: string; beneficiary_name: string; amount: number; rrr_number: string; month_for: number; batch_repayment_id: string } | null>(null);
+  const [editTxAmount, setEditTxAmount] = useState('');
+  const [editTxSaving, setEditTxSaving] = useState(false);
 
   const fetchBatches = async () => {
     const { data, error } = await supabase
@@ -535,6 +543,84 @@ export default function BatchRepayment() {
     }
   };
 
+  const toggleHistoryExpand = (id: string) => {
+    setExpandedHistoryIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const getTransactionsForBatchRepayment = (batchRepayment: BatchRepaymentRecord) => {
+    const allTxs: any[] = [];
+    Object.entries(detailTransactions).forEach(([benId, txs]) => {
+      txs.forEach((tx: any) => {
+        if (tx.rrr_number === batchRepayment.rrr_number && tx.month_for === batchRepayment.month_for) {
+          const member = detailMembers.find(m => m.id === benId);
+          allTxs.push({ ...tx, beneficiary_name: member?.name || 'Unknown' });
+        }
+      });
+    });
+    return allTxs;
+  };
+
+  const openEditTx = (tx: any, batchRepaymentId: string) => {
+    setEditTx({
+      id: tx.id,
+      beneficiary_id: tx.beneficiary_id,
+      beneficiary_name: tx.beneficiary_name,
+      amount: Number(tx.amount),
+      rrr_number: tx.rrr_number,
+      month_for: tx.month_for,
+      batch_repayment_id: batchRepaymentId,
+    });
+    setEditTxAmount(String(Number(tx.amount)));
+    setEditTxOpen(true);
+  };
+
+  const handleEditTxSave = async () => {
+    if (!editTx) return;
+    const newAmount = parseFloat(editTxAmount);
+    if (isNaN(newAmount) || newAmount < 0) {
+      toast({ title: 'Invalid amount', variant: 'destructive' });
+      return;
+    }
+    setEditTxSaving(true);
+    try {
+      const oldAmount = editTx.amount;
+      const diff = newAmount - oldAmount;
+
+      const { error: txErr } = await supabase.from('transactions').update({ amount: newAmount }).eq('id', editTx.id);
+      if (txErr) throw txErr;
+
+      const { data: ben } = await supabase.from('beneficiaries').select('total_paid, outstanding_balance').eq('id', editTx.beneficiary_id).single();
+      if (ben) {
+        await supabase.from('beneficiaries').update({
+          total_paid: Math.max(0, Number(ben.total_paid) + diff),
+          outstanding_balance: Math.max(0, Number(ben.outstanding_balance) - diff),
+        }).eq('id', editTx.beneficiary_id);
+      }
+
+      const { data: batchRep } = await supabase.from('batch_repayments').select('actual_amount').eq('id', editTx.batch_repayment_id).single();
+      if (batchRep) {
+        await supabase.from('batch_repayments').update({
+          actual_amount: Number(batchRep.actual_amount) + diff,
+        }).eq('id', editTx.batch_repayment_id);
+      }
+
+      toast({ title: 'Updated', description: `${editTx.beneficiary_name}'s payment updated to ${formatCurrency(newAmount)}.` });
+      setEditTxOpen(false);
+      setEditTx(null);
+
+      if (detailBatch) openDetail(detailBatch);
+      fetchBatches();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update.', variant: 'destructive' });
+    } finally {
+      setEditTxSaving(false);
+    }
+  };
+
   const openDetail = async (batch: LoanBatch) => {
     setDetailBatch(batch);
     setDetailLoading(true);
@@ -777,6 +863,7 @@ export default function BatchRepayment() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-border bg-secondary/50">
+                            <th className="px-2 py-3 w-8"></th>
                             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Month</th>
                             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Expected (₦)</th>
                             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actual (₦)</th>
@@ -790,8 +877,14 @@ export default function BatchRepayment() {
                         <tbody className="divide-y divide-border">
                           {detailHistory.map(r => {
                             const variance = Number(r.actual_amount) - Number(r.expected_amount);
+                            const isExpanded = expandedHistoryIds.has(r.id);
+                            const memberTxs = isExpanded ? getTransactionsForBatchRepayment(r) : [];
                             return (
-                              <tr key={r.id} className="table-row-highlight">
+                              <>
+                              <tr key={r.id} className="table-row-highlight cursor-pointer" onClick={() => toggleHistoryExpand(r.id)}>
+                                <td className="px-2 py-3 text-muted-foreground">
+                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                                </td>
                                 <td className="px-4 py-3 font-medium">Month {r.month_for}</td>
                                 <td className="px-4 py-3 text-right">{formatCurrency(Number(r.expected_amount))}</td>
                                 <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(r.actual_amount))}</td>
@@ -799,21 +892,71 @@ export default function BatchRepayment() {
                                   {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
                                 </td>
                                 <td className="px-4 py-3 font-mono text-xs">{r.rrr_number}</td>
-                                <td className="px-4 py-3 text-muted-foreground">{r.payment_date}</td>
+                                <td className="px-4 py-3 text-muted-foreground">{formatDate(new Date(r.payment_date))}</td>
                                 <td className="px-4 py-3">
                                   {r.receipt_url ? (
-                                    <a href={r.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
+                                    <a href={r.receipt_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1" onClick={e => e.stopPropagation()}>
                                       <ExternalLink className="w-3 h-3" /> View
                                     </a>
                                   ) : '—'}
                                 </td>
                                 <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate">{r.notes || '—'}</td>
                               </tr>
+                              {isExpanded && (
+                                <tr key={`${r.id}-detail`}>
+                                  <td colSpan={9} className="p-0">
+                                    <div className="bg-muted/30 border-t border-b border-border">
+                                      <table className="w-full text-sm">
+                                        <thead>
+                                          <tr className="bg-muted/50">
+                                            <th className="px-6 py-2 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">EMI</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount Paid</th>
+                                            <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Variance</th>
+                                            {(isAdmin || hasRole('loan_officer')) && (
+                                              <th className="px-4 py-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
+                                            )}
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/50">
+                                          {memberTxs.map((tx: any) => {
+                                            const member = detailMembers.find(m => m.id === tx.beneficiary_id);
+                                            const emi = member ? Number(member.monthly_emi) : 0;
+                                            const txVariance = Number(tx.amount) - emi;
+                                            return (
+                                              <tr key={tx.id} className="table-row-highlight">
+                                                <td className="px-6 py-2 font-medium text-sm">{tx.beneficiary_name}</td>
+                                                <td className="px-4 py-2 text-right text-muted-foreground">{formatCurrency(emi)}</td>
+                                                <td className="px-4 py-2 text-right font-medium">{formatCurrency(Number(tx.amount))}</td>
+                                                <td className={`px-4 py-2 text-right text-xs ${txVariance < 0 ? 'text-destructive' : txVariance > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                                                  {txVariance >= 0 ? '+' : ''}{formatCurrency(txVariance)}
+                                                </td>
+                                                {(isAdmin || hasRole('loan_officer')) && (
+                                                  <td className="px-4 py-2 text-center">
+                                                    <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => { e.stopPropagation(); openEditTx(tx, r.id); }}>
+                                                      <Pencil className="w-3 h-3" /> Edit
+                                                    </Button>
+                                                  </td>
+                                                )}
+                                              </tr>
+                                            );
+                                          })}
+                                          {memberTxs.length === 0 && (
+                                            <tr><td colSpan={5} className="px-6 py-4 text-center text-muted-foreground text-xs">No individual transactions found for this batch payment.</td></tr>
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                              </>
                             );
                           })}
                         </tbody>
                         <tfoot>
                           <tr className="border-t-2 border-border bg-secondary/30 font-semibold">
+                            <td className="px-2 py-3"></td>
                             <td className="px-4 py-3">Totals</td>
                             <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.expected_amount), 0))}</td>
                             <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.actual_amount), 0))}</td>
@@ -892,6 +1035,46 @@ export default function BatchRepayment() {
             </Tabs>
           </>
         )}
+
+        {/* Edit Individual Transaction Dialog */}
+        <Dialog open={editTxOpen} onOpenChange={setEditTxOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Repayment</DialogTitle>
+              <DialogDescription>
+                Update the payment amount for {editTx?.beneficiary_name || 'this beneficiary'} (Month {editTx?.month_for}).
+              </DialogDescription>
+            </DialogHeader>
+            {editTx && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Beneficiary</span><span className="font-medium">{editTx.beneficiary_name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Month</span><span>Month {editTx.month_for}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">RRR</span><span className="font-mono text-xs">{editTx.rrr_number}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Current Amount</span><span className="font-medium">{formatCurrency(editTx.amount)}</span></div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editTxAmount">New Amount (₦)</Label>
+                  <Input
+                    id="editTxAmount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editTxAmount}
+                    onChange={e => setEditTxAmount(e.target.value)}
+                    placeholder="Enter new amount"
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditTxOpen(false)} disabled={editTxSaving}>Cancel</Button>
+              <Button onClick={handleEditTxSave} disabled={editTxSaving}>
+                {editTxSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
