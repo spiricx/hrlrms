@@ -372,10 +372,6 @@ export default function BatchRepayment() {
       toast({ title: 'Validation Error', description: 'Remita RRR is required.', variant: 'destructive' });
       return;
     }
-    if (!payReceipt.trim()) {
-      toast({ title: 'Validation Error', description: 'Receipt URL is required.', variant: 'destructive' });
-      return;
-    }
 
     const actualAmount = Number(payAmount) || expectedAmount;
     if (actualAmount <= 0) {
@@ -404,7 +400,7 @@ export default function BatchRepayment() {
       actual_amount: actualAmount,
       rrr_number: payRrr.trim(),
       payment_date: format(payDate, 'yyyy-MM-dd'),
-      receipt_url: payReceipt.trim(),
+      receipt_url: payReceipt.trim() || '',
       notes: payNotes.trim(),
       recorded_by: user?.id || null,
     } as any);
@@ -1422,7 +1418,7 @@ export default function BatchRepayment() {
                 </div>
 
                 <div>
-                  <Label>Remita Receipt URL *</Label>
+                  <Label>Remita Receipt URL</Label>
                   <Input value={payReceipt} onChange={e => setPayReceipt(e.target.value)} placeholder="https://remita.net/receipt/..." />
                 </div>
 
