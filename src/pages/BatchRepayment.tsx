@@ -999,46 +999,29 @@ export default function BatchRepayment() {
                 </div>
 
                 <div>
-                  <Label>Payment Period (Month & Year) *</Label>
-                  <p className="text-xs text-muted-foreground mb-1">Select the month and year of this batch repayment as shown on the Remita receipt.</p>
-                  <div className="flex gap-2">
-                    <Select
-                      value={payDate ? String(payDate.getMonth()) : ''}
-                      onValueChange={(val) => {
-                        const month = Number(val);
-                        const current = payDate || new Date();
-                        const newDate = new Date(current.getFullYear(), month, 1);
-                        setPayDate(newDate);
-                      }}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
-                          <SelectItem key={i} value={String(i)}>{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={payDate ? String(payDate.getFullYear()) : ''}
-                      onValueChange={(val) => {
-                        const year = Number(val);
-                        const current = payDate || new Date();
-                        const newDate = new Date(year, current.getMonth(), 1);
-                        setPayDate(newDate);
-                      }}
-                    >
-                      <SelectTrigger className="w-28">
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.from({ length: new Date().getFullYear() - 2015 }, (_, i) => 2016 + i).map(y => (
-                          <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Label>Payment Date (as on Remita receipt) *</Label>
+                  <p className="text-xs text-muted-foreground mb-1">Enter the exact date shown on the Remita receipt — this is the official repayment date.</p>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !payDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {payDate ? format(payDate, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={payDate}
+                        onSelect={setPayDate}
+                        disabled={(date) => date > new Date()}
+                        initialFocus
+                        captionLayout="dropdown-buttons"
+                        fromYear={2016}
+                        toYear={new Date().getFullYear()}
+                        className={cn("p-3 pointer-events-auto")}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div>
