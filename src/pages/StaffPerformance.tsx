@@ -53,6 +53,31 @@ export default function StaffPerformance() {
     })();
   }, []);
 
+  // Compute loan status and DPD based on aging logic
+  const computeLoanStatus = useCallback((b: Beneficiary) => {
+    const now = new Date();
+    if (Number(b.outstanding_balance) <= 0) return { status: 'Fully Repaid', daysOverdue: 0 };
+
+    const commencement = new Date(b.commencement_date);
+    const monthsElapsed = (now.getFullYear() - commencement.getFullYear()) * 12 + (now.getMonth() - commencement.getMonth());
+    const expectedPaid = Math.min(monthsElapsed, b.tenor_months) * Number(b.monthly_emi);
+    const shortfall = expectedPaid - Number(b.total_paid);
+
+    if (shortfall <= 0) return { status: 'Current', daysOverdue: 0 };
+
+    // Calculate months behind
+    const monthsBehind = Math.ceil(shortfall / Number(b.monthly_emi));
+    // Earliest unpaid installment due date
+    const paidMonths = Math.floor(Number(b.total_paid) / Number(b.monthly_emi));
+    const earliestUnpaidDate = new Date(commencement);
+    earliestUnpaidDate.setMonth(earliestUnpaidDate.getMonth() + paidMonths + 1);
+    const daysOverdue = Math.max(0, Math.floor((now.getTime() - earliestUnpaidDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+    if (daysOverdue >= 90) return { status: 'NPL', daysOverdue };
+    if (daysOverdue >= 1) return { status: 'Overdue', daysOverdue };
+    return { status: 'Upcoming', daysOverdue: 0 };
+  }, []);
+
   const staffMetrics = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -68,7 +93,13 @@ export default function StaffPerformance() {
     }).map(s => {
       const myBeneficiaries = beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
-      const nplBens = myBeneficiaries.filter(b => b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3);
+
+      // Use proper 90+ DPD aging for NPL classification
+      const nplBens = activeBens.filter(b => {
+        const { status } = computeLoanStatus(b);
+        return status === 'NPL';
+      });
+
       const portfolioValue = activeBens.reduce((sum, b) => sum + Number(b.loan_amount), 0);
       const totalOutstanding = activeBens.reduce((sum, b) => sum + Number(b.outstanding_balance), 0);
       const totalPaid = activeBens.reduce((sum, b) => sum + Number(b.total_paid), 0);
@@ -80,8 +111,16 @@ export default function StaffPerformance() {
         return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       });
       const recoveryMTD = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
-      const nplRatio = portfolioValue > 0 ? (nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0) / portfolioValue * 100) : 0;
-      const recoveryRate = totalOutstanding > 0 ? (recoveryMTD / (activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0) || 1) * 100) : 0;
+      const nplOutstanding = nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0);
+      const nplRatio = totalOutstanding > 0 ? (nplOutstanding / totalOutstanding * 100) : 0;
+      const expectedMonthly = activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0);
+      const recoveryRate = expectedMonthly > 0 ? (recoveryMTD / expectedMonthly * 100) : 0;
+
+      // Count overdue (1-89 DPD)
+      const overdueBens = activeBens.filter(b => {
+        const { status } = computeLoanStatus(b);
+        return status === 'Overdue';
+      });
 
       return {
         ...s,
@@ -92,12 +131,13 @@ export default function StaffPerformance() {
         totalPaid,
         recoveryMTD,
         nplCount: nplBens.length,
+        overdueCount: overdueBens.length,
         nplRatio: Math.round(nplRatio * 10) / 10,
         recoveryRate: Math.min(Math.round(recoveryRate), 200),
         beneficiaries: myBeneficiaries,
       };
     }).sort((a, b) => b.recoveryMTD - a.recoveryMTD);
-  }, [staff, beneficiaries, transactions, filterState, searchQuery]);
+  }, [staff, beneficiaries, transactions, filterState, searchQuery, computeLoanStatus]);
 
   // Loan portfolio by staff
   const staffPortfolio = useMemo(() => {
@@ -364,12 +404,13 @@ export default function StaffPerformance() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Staff</div><div className="text-2xl font-bold">{staffMetrics.length}</div></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Portfolio</div><div className="text-2xl font-bold">{formatNaira(staffMetrics.reduce((s, m) => s + m.portfolioValue, 0))}</div></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Outstanding</div><div className="text-2xl font-bold text-amber-600">{formatNaira(staffMetrics.reduce((s, m) => s + m.totalOutstanding, 0))}</div></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Recovery (MTD)</div><div className="text-2xl font-bold text-emerald-600">{formatNaira(staffMetrics.reduce((s, m) => s + m.recoveryMTD, 0))}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Avg NPL Ratio</div><div className="text-2xl font-bold">{staffMetrics.length ? (staffMetrics.reduce((s, m) => s + m.nplRatio, 0) / staffMetrics.length).toFixed(1) : 0}%</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">NPL Accounts</div><div className="text-2xl font-bold text-destructive">{staffMetrics.reduce((s, m) => s + m.nplCount, 0)}</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Overdue Accounts</div><div className="text-2xl font-bold text-amber-600">{staffMetrics.reduce((s, m) => s + m.overdueCount, 0)}</div></CardContent></Card>
       </div>
 
       {/* Top Performers */}
@@ -550,7 +591,7 @@ export default function StaffPerformance() {
               <div className="overflow-auto max-h-[65vh]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur z-10"><tr>
-                    {['S/N', 'Staff Name', 'Staff ID', 'Loan Ref', 'Beneficiary', 'State', 'Branch', 'Loan Amount (₦)', 'Outstanding (₦)', 'Paid (₦)', 'Monthly EMI', 'Tenor', 'Status'].map(h => <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                    {['S/N', 'Staff Name', 'Staff ID', 'Loan Ref', 'Beneficiary', 'State', 'Branch', 'Loan Amount (₦)', 'Outstanding (₦)', 'Paid (₦)', 'Monthly Repayment', 'Tenor', 'Days Overdue', 'Status'].map(h => <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>)}
                   </tr></thead>
                   <tbody>
                     {(() => {
@@ -558,6 +599,11 @@ export default function StaffPerformance() {
                       return staffPortfolio.flatMap(s =>
                         s.beneficiaries.map(b => {
                           idx++;
+                          const computed = computeLoanStatus(b);
+                          const statusColor = computed.status === 'NPL' ? 'destructive' 
+                            : computed.status === 'Overdue' ? 'destructive' 
+                            : computed.status === 'Fully Repaid' ? 'secondary'
+                            : 'default';
                           return (
                             <tr key={b.id} className="border-b table-row-highlight">
                               <td className="px-3 py-2">{idx}</td>
@@ -572,8 +618,11 @@ export default function StaffPerformance() {
                               <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(Number(b.total_paid))}</td>
                               <td className="px-3 py-2 text-right">{formatNaira(Number(b.monthly_emi))}</td>
                               <td className="px-3 py-2">{b.tenor_months}m</td>
+                              <td className="px-3 py-2 font-medium">{computed.daysOverdue > 0 ? `${computed.daysOverdue}d` : '—'}</td>
                               <td className="px-3 py-2">
-                                <Badge variant={b.status === 'active' ? 'default' : 'secondary'} className="text-xs">{b.status}</Badge>
+                                <Badge variant={statusColor} className={`text-xs ${computed.status === 'NPL' ? 'animate-pulse' : computed.status === 'Overdue' ? 'animate-pulse bg-red-500' : ''}`}>
+                                  {computed.status}
+                                </Badge>
                               </td>
                             </tr>
                           );
