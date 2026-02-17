@@ -21,10 +21,10 @@ export const MODULE_KEYS = [
   { key: 'loan-reconciliation', label: 'Reconciliation' },
   { key: 'loan-repayment-report', label: 'Repayment Report' },
   { key: 'loan-history', label: 'Loan History' },
-  { key: 'staff-directory', label: 'Staff Management' },
-  { key: 'staff-performance', label: 'Staff Performance' },
   { key: 'npl-status', label: 'NPL Status' },
   { key: 'reports', label: 'Reports' },
+  { key: 'staff-directory', label: 'Staff Management' },
+  { key: 'staff-performance', label: 'Staff Performance' },
   { key: 'feedback-support', label: 'Feedback & Support' },
 ] as const;
 
