@@ -2,8 +2,12 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
-  FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye
+  FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye, Trash2
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime } from '@/lib/loanCalculations';
 import { Input } from '@/components/ui/input';
@@ -119,6 +123,7 @@ export default function BatchRepayment() {
   const [historyBatch, setHistoryBatch] = useState<LoanBatch | null>(null);
   const [historyRecords, setHistoryRecords] = useState<BatchRepaymentRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [deletingRepaymentId, setDeletingRepaymentId] = useState<string | null>(null);
 
   // Batch detail view
   const [detailBatch, setDetailBatch] = useState<LoanBatch | null>(null);
@@ -426,6 +431,58 @@ export default function BatchRepayment() {
       .order('month_for', { ascending: true });
     setHistoryRecords((data as BatchRepaymentRecord[]) || []);
     setHistoryLoading(false);
+  };
+
+  const handleDeleteBatchRepayment = async (record: BatchRepaymentRecord) => {
+    setDeletingRepaymentId(record.id);
+    try {
+      // 1. Find and reverse individual transactions with this RRR for batch members
+      const { data: members } = await supabase
+        .from('beneficiaries')
+        .select('id')
+        .eq('batch_id', record.batch_id);
+      const memberIds = (members || []).map((m: any) => m.id);
+
+      if (memberIds.length > 0) {
+        const { data: txs } = await supabase
+          .from('transactions')
+          .select('id, beneficiary_id, amount')
+          .eq('rrr_number', record.rrr_number)
+          .in('beneficiary_id', memberIds);
+
+        if (txs && txs.length > 0) {
+          // Reverse balances
+          for (const tx of txs) {
+            const { data: ben } = await supabase
+              .from('beneficiaries')
+              .select('total_paid, outstanding_balance')
+              .eq('id', tx.beneficiary_id)
+              .single();
+            if (ben) {
+              await supabase.from('beneficiaries').update({
+                total_paid: Math.max(0, Number(ben.total_paid) - Number(tx.amount)),
+                outstanding_balance: Number(ben.outstanding_balance) + Number(tx.amount),
+                status: 'active',
+              }).eq('id', tx.beneficiary_id);
+            }
+          }
+          // Delete transactions
+          await supabase.from('transactions').delete().in('id', txs.map(t => t.id));
+        }
+      }
+
+      // 2. Delete batch repayment record
+      const { error } = await supabase.from('batch_repayments').delete().eq('id', record.id);
+      if (error) throw error;
+
+      setHistoryRecords(prev => prev.filter(r => r.id !== record.id));
+      toast({ title: 'Deleted', description: `Batch repayment for Month ${record.month_for} reversed and deleted.` });
+      fetchBatches();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to delete.', variant: 'destructive' });
+    } finally {
+      setDeletingRepaymentId(null);
+    }
   };
 
   const openDetail = async (batch: LoanBatch) => {
@@ -1141,6 +1198,9 @@ export default function BatchRepayment() {
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">RRR</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt</th>
+                    {(isAdmin || hasRole('loan_officer')) && (
+                      <th className="px-3 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Action</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -1158,6 +1218,31 @@ export default function BatchRepayment() {
                           </a>
                         ) : '—'}
                       </td>
+                      {(isAdmin || hasRole('loan_officer')) && (
+                        <td className="px-3 py-2 text-center">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={deletingRepaymentId === r.id}>
+                                {deletingRepaymentId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Batch Repayment?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will reverse all individual transactions for Month {r.month_for} (RRR: {r.rrr_number}) and restore each member's outstanding balance. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBatchRepayment(r)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete & Reverse
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
