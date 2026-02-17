@@ -16,7 +16,7 @@ import ModuleAccessTab from '@/components/admin/ModuleAccessTab';
 import ActivityLogsTab from '@/components/admin/ActivityLogsTab';
 import { format } from 'date-fns';
 
-type AppRole = 'admin' | 'loan_officer' | 'staff';
+type AppRole = 'admin' | 'manager' | 'loan_officer';
 
 interface UserWithRoles {
   user_id: string;
@@ -105,7 +105,7 @@ function RolesTab() {
   const [search, setSearch] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<AppRole>('staff');
+  const [selectedRole, setSelectedRole] = useState<AppRole>('loan_officer');
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -162,8 +162,8 @@ function RolesTab() {
                 <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="loan_officer">Loan Officer</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
                 </SelectContent>
               </Select>
             </div>
