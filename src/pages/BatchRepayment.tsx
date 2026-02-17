@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
   FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime } from '@/lib/loanCalculations';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -111,6 +112,7 @@ export default function BatchRepayment() {
   const [payReceipt, setPayReceipt] = useState('');
   const [payNotes, setPayNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [payIncludedIds, setPayIncludedIds] = useState<Set<string>>(new Set());
 
   // Batch history state
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -260,15 +262,44 @@ export default function BatchRepayment() {
       .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id, tenor_months, interest_rate, moratorium_months, disbursement_date, commencement_date, termination_date, nhf_number, loan_reference_number, department, default_count')
       .eq('batch_id', batch.id)
       .eq('status', 'active');
-    setBatchMembers((data as BatchBeneficiary[]) || []);
+    const members = (data as BatchBeneficiary[]) || [];
+    setBatchMembers(members);
+    // All members included by default
+    setPayIncludedIds(new Set(members.map(m => m.id)));
   };
 
+  const includedMembers = useMemo(() => {
+    return batchMembers.filter(b => payIncludedIds.has(b.id));
+  }, [batchMembers, payIncludedIds]);
+
   const expectedAmount = useMemo(() => {
-    return batchMembers.reduce((sum, b) => sum + Number(b.monthly_emi), 0);
+    return includedMembers.reduce((sum, b) => sum + Number(b.monthly_emi), 0);
+  }, [includedMembers]);
+
+  const toggleMemberInclusion = useCallback((id: string) => {
+    setPayIncludedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleAllMembers = useCallback((checked: boolean) => {
+    if (checked) {
+      setPayIncludedIds(new Set(batchMembers.map(m => m.id)));
+    } else {
+      setPayIncludedIds(new Set());
+    }
   }, [batchMembers]);
 
   const handleRecordBatchPayment = async () => {
     if (!payBatch || !payDate) return;
+
+    if (includedMembers.length === 0) {
+      toast({ title: 'Validation Error', description: 'At least one member must be included.', variant: 'destructive' });
+      return;
+    }
 
     if (!payMonth) {
       toast({ title: 'Validation Error', description: 'Select repayment month.', variant: 'destructive' });
@@ -321,16 +352,17 @@ export default function BatchRepayment() {
       return;
     }
 
-    // 2. Record individual transactions for each member
-    const isPartial = actualAmount < expectedAmount;
-    const ratio = isPartial ? actualAmount / expectedAmount : 1;
+    // 2. Record individual transactions only for INCLUDED members
+    const finalAmount = actualAmount;
+    const isPartial = finalAmount < expectedAmount;
+    const ratio = isPartial ? finalAmount / expectedAmount : 1;
     const datePaid = format(payDate, 'yyyy-MM-dd');
     const monthFor = Number(payMonth);
 
     let successCount = 0;
     let errorCount = 0;
 
-    for (const member of batchMembers) {
+    for (const member of includedMembers) {
       const memberAmount = Math.round(Number(member.monthly_emi) * ratio * 100) / 100;
 
       // Insert individual transaction
@@ -363,6 +395,8 @@ export default function BatchRepayment() {
       successCount++;
     }
 
+    const excludedCount = batchMembers.length - includedMembers.length;
+
     setSaving(false);
     setPayOpen(false);
 
@@ -375,7 +409,7 @@ export default function BatchRepayment() {
     } else {
       toast({
         title: 'Batch Repayment Recorded',
-        description: `${successCount} beneficiaries updated with RRR ${payRrr.trim()}.`,
+        description: `${successCount} beneficiaries updated${excludedCount > 0 ? `, ${excludedCount} excluded` : ''} with RRR ${payRrr.trim()}.`,
       });
     }
     fetchBatches();
@@ -958,13 +992,49 @@ export default function BatchRepayment() {
                   <p className="text-sm font-semibold">{payBatch.batch_code}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Members</p>
-                  <p className="text-sm font-semibold">{batchMembers.length}</p>
+                  <p className="text-xs text-muted-foreground">Included Members</p>
+                  <p className="text-sm font-semibold">{payIncludedIds.size} of {batchMembers.length}</p>
                 </div>
                 <div className="col-span-2">
-                  <p className="text-xs text-muted-foreground">Expected Monthly Repayment</p>
+                  <p className="text-xs text-muted-foreground">Expected Monthly Repayment (included only)</p>
                   <p className="text-lg font-bold text-primary">{formatCurrency(expectedAmount)}</p>
                 </div>
+              </div>
+
+              {/* Member inclusion checklist */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-semibold">Members</Label>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={payIncludedIds.size === batchMembers.length}
+                      onCheckedChange={(checked) => toggleAllMembers(!!checked)}
+                    />
+                    <span className="text-xs text-muted-foreground">Select All</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">Untick members who did not pay. Only checked members will receive credit.</p>
+                <div className="max-h-48 overflow-y-auto border rounded-md divide-y divide-border">
+                  {batchMembers.map(member => (
+                    <label key={member.id} className="flex items-center gap-3 px-3 py-2 hover:bg-secondary/30 cursor-pointer transition-colors">
+                      <Checkbox
+                        checked={payIncludedIds.has(member.id)}
+                        onCheckedChange={() => toggleMemberInclusion(member.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{member.name}</p>
+                        <p className="text-xs text-muted-foreground">{member.employee_id}</p>
+                      </div>
+                      <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">{formatCurrency(Number(member.monthly_emi))}</span>
+                    </label>
+                  ))}
+                </div>
+                {batchMembers.length - payIncludedIds.size > 0 && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    {batchMembers.length - payIncludedIds.size} member(s) excluded — they will receive ₦0.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
