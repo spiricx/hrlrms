@@ -1666,7 +1666,7 @@ export default function BatchRepayment() {
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">RRR</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt</th>
-                    {(isAdmin || hasRole('loan_officer')) && (
+                      {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
                       <th className="px-3 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Action</th>
                     )}
                   </tr>
@@ -1686,7 +1686,7 @@ export default function BatchRepayment() {
                           </a>
                         ) : '—'}
                       </td>
-                      {(isAdmin || hasRole('loan_officer')) && (
+                      {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
                         <td className="px-3 py-2 text-center space-x-1">
                           <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setHistoryOpen(false); openEditBatchRep(r); }}>
                             <Pencil className="w-3.5 h-3.5" />
