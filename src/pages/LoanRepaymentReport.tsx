@@ -414,7 +414,7 @@ export default function LoanRepaymentReport() {
                   <TableRow
                     key={`${r.rrrNumber}-${r.datePaid}-${i}`}
                     className="cursor-pointer hover:border-l-[3px] hover:border-l-primary hover:bg-primary/5 transition-all"
-                    onClick={() => navigate(`/beneficiaries/${r.beneficiaryId}`)}
+                    onClick={() => navigate(`/beneficiary/${r.beneficiaryId}`)}
                   >
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="font-medium text-primary underline-offset-2 hover:underline whitespace-nowrap">{r.beneficiaryName}</TableCell>
