@@ -77,6 +77,20 @@ export default function FeedbackSupport() {
   const [adminResponse, setAdminResponse] = useState('');
   const [statusUpdate, setStatusUpdate] = useState<Status>('open');
   const [responding, setResponding] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
+
+  const handleRate = async (submissionId: string, rating: number) => {
+    const { error } = await supabase
+      .from('feedback_submissions')
+      .update({ rating })
+      .eq('id', submissionId);
+    if (error) {
+      toast.error('Failed to save rating');
+    } else {
+      toast.success('Rating saved!');
+      fetchSubmissions();
+    }
+  };
 
   useEffect(() => { fetchSubmissions(); }, [activeTab]);
 
@@ -324,15 +338,63 @@ export default function FeedbackSupport() {
                                     <Label className="text-xs text-muted-foreground">Message</Label>
                                     <p className="text-sm whitespace-pre-wrap bg-muted/50 p-3 rounded-lg">{s.message}</p>
                                   </div>
-                                  {s.admin_response && (
-                                    <div>
-                                      <Label className="text-xs text-muted-foreground">Admin Response</Label>
-                                      <p className="text-sm whitespace-pre-wrap bg-primary/5 p-3 rounded-lg border border-primary/10">{s.admin_response}</p>
-                                      {s.responded_at && (
-                                        <p className="text-xs text-muted-foreground mt-1">Responded: {format(new Date(s.responded_at), 'dd MMM yyyy, h:mm a')}</p>
-                                      )}
-                                    </div>
-                                  )}
+                                    {s.admin_response && (
+                                      <div>
+                                        <Label className="text-xs text-muted-foreground">Admin Response</Label>
+                                        <p className="text-sm whitespace-pre-wrap bg-primary/5 p-3 rounded-lg border border-primary/10">{s.admin_response}</p>
+                                        {s.responded_at && (
+                                          <p className="text-xs text-muted-foreground mt-1">Responded: {format(new Date(s.responded_at), 'dd MMM yyyy, h:mm a')}</p>
+                                        )}
+                                      </div>
+                                    )}
+                                    {/* Star Rating - visible to the submitter when admin has responded */}
+                                    {s.admin_response && !isAdmin && (
+                                      <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Rate this response</Label>
+                                        <div className="flex gap-1">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <button
+                                              key={star}
+                                              type="button"
+                                              className="focus:outline-none transition-colors"
+                                              onMouseEnter={() => setHoverRating(star)}
+                                              onMouseLeave={() => setHoverRating(0)}
+                                              onClick={() => handleRate(s.id, star)}
+                                            >
+                                              <Star
+                                                className={`w-6 h-6 ${
+                                                  (hoverRating || (s as any).rating || 0) >= star
+                                                    ? 'fill-yellow-400 text-yellow-400'
+                                                    : 'text-muted-foreground/40'
+                                                }`}
+                                              />
+                                            </button>
+                                          ))}
+                                        </div>
+                                        {(s as any).rating && (
+                                          <p className="text-xs text-muted-foreground">You rated: {(s as any).rating}/5</p>
+                                        )}
+                                      </div>
+                                    )}
+                                    {/* Show rating to admin */}
+                                    {isAdmin && (s as any).rating && (
+                                      <div className="space-y-1">
+                                        <Label className="text-xs text-muted-foreground">Staff Rating</Label>
+                                        <div className="flex gap-1">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <Star
+                                              key={star}
+                                              className={`w-5 h-5 ${
+                                                (s as any).rating >= star
+                                                  ? 'fill-yellow-400 text-yellow-400'
+                                                  : 'text-muted-foreground/40'
+                                              }`}
+                                            />
+                                          ))}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">Rated: {(s as any).rating}/5</p>
+                                      </div>
+                                    )}
                                   {isAdmin && (
                                     <div className="space-y-3 border-t pt-3">
                                       <Label className="font-semibold">Admin Response</Label>
