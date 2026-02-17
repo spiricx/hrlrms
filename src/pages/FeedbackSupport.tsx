@@ -32,6 +32,9 @@ interface Submission {
   responded_at: string | null;
   created_at: string;
   updated_at: string;
+  submitter_name: string;
+  submitter_state: string;
+  submitter_branch: string;
 }
 
 const CATEGORY_CONFIG: Record<Category, { label: string; icon: typeof Star; description: string }> = {
@@ -99,12 +102,23 @@ export default function FeedbackSupport() {
       return;
     }
     setSubmitting(true);
+
+    // Fetch submitter profile info
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, state, bank_branch')
+      .eq('user_id', user!.id)
+      .single();
+
     const { error } = await supabase.from('feedback_submissions').insert({
       user_id: user!.id,
       category: activeTab,
       subject: subject.trim(),
       message: message.trim(),
       priority,
+      submitter_name: profile?.full_name || '',
+      submitter_state: profile?.state || '',
+      submitter_branch: profile?.bank_branch || '',
     });
     if (error) {
       toast.error('Failed to submit: ' + error.message);
@@ -233,6 +247,9 @@ export default function FeedbackSupport() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Subject</TableHead>
+                        {isAdmin && <TableHead>Submitted By</TableHead>}
+                        {isAdmin && <TableHead>State</TableHead>}
+                        {isAdmin && <TableHead>Branch</TableHead>}
                         <TableHead className="text-center">Priority</TableHead>
                         <TableHead className="text-center">Status</TableHead>
                         <TableHead>Date</TableHead>
@@ -242,15 +259,18 @@ export default function FeedbackSupport() {
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                         <TableCell colSpan={isAdmin ? 8 : 5} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                         </TableRow>
                       ) : filtered.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No submissions yet</TableCell>
+                           <TableCell colSpan={isAdmin ? 8 : 5} className="text-center py-8 text-muted-foreground">No submissions yet</TableCell>
                         </TableRow>
                       ) : filtered.map((s) => (
                         <TableRow key={s.id}>
                           <TableCell className="font-medium max-w-[200px] truncate">{s.subject}</TableCell>
+                          {isAdmin && <TableCell className="text-sm">{s.submitter_name || '—'}</TableCell>}
+                          {isAdmin && <TableCell className="text-sm">{s.submitter_state || '—'}</TableCell>}
+                          {isAdmin && <TableCell className="text-sm">{s.submitter_branch || '—'}</TableCell>}
                           <TableCell className="text-center">
                             <Badge variant="outline" className={PRIORITY_COLORS[s.priority]}>{s.priority}</Badge>
                           </TableCell>
@@ -280,6 +300,22 @@ export default function FeedbackSupport() {
                                     <Badge variant="outline" className={PRIORITY_COLORS[s.priority]}>{s.priority}</Badge>
                                     <Badge variant="outline" className={STATUS_COLORS[s.status]}>{s.status.replace('_', ' ')}</Badge>
                                   </div>
+                                  {isAdmin && (
+                                    <div className="grid grid-cols-3 gap-3">
+                                      <div>
+                                        <Label className="text-xs text-muted-foreground">Full Name</Label>
+                                        <p className="text-sm font-medium">{s.submitter_name || '—'}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs text-muted-foreground">State</Label>
+                                        <p className="text-sm">{s.submitter_state || '—'}</p>
+                                      </div>
+                                      <div>
+                                        <Label className="text-xs text-muted-foreground">Branch</Label>
+                                        <p className="text-sm">{s.submitter_branch || '—'}</p>
+                                      </div>
+                                    </div>
+                                  )}
                                   <div>
                                     <Label className="text-xs text-muted-foreground">Submitted on</Label>
                                     <p className="text-sm">{format(new Date(s.created_at), 'dd MMM yyyy, h:mm a')}</p>

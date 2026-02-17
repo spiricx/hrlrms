@@ -239,6 +239,9 @@ export type Database = {
           responded_by: string | null
           status: string
           subject: string
+          submitter_branch: string
+          submitter_name: string
+          submitter_state: string
           updated_at: string
           user_id: string
         }
@@ -253,6 +256,9 @@ export type Database = {
           responded_by?: string | null
           status?: string
           subject?: string
+          submitter_branch?: string
+          submitter_name?: string
+          submitter_state?: string
           updated_at?: string
           user_id: string
         }
@@ -267,6 +273,9 @@ export type Database = {
           responded_by?: string | null
           status?: string
           subject?: string
+          submitter_branch?: string
+          submitter_name?: string
+          submitter_state?: string
           updated_at?: string
           user_id?: string
         }
