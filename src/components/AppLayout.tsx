@@ -56,6 +56,7 @@ const navItems = [
 { path: '/staff-performance', label: 'Staff Performance', icon: BarChart3, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/reports', label: 'Reports', icon: FileText },
+{ path: '/loan-repayment-report', label: 'Repayment Report', icon: FileText },
 { path: '/admin', label: 'Admin', icon: Shield, roles: ['admin'] as string[] }];
 
 
