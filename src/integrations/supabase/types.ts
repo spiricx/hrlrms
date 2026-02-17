@@ -311,6 +311,45 @@ export type Database = {
         }
         Relationships: []
       }
+      role_change_logs: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_name: string
+          created_at: string
+          id: string
+          new_role: string
+          previous_role: string | null
+          user_email: string
+          user_full_name: string
+          user_id: string
+        }
+        Insert: {
+          action?: string
+          changed_by?: string | null
+          changed_by_name?: string
+          created_at?: string
+          id?: string
+          new_role: string
+          previous_role?: string | null
+          user_email?: string
+          user_full_name?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_name?: string
+          created_at?: string
+          id?: string
+          new_role?: string
+          previous_role?: string | null
+          user_email?: string
+          user_full_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       staff_activity_logs: {
         Row: {
           action: string

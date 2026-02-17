@@ -121,10 +121,28 @@ function RolesTab() {
     setLoading(false);
   };
 
+  const { user } = useAuth();
+
+  const logRoleChange = async (targetUserId: string, previousRole: string | null, newRole: string, action: string) => {
+    const target = users.find((u) => u.user_id === targetUserId);
+    const { data: myProfile } = await supabase.from('profiles').select('full_name').eq('user_id', user?.id).single();
+    await supabase.from('role_change_logs').insert({
+      user_id: targetUserId,
+      user_email: target?.email || '',
+      user_full_name: `${target?.surname || ''} ${target?.first_name || ''}`.trim(),
+      previous_role: previousRole,
+      new_role: newRole,
+      action,
+      changed_by: user?.id,
+      changed_by_name: myProfile?.full_name || '',
+    });
+  };
+
   const addRole = async () => {
     if (!selectedUserId || !selectedRole) return;
     const { error } = await supabase.from('user_roles').insert({ user_id: selectedUserId, role: selectedRole });
     if (error) { toast.error(error.message); return; }
+    await logRoleChange(selectedUserId, null, selectedRole, 'assigned');
     toast.success('Role assigned successfully');
     setAddDialogOpen(false);
     fetchUsers();
@@ -133,6 +151,7 @@ function RolesTab() {
   const removeRole = async (userId: string, role: AppRole) => {
     const { error } = await supabase.from('user_roles').delete().eq('user_id', userId).eq('role', role);
     if (error) { toast.error(error.message); return; }
+    await logRoleChange(userId, role, '', 'removed');
     toast.success('Role removed');
     fetchUsers();
   };
@@ -231,10 +250,12 @@ function RolesTab() {
 // ─── Access Control Tab ───
 function AccessControlTab() {
   const [profiles, setProfiles] = useState<any[]>([]);
+  const [roleLogs, setRoleLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [logsLoading, setLogsLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchProfiles = async () => {
       setLoading(true);
       const { data } = await supabase.from('profiles').select('user_id, email, full_name, surname, first_name, state, bank_branch, staff_id_no');
       const { data: roles } = await supabase.from('user_roles').select('user_id, role');
@@ -247,11 +268,23 @@ function AccessControlTab() {
       }));
       setLoading(false);
     };
-    fetch();
+    const fetchRoleLogs = async () => {
+      setLogsLoading(true);
+      const { data } = await supabase.from('role_change_logs').select('*').order('created_at', { ascending: false }).limit(100);
+      setRoleLogs(data || []);
+      setLogsLoading(false);
+    };
+    fetchProfiles();
+    fetchRoleLogs();
   }, []);
 
+  const formatRole = (role: string | null) => {
+    if (!role) return '—';
+    return role.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Regional Access Matrix</CardTitle>
@@ -291,6 +324,51 @@ function AccessControlTab() {
                         <Badge variant="outline">{p.state || 'Unassigned'}</Badge>
                       )}
                     </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Role Change History</CardTitle>
+          <CardDescription>Audit trail of all role assignments, removals, and changes.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Staff Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Previous Role</TableHead>
+                  <TableHead>New Role</TableHead>
+                  <TableHead>Changed By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logsLoading ? (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                ) : roleLogs.length === 0 ? (
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No role change history found</TableCell></TableRow>
+                ) : roleLogs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')}</TableCell>
+                    <TableCell className="font-medium text-sm">{log.user_full_name || '—'}</TableCell>
+                    <TableCell className="text-sm">{log.user_email}</TableCell>
+                    <TableCell>
+                      <Badge variant={log.action === 'removed' ? 'destructive' : log.action === 'assigned' ? 'default' : 'secondary'} className="text-xs capitalize">
+                        {log.action}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{formatRole(log.previous_role)}</TableCell>
+                    <TableCell className="text-sm">{formatRole(log.new_role)}</TableCell>
+                    <TableCell className="text-sm">{log.changed_by_name || '—'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
