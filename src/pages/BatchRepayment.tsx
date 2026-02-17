@@ -125,6 +125,8 @@ export default function BatchRepayment() {
   const [historyRecords, setHistoryRecords] = useState<BatchRepaymentRecord[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [deletingRepaymentId, setDeletingRepaymentId] = useState<string | null>(null);
+  const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Batch detail view
   const [detailBatch, setDetailBatch] = useState<LoanBatch | null>(null);
@@ -503,6 +505,7 @@ export default function BatchRepayment() {
       .order('month_for', { ascending: true });
     setHistoryRecords((data as BatchRepaymentRecord[]) || []);
     setHistoryLoading(false);
+    setSelectedHistoryIds(new Set());
   };
 
   const handleDeleteBatchRepayment = async (record: BatchRepaymentRecord) => {
@@ -548,12 +551,46 @@ export default function BatchRepayment() {
       if (error) throw error;
 
       setHistoryRecords(prev => prev.filter(r => r.id !== record.id));
+      setSelectedHistoryIds(prev => { const n = new Set(prev); n.delete(record.id); return n; });
       toast({ title: 'Deleted', description: `Batch repayment for Month ${record.month_for} reversed and deleted.` });
       fetchBatches();
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to delete.', variant: 'destructive' });
     } finally {
       setDeletingRepaymentId(null);
+    }
+  };
+
+  const handleBulkDeleteBatchRepayments = async () => {
+    if (selectedHistoryIds.size === 0) return;
+    setBulkDeleting(true);
+    try {
+      const toDelete = historyRecords.filter(r => selectedHistoryIds.has(r.id));
+      for (const record of toDelete) {
+        await handleDeleteBatchRepayment(record);
+      }
+      setSelectedHistoryIds(new Set());
+      toast({ title: 'Bulk Delete Complete', description: `${toDelete.length} repayment record(s) reversed and deleted.` });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Bulk delete failed.', variant: 'destructive' });
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const toggleHistorySelect = (id: string) => {
+    setSelectedHistoryIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const toggleAllHistorySelect = () => {
+    if (selectedHistoryIds.size === historyRecords.length) {
+      setSelectedHistoryIds(new Set());
+    } else {
+      setSelectedHistoryIds(new Set(historyRecords.map(r => r.id)));
     }
   };
 
@@ -1656,17 +1693,53 @@ export default function BatchRepayment() {
           ) : historyRecords.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No repayments recorded yet.</p>
           ) : (
+            <>
+              {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && selectedHistoryIds.size > 0 && (
+                <div className="flex items-center justify-between pb-2">
+                  <span className="text-sm text-muted-foreground">{selectedHistoryIds.size} record(s) selected</span>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive" disabled={bulkDeleting}>
+                        {bulkDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+                        Delete Selected ({selectedHistoryIds.size})
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {selectedHistoryIds.size} Batch Repayment(s)?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will reverse all individual transactions for the selected records and restore each member's outstanding balance. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleBulkDeleteBatchRepayments} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Delete & Reverse All
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/50">
+                    {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
+                      <th className="px-3 py-2 text-center">
+                        <Checkbox
+                          checked={selectedHistoryIds.size === historyRecords.length && historyRecords.length > 0}
+                          onCheckedChange={toggleAllHistorySelect}
+                        />
+                      </th>
+                    )}
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Month</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Expected</th>
                     <th className="px-3 py-2 text-right text-xs font-semibold uppercase text-muted-foreground">Actual</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">RRR</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Date</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Receipt</th>
-                      {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
+                    {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
                       <th className="px-3 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">Action</th>
                     )}
                   </tr>
@@ -1674,6 +1747,14 @@ export default function BatchRepayment() {
                 <tbody className="divide-y divide-border">
                   {historyRecords.map(r => (
                     <tr key={r.id} className="table-row-highlight">
+                      {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
+                        <td className="px-3 py-2 text-center">
+                          <Checkbox
+                            checked={selectedHistoryIds.has(r.id)}
+                            onCheckedChange={() => toggleHistorySelect(r.id)}
+                          />
+                        </td>
+                      )}
                       <td className="px-3 py-2">Month {r.month_for}</td>
                       <td className="px-3 py-2 text-right">{formatCurrency(Number(r.expected_amount))}</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(Number(r.actual_amount))}</td>
@@ -1719,6 +1800,7 @@ export default function BatchRepayment() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
