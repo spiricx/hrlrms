@@ -140,6 +140,10 @@ function RolesTab() {
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
     return !q || u.email?.toLowerCase().includes(q) || u.full_name?.toLowerCase().includes(q) || u.surname?.toLowerCase().includes(q);
+  }).sort((a, b) => {
+    const aIsAdmin = a.roles.includes('admin') ? 0 : 1;
+    const bIsAdmin = b.roles.includes('admin') ? 0 : 1;
+    return aIsAdmin - bIsAdmin;
   });
 
   return (
@@ -236,7 +240,11 @@ function AccessControlTab() {
       const { data: roles } = await supabase.from('user_roles').select('user_id, role');
       const roleMap: Record<string, string[]> = {};
       roles?.forEach((r: any) => { if (!roleMap[r.user_id]) roleMap[r.user_id] = []; roleMap[r.user_id].push(r.role); });
-      setProfiles((data || []).map((p: any) => ({ ...p, roles: roleMap[p.user_id] || [] })));
+      setProfiles((data || []).map((p: any) => ({ ...p, roles: roleMap[p.user_id] || [] })).sort((a: any, b: any) => {
+        const aIsAdmin = a.roles.includes('admin') ? 0 : 1;
+        const bIsAdmin = b.roles.includes('admin') ? 0 : 1;
+        return aIsAdmin - bIsAdmin;
+      }));
       setLoading(false);
     };
     fetch();
@@ -428,21 +436,21 @@ export default function Admin() {
       <Tabs defaultValue="staff-control" className="w-full">
         <TabsList className="w-full flex flex-wrap h-auto gap-1">
           <TabsTrigger value="staff-control" className="flex items-center gap-1.5"><UserCog className="w-4 h-4" /> Staff Control</TabsTrigger>
-          <TabsTrigger value="roles" className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Privileges & Roles</TabsTrigger>
           <TabsTrigger value="access" className="flex items-center gap-1.5"><Eye className="w-4 h-4" /> Access Control</TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center gap-1.5"><Lock className="w-4 h-4" /> Security</TabsTrigger>
-          <TabsTrigger value="backend" className="flex items-center gap-1.5"><Database className="w-4 h-4" /> Backend</TabsTrigger>
+          <TabsTrigger value="roles" className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Privileges & Roles</TabsTrigger>
           <TabsTrigger value="module-access" className="flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Module Access</TabsTrigger>
           <TabsTrigger value="activity-logs" className="flex items-center gap-1.5"><Activity className="w-4 h-4" /> Activity Logs</TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-1.5"><Lock className="w-4 h-4" /> Security</TabsTrigger>
+          <TabsTrigger value="backend" className="flex items-center gap-1.5"><Database className="w-4 h-4" /> Backend</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staff-control" className="mt-6"><StaffControlTab /></TabsContent>
-        <TabsContent value="roles" className="mt-6"><RolesTab /></TabsContent>
         <TabsContent value="access" className="mt-6"><AccessControlTab /></TabsContent>
-        <TabsContent value="security" className="mt-6"><SecurityTab /></TabsContent>
-        <TabsContent value="backend" className="mt-6"><BackendTab /></TabsContent>
+        <TabsContent value="roles" className="mt-6"><RolesTab /></TabsContent>
         <TabsContent value="module-access" className="mt-6"><ModuleAccessTab /></TabsContent>
         <TabsContent value="activity-logs" className="mt-6"><ActivityLogsTab /></TabsContent>
+        <TabsContent value="security" className="mt-6"><SecurityTab /></TabsContent>
+        <TabsContent value="backend" className="mt-6"><BackendTab /></TabsContent>
       </Tabs>
     </div>
   );
