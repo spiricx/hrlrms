@@ -99,6 +99,32 @@ export default function StaffPerformance() {
     }).sort((a, b) => b.recoveryMTD - a.recoveryMTD);
   }, [staff, beneficiaries, transactions, filterState, searchQuery]);
 
+  // Deduplicated portfolio totals (from beneficiaries directly, not staff metrics which double-count)
+  const portfolioTotals = useMemo(() => {
+    const filtered = filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState);
+    const active = filtered.filter(b => b.status === 'active');
+    const npl = filtered.filter(b => b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const benIds = new Set(filtered.map(b => b.id));
+    const monthTxns = transactions.filter(t => {
+      if (!benIds.has(t.beneficiary_id)) return false;
+      const d = new Date(t.date_paid);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+    return {
+      totalLoans: filtered.length,
+      activeLoans: active.length,
+      portfolioValue: active.reduce((s, b) => s + Number(b.loan_amount), 0),
+      totalOutstanding: active.reduce((s, b) => s + Number(b.outstanding_balance), 0),
+      totalPaid: active.reduce((s, b) => s + Number(b.total_paid), 0),
+      recoveryMTD: monthTxns.reduce((s, t) => s + Number(t.amount), 0),
+      nplCount: npl.length,
+      nplRatio: active.length > 0 ? (npl.reduce((s, b) => s + Number(b.outstanding_balance), 0) / active.reduce((s, b) => s + Number(b.loan_amount), 0) * 100) : 0,
+    };
+  }, [beneficiaries, transactions, filterState]);
+
   // Loan portfolio by staff
   const staffPortfolio = useMemo(() => {
     return staffMetrics.map(s => ({
@@ -120,34 +146,109 @@ export default function StaffPerformance() {
     }));
   }, [staffMetrics]);
 
-  // State-level portfolio
+  // State-level portfolio (deduplicated from beneficiaries, not staff metrics)
   const statePortfolio = useMemo(() => {
+    const filtered = filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
     const map = new Map<string, { state: string; totalStaff: number; totalLoans: number; activeLoans: number; portfolioValue: number; totalOutstanding: number; totalPaid: number; nplCount: number; recoveryMTD: number; }>();
-    staffMetrics.forEach(s => {
-      const existing = map.get(s.state);
-      if (!existing) {
-        map.set(s.state, { state: s.state, totalStaff: 1, totalLoans: s.totalLoans, activeLoans: s.activeLoans, portfolioValue: s.portfolioValue, totalOutstanding: s.totalOutstanding, totalPaid: s.totalPaid, nplCount: s.nplCount, recoveryMTD: s.recoveryMTD });
-      } else {
-        map.set(s.state, { ...existing, totalStaff: existing.totalStaff + 1, totalLoans: existing.totalLoans + s.totalLoans, activeLoans: existing.activeLoans + s.activeLoans, portfolioValue: existing.portfolioValue + s.portfolioValue, totalOutstanding: existing.totalOutstanding + s.totalOutstanding, totalPaid: existing.totalPaid + s.totalPaid, nplCount: existing.nplCount + s.nplCount, recoveryMTD: existing.recoveryMTD + s.recoveryMTD });
-      }
-    });
-    return [...map.values()].sort((a, b) => b.portfolioValue - a.portfolioValue);
-  }, [staffMetrics]);
+    
+    // Count staff per state
+    const staffByState = new Map<string, number>();
+    const filteredStaff = filterState === 'all' ? staff : staff.filter(s => s.state === filterState);
+    filteredStaff.forEach(s => staffByState.set(s.state, (staffByState.get(s.state) || 0) + 1));
 
-  // Branch-level portfolio
-  const branchPortfolio = useMemo(() => {
-    const map = new Map<string, { branch: string; state: string; totalStaff: number; totalLoans: number; activeLoans: number; portfolioValue: number; totalOutstanding: number; totalPaid: number; nplCount: number; recoveryMTD: number; }>();
-    staffMetrics.forEach(s => {
-      const key = `${s.state}-${s.branch}`;
-      const existing = map.get(key);
+    filtered.forEach(b => {
+      const existing = map.get(b.state);
+      const isActive = b.status === 'active';
+      const isNpl = b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3;
+      const benTxns = transactions.filter(t => {
+        if (t.beneficiary_id !== b.id) return false;
+        const d = new Date(t.date_paid);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+      const benRecovery = benTxns.reduce((s, t) => s + Number(t.amount), 0);
+
       if (!existing) {
-        map.set(key, { branch: s.branch, state: s.state, totalStaff: 1, totalLoans: s.totalLoans, activeLoans: s.activeLoans, portfolioValue: s.portfolioValue, totalOutstanding: s.totalOutstanding, totalPaid: s.totalPaid, nplCount: s.nplCount, recoveryMTD: s.recoveryMTD });
+        map.set(b.state, {
+          state: b.state,
+          totalStaff: staffByState.get(b.state) || 0,
+          totalLoans: 1,
+          activeLoans: isActive ? 1 : 0,
+          portfolioValue: isActive ? Number(b.loan_amount) : 0,
+          totalOutstanding: isActive ? Number(b.outstanding_balance) : 0,
+          totalPaid: isActive ? Number(b.total_paid) : 0,
+          nplCount: isNpl ? 1 : 0,
+          recoveryMTD: benRecovery,
+        });
       } else {
-        map.set(key, { ...existing, totalStaff: existing.totalStaff + 1, totalLoans: existing.totalLoans + s.totalLoans, activeLoans: existing.activeLoans + s.activeLoans, portfolioValue: existing.portfolioValue + s.portfolioValue, totalOutstanding: existing.totalOutstanding + s.totalOutstanding, totalPaid: existing.totalPaid + s.totalPaid, nplCount: existing.nplCount + s.nplCount, recoveryMTD: existing.recoveryMTD + s.recoveryMTD });
+        map.set(b.state, {
+          ...existing,
+          totalLoans: existing.totalLoans + 1,
+          activeLoans: existing.activeLoans + (isActive ? 1 : 0),
+          portfolioValue: existing.portfolioValue + (isActive ? Number(b.loan_amount) : 0),
+          totalOutstanding: existing.totalOutstanding + (isActive ? Number(b.outstanding_balance) : 0),
+          totalPaid: existing.totalPaid + (isActive ? Number(b.total_paid) : 0),
+          nplCount: existing.nplCount + (isNpl ? 1 : 0),
+          recoveryMTD: existing.recoveryMTD + benRecovery,
+        });
       }
     });
     return [...map.values()].sort((a, b) => b.portfolioValue - a.portfolioValue);
-  }, [staffMetrics]);
+  }, [beneficiaries, transactions, staff, filterState]);
+
+  // Branch-level portfolio (deduplicated from beneficiaries)
+  const branchPortfolio = useMemo(() => {
+    const filtered = filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState);
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const map = new Map<string, { branch: string; state: string; totalStaff: number; totalLoans: number; activeLoans: number; portfolioValue: number; totalOutstanding: number; totalPaid: number; nplCount: number; recoveryMTD: number; }>();
+
+    // Count staff per branch
+    const staffByBranch = new Map<string, number>();
+    const filteredStaff = filterState === 'all' ? staff : staff.filter(s => s.state === filterState);
+    filteredStaff.forEach(s => {
+      const key = `${s.state}-${s.branch}`;
+      staffByBranch.set(key, (staffByBranch.get(key) || 0) + 1);
+    });
+
+    filtered.forEach(b => {
+      const key = `${b.state}-${b.bank_branch}`;
+      const existing = map.get(key);
+      const isActive = b.status === 'active';
+      const isNpl = b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3;
+      const benTxns = transactions.filter(t => {
+        if (t.beneficiary_id !== b.id) return false;
+        const d = new Date(t.date_paid);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+      const benRecovery = benTxns.reduce((s, t) => s + Number(t.amount), 0);
+
+      if (!existing) {
+        map.set(key, {
+          branch: b.bank_branch, state: b.state,
+          totalStaff: staffByBranch.get(key) || 0,
+          totalLoans: 1, activeLoans: isActive ? 1 : 0,
+          portfolioValue: isActive ? Number(b.loan_amount) : 0,
+          totalOutstanding: isActive ? Number(b.outstanding_balance) : 0,
+          totalPaid: isActive ? Number(b.total_paid) : 0,
+          nplCount: isNpl ? 1 : 0, recoveryMTD: benRecovery,
+        });
+      } else {
+        map.set(key, {
+          ...existing, totalLoans: existing.totalLoans + 1,
+          activeLoans: existing.activeLoans + (isActive ? 1 : 0),
+          portfolioValue: existing.portfolioValue + (isActive ? Number(b.loan_amount) : 0),
+          totalOutstanding: existing.totalOutstanding + (isActive ? Number(b.outstanding_balance) : 0),
+          totalPaid: existing.totalPaid + (isActive ? Number(b.total_paid) : 0),
+          nplCount: existing.nplCount + (isNpl ? 1 : 0), recoveryMTD: existing.recoveryMTD + benRecovery,
+        });
+      }
+    });
+    return [...map.values()].sort((a, b) => b.portfolioValue - a.portfolioValue);
+  }, [beneficiaries, transactions, staff, filterState]);
 
   const topPerformers = staffMetrics.slice(0, 3);
 
@@ -158,11 +259,12 @@ export default function StaffPerformance() {
     // Sheet 1: Summary
     const summaryData = [{
       'Total Staff': staffMetrics.length,
-      'Total Portfolio': staffMetrics.reduce((s, m) => s + m.portfolioValue, 0),
-      'Total Outstanding': staffMetrics.reduce((s, m) => s + m.totalOutstanding, 0),
-      'Total Paid': staffMetrics.reduce((s, m) => s + m.totalPaid, 0),
-      'Recovery MTD': staffMetrics.reduce((s, m) => s + m.recoveryMTD, 0),
-      'Total NPL Accounts': staffMetrics.reduce((s, m) => s + m.nplCount, 0),
+      'Total Loan Accounts': portfolioTotals.totalLoans,
+      'Total Portfolio': portfolioTotals.portfolioValue,
+      'Total Outstanding': portfolioTotals.totalOutstanding,
+      'Total Paid': portfolioTotals.totalPaid,
+      'Recovery MTD': portfolioTotals.recoveryMTD,
+      'Total NPL Accounts': portfolioTotals.nplCount,
     }];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryData), 'Summary');
 
@@ -194,15 +296,14 @@ export default function StaffPerformance() {
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(branchRows), 'By Branch');
 
-    // Sheet 5: Detailed Loan Accounts
-    const loanRows = staffPortfolio.flatMap(s =>
-      s.beneficiaries.map((b, i) => ({
-        'Staff Name': s.staffName, 'Staff ID': s.staffId, State: b.state, Branch: b.bank_branch,
-        'Loan Ref': b.loan_reference_number || '', 'Beneficiary': b.name, 'Employee ID': b.employee_id,
-        'Loan Amount (₦)': b.loan_amount, 'Outstanding (₦)': b.outstanding_balance, 'Total Paid (₦)': b.total_paid,
-        'Monthly EMI (₦)': b.monthly_emi, 'Tenor': b.tenor_months, 'Rate (%)': b.interest_rate, Status: b.status,
-      }))
-    );
+    // Sheet 5: Detailed Loan Accounts (deduplicated)
+    const filtered = filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState);
+    const loanRows = filtered.map((b, i) => ({
+      'S/N': i + 1, State: b.state, Branch: b.bank_branch,
+      'Loan Ref': b.loan_reference_number || '', 'Beneficiary': b.name, 'Employee ID': b.employee_id,
+      'Loan Amount (₦)': b.loan_amount, 'Outstanding (₦)': b.outstanding_balance, 'Total Paid (₦)': b.total_paid,
+      'Monthly EMI (₦)': b.monthly_emi, 'Tenor': b.tenor_months, 'Rate (%)': b.interest_rate, Status: b.status,
+    }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanRows), 'Loan Accounts');
 
     const date = new Date().toISOString().split('T')[0];
@@ -221,10 +322,10 @@ export default function StaffPerformance() {
     doc.text(`Generated: ${date}`, 40, 50);
 
     // Summary
-    const totalPortfolio = staffMetrics.reduce((s, m) => s + m.portfolioValue, 0);
-    const totalOutstanding = staffMetrics.reduce((s, m) => s + m.totalOutstanding, 0);
-    const totalPaid = staffMetrics.reduce((s, m) => s + m.totalPaid, 0);
-    const totalRecovery = staffMetrics.reduce((s, m) => s + m.recoveryMTD, 0);
+    const totalPortfolio = portfolioTotals.portfolioValue;
+    const totalOutstanding = portfolioTotals.totalOutstanding;
+    const totalPaid = portfolioTotals.totalPaid;
+    const totalRecovery = portfolioTotals.recoveryMTD;
     
     autoTable(doc, {
       startY: 60,
@@ -292,10 +393,10 @@ export default function StaffPerformance() {
   }, [staffMetrics, staffPortfolio, statePortfolio, branchPortfolio, filterState, toast]);
 
   const handlePrint = useCallback(() => {
-    const totalPortfolio = staffMetrics.reduce((s, m) => s + m.portfolioValue, 0);
-    const totalOutstanding = staffMetrics.reduce((s, m) => s + m.totalOutstanding, 0);
-    const totalPaid = staffMetrics.reduce((s, m) => s + m.totalPaid, 0);
-    const totalRecovery = staffMetrics.reduce((s, m) => s + m.recoveryMTD, 0);
+    const totalPortfolio = portfolioTotals.portfolioValue;
+    const totalOutstanding = portfolioTotals.totalOutstanding;
+    const totalPaid = portfolioTotals.totalPaid;
+    const totalRecovery = portfolioTotals.recoveryMTD;
     const date = new Date().toISOString().split('T')[0];
 
     const html = `<html><head><title>Staff Performance Report</title><style>
@@ -366,10 +467,10 @@ export default function StaffPerformance() {
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Staff</div><div className="text-2xl font-bold">{staffMetrics.length}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Portfolio</div><div className="text-2xl font-bold">{formatNaira(staffMetrics.reduce((s, m) => s + m.portfolioValue, 0))}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Outstanding</div><div className="text-2xl font-bold text-amber-600">{formatNaira(staffMetrics.reduce((s, m) => s + m.totalOutstanding, 0))}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Recovery (MTD)</div><div className="text-2xl font-bold text-emerald-600">{formatNaira(staffMetrics.reduce((s, m) => s + m.recoveryMTD, 0))}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Avg NPL Ratio</div><div className="text-2xl font-bold">{staffMetrics.length ? (staffMetrics.reduce((s, m) => s + m.nplRatio, 0) / staffMetrics.length).toFixed(1) : 0}%</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Portfolio</div><div className="text-2xl font-bold">{formatNaira(portfolioTotals.portfolioValue)}</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Outstanding</div><div className="text-2xl font-bold text-amber-600">{formatNaira(portfolioTotals.totalOutstanding)}</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Recovery (MTD)</div><div className="text-2xl font-bold text-emerald-600">{formatNaira(portfolioTotals.recoveryMTD)}</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Avg NPL Ratio</div><div className="text-2xl font-bold">{portfolioTotals.nplRatio.toFixed(1)}%</div></CardContent></Card>
       </div>
 
       {/* Top Performers */}
@@ -542,44 +643,35 @@ export default function StaffPerformance() {
           </Card>
         </TabsContent>
 
-        {/* Detailed Loan Accounts */}
+        {/* Detailed Loan Accounts (deduplicated) */}
         <TabsContent value="loan-accounts">
           <Card>
-            <CardHeader><CardTitle className="text-base">Detailed Loan Accounts by Staff</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Detailed Loan Accounts ({(filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState)).length})</CardTitle></CardHeader>
             <CardContent className="p-0">
               <div className="overflow-auto max-h-[65vh]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur z-10"><tr>
-                    {['S/N', 'Staff Name', 'Staff ID', 'Loan Ref', 'Beneficiary', 'State', 'Branch', 'Loan Amount (₦)', 'Outstanding (₦)', 'Paid (₦)', 'Monthly EMI', 'Tenor', 'Status'].map(h => <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                    {['S/N', 'Loan Ref', 'Beneficiary', 'Employee ID', 'State', 'Branch', 'Loan Amount (₦)', 'Outstanding (₦)', 'Paid (₦)', 'Monthly EMI', 'Tenor', 'Status'].map(h => <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>)}
                   </tr></thead>
                   <tbody>
-                    {(() => {
-                      let idx = 0;
-                      return staffPortfolio.flatMap(s =>
-                        s.beneficiaries.map(b => {
-                          idx++;
-                          return (
-                            <tr key={b.id} className="border-b table-row-highlight">
-                              <td className="px-3 py-2">{idx}</td>
-                              <td className="px-3 py-2 whitespace-nowrap">{s.staffName}</td>
-                              <td className="px-3 py-2 font-mono text-xs">{s.staffId}</td>
-                              <td className="px-3 py-2 font-mono text-xs">{b.loan_reference_number || '—'}</td>
-                              <td className="px-3 py-2 whitespace-nowrap font-medium">{b.name}</td>
-                              <td className="px-3 py-2">{b.state}</td>
-                              <td className="px-3 py-2">{b.bank_branch}</td>
-                              <td className="px-3 py-2 text-right">{formatNaira(Number(b.loan_amount))}</td>
-                              <td className="px-3 py-2 text-right text-amber-600">{formatNaira(Number(b.outstanding_balance))}</td>
-                              <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(Number(b.total_paid))}</td>
-                              <td className="px-3 py-2 text-right">{formatNaira(Number(b.monthly_emi))}</td>
-                              <td className="px-3 py-2">{b.tenor_months}m</td>
-                              <td className="px-3 py-2">
-                                <Badge variant={b.status === 'active' ? 'default' : 'secondary'} className="text-xs">{b.status}</Badge>
-                              </td>
-                            </tr>
-                          );
-                        })
-                      );
-                    })()}
+                    {(filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState)).map((b, i) => (
+                      <tr key={b.id} className="border-b table-row-highlight">
+                        <td className="px-3 py-2">{i + 1}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{b.loan_reference_number || '—'}</td>
+                        <td className="px-3 py-2 whitespace-nowrap font-medium">{b.name}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{b.employee_id}</td>
+                        <td className="px-3 py-2">{b.state}</td>
+                        <td className="px-3 py-2">{b.bank_branch}</td>
+                        <td className="px-3 py-2 text-right">{formatNaira(Number(b.loan_amount))}</td>
+                        <td className="px-3 py-2 text-right text-amber-600">{formatNaira(Number(b.outstanding_balance))}</td>
+                        <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(Number(b.total_paid))}</td>
+                        <td className="px-3 py-2 text-right">{formatNaira(Number(b.monthly_emi))}</td>
+                        <td className="px-3 py-2">{b.tenor_months}m</td>
+                        <td className="px-3 py-2">
+                          <Badge variant={b.status === 'active' ? 'default' : 'secondary'} className="text-xs">{b.status}</Badge>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
