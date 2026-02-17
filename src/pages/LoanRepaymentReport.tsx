@@ -427,7 +427,7 @@ export default function LoanRepaymentReport() {
                     <TableCell className="text-right">{formatCurrency(r.monthlyEmi)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.expectedRepayment)}</TableCell>
                     <TableCell className="font-mono text-xs">{r.rrrNumber}</TableCell>
-                    <TableCell>{r.datePaid}</TableCell>
+                    <TableCell className="whitespace-nowrap">{formatDate(new Date(r.datePaid))}</TableCell>
                     <TableCell className="text-center">{r.monthFor}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(r.amount)}</TableCell>
                     <TableCell className="text-right font-semibold">{formatCurrency(r.cumulativePayment)}</TableCell>
