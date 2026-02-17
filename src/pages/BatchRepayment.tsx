@@ -368,8 +368,14 @@ export default function BatchRepayment() {
       toast({ title: 'Validation Error', description: 'Select repayment month.', variant: 'destructive' });
       return;
     }
-    if (!payRrr.trim()) {
-      toast({ title: 'Validation Error', description: 'Remita RRR is required.', variant: 'destructive' });
+    // Parse comma-separated RRRs
+    const rrrList = payRrr.split(',').map(r => r.trim()).filter(Boolean);
+    if (rrrList.length === 0) {
+      toast({ title: 'Validation Error', description: 'At least one Remita RRR is required.', variant: 'destructive' });
+      return;
+    }
+    if (rrrList.length > 2) {
+      toast({ title: 'Validation Error', description: 'Maximum of 2 RRR numbers allowed.', variant: 'destructive' });
       return;
     }
 
@@ -379,16 +385,20 @@ export default function BatchRepayment() {
       return;
     }
 
-    // Check duplicate RRR in batch_repayments
-    const { data: existingBatch } = await supabase
-      .from('batch_repayments')
-      .select('id')
-      .eq('rrr_number', payRrr.trim())
-      .maybeSingle();
-    if (existingBatch) {
-      toast({ title: 'Duplicate RRR', description: 'This RRR has already been used for a batch repayment.', variant: 'destructive' });
-      return;
+    // Check duplicate RRR in batch_repayments for each RRR
+    for (const rrr of rrrList) {
+      const { data: existingBatch } = await supabase
+        .from('batch_repayments')
+        .select('id')
+        .eq('rrr_number', rrr)
+        .maybeSingle();
+      if (existingBatch) {
+        toast({ title: 'Duplicate RRR', description: `RRR "${rrr}" has already been used for a batch repayment.`, variant: 'destructive' });
+        return;
+      }
     }
+    // Also check the combined string for duplicates
+    const combinedRrr = rrrList.join(', ');
 
     setSaving(true);
 
@@ -398,7 +408,7 @@ export default function BatchRepayment() {
       month_for: Number(payMonth),
       expected_amount: expectedAmount,
       actual_amount: actualAmount,
-      rrr_number: payRrr.trim(),
+      rrr_number: combinedRrr,
       payment_date: format(payDate, 'yyyy-MM-dd'),
       receipt_url: payReceipt.trim() || '',
       notes: payNotes.trim(),
@@ -428,7 +438,7 @@ export default function BatchRepayment() {
       const { error: txError } = await supabase.from('transactions').insert({
         beneficiary_id: member.id,
         amount: memberAmount,
-        rrr_number: payRrr.trim(),
+        rrr_number: combinedRrr,
         date_paid: datePaid,
         month_for: monthFor,
         recorded_by: user?.id || null,
@@ -468,7 +478,7 @@ export default function BatchRepayment() {
     } else {
       toast({
         title: 'Batch Repayment Recorded',
-        description: `${successCount} beneficiaries updated${excludedCount > 0 ? `, ${excludedCount} excluded` : ''} with RRR ${payRrr.trim()}.`,
+        description: `${successCount} beneficiaries updated${excludedCount > 0 ? `, ${excludedCount} excluded` : ''} with RRR ${combinedRrr}.`,
       });
     }
     fetchBatches();
@@ -1388,7 +1398,8 @@ export default function BatchRepayment() {
 
                 <div>
                   <Label>Remita Reference Number (RRR) *</Label>
-                  <Input value={payRrr} onChange={e => setPayRrr(e.target.value)} placeholder="e.g. 310007771234" />
+                  <Input value={payRrr} onChange={e => setPayRrr(e.target.value)} placeholder="e.g. 310007771234 or 310007771234, 310007775678" />
+                  <p className="text-xs text-muted-foreground mt-1">For double/advance repayment, enter two RRRs separated by a comma.</p>
                 </div>
 
                 <div>
