@@ -141,6 +141,10 @@ export default function ModuleAccessTab() {
   const filtered = profiles.filter((p) => {
     const q = search.toLowerCase();
     return !q || p.email?.toLowerCase().includes(q) || p.surname?.toLowerCase().includes(q) || p.first_name?.toLowerCase().includes(q);
+  }).sort((a, b) => {
+    const aAdmin = (rolesMap[a.user_id] || []).includes('admin') ? 0 : 1;
+    const bAdmin = (rolesMap[b.user_id] || []).includes('admin') ? 0 : 1;
+    return aAdmin - bAdmin;
   });
 
   return (
@@ -197,12 +201,14 @@ export default function ModuleAccessTab() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center px-2">
-                        {(rolesMap[p.user_id] || []).map((r) => (
-                          <Badge key={r} variant="outline" className="capitalize text-xs">{r.replace('_', ' ')}</Badge>
-                        ))}
-                        {(!rolesMap[p.user_id] || rolesMap[p.user_id].length === 0) && (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          {(rolesMap[p.user_id] || []).map((r) => (
+                            <Badge key={r} variant={r === 'admin' ? 'destructive' : 'secondary'} className="text-xs capitalize">{r.replace('_', ' ')}</Badge>
+                          ))}
+                          {(!rolesMap[p.user_id] || rolesMap[p.user_id].length === 0) && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </div>
                       </TableCell>
                       {MODULE_KEYS.map((m) => (
                         <TableCell key={m.key} className="text-center px-2">
