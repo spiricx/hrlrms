@@ -505,7 +505,11 @@ export default function LoanRepayment() {
                   <p className="text-sm font-semibold">{selectedBen.name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Current Balance</p>
+                  <p className="text-xs text-muted-foreground">Monthly Repayment</p>
+                  <p className="text-sm font-bold text-primary">{formatCurrency(Number(selectedBen.monthly_emi))}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Outstanding Balance</p>
                   <p className="text-sm font-semibold">{formatCurrency(Number(selectedBen.outstanding_balance))}</p>
                 </div>
                 <div>
@@ -514,7 +518,11 @@ export default function LoanRepayment() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Loan Ref</p>
-                  <p className="text-sm font-semibold font-mono">{selectedBen.employee_id}</p>
+                  <p className="text-sm font-semibold font-mono">{selectedBen.loan_reference_number || selectedBen.employee_id}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Tenor</p>
+                  <p className="text-sm font-semibold">{formatTenor(selectedBen.tenor_months)}</p>
                 </div>
               </div>
 
