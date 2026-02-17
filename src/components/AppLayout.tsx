@@ -52,12 +52,12 @@ const navItems = [
 { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote },
 { path: '/batch-repayment', label: 'Batch Loan Repayment', icon: Package },
 { path: '/loan-reconciliation', label: 'Reconciliation', icon: ArrowLeftRight },
+{ path: '/loan-repayment-report', label: 'Repayment Report', icon: FileText },
 { path: '/loan-history', label: 'Loan History', icon: FileText },
 { path: '/staff-directory', label: 'Staff Management', icon: UserCog, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/staff-performance', label: 'Staff Performance', icon: BarChart3, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/reports', label: 'Reports', icon: FileText },
-{ path: '/loan-repayment-report', label: 'Repayment Report', icon: FileText },
 { path: '/feedback-support', label: 'Feedback & Support', icon: MessageSquareMore },
 { path: '/admin', label: 'Admin', icon: Shield, roles: ['admin'] as string[] }];
 
