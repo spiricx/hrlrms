@@ -235,6 +235,7 @@ export type Database = {
           id: string
           message: string
           priority: string
+          rating: number | null
           responded_at: string | null
           responded_by: string | null
           status: string
@@ -252,6 +253,7 @@ export type Database = {
           id?: string
           message?: string
           priority?: string
+          rating?: number | null
           responded_at?: string | null
           responded_by?: string | null
           status?: string
@@ -269,6 +271,7 @@ export type Database = {
           id?: string
           message?: string
           priority?: string
+          rating?: number | null
           responded_at?: string | null
           responded_by?: string | null
           status?: string

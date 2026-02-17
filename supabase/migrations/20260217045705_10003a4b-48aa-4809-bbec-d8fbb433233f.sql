@@ -1,0 +1,1 @@
+ALTER TABLE public.feedback_submissions ADD COLUMN rating smallint DEFAULT NULL CHECK (rating >= 1 AND rating <= 5);
