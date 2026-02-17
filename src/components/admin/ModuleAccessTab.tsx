@@ -41,6 +41,7 @@ export default function ModuleAccessTab() {
   const { user } = useAuth();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [accessMap, setAccessMap] = useState<Record<string, Set<string>>>({});
+  const [rolesMap, setRolesMap] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -49,9 +50,10 @@ export default function ModuleAccessTab() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [profilesRes, accessRes] = await Promise.all([
+    const [profilesRes, accessRes, rolesRes] = await Promise.all([
       supabase.from('profiles').select('user_id, email, surname, first_name, state, staff_id_no'),
       supabase.from('user_module_access').select('user_id, module_key'),
+      supabase.from('user_roles').select('user_id, role'),
     ]);
 
     if (profilesRes.data) setProfiles(profilesRes.data);
@@ -62,6 +64,14 @@ export default function ModuleAccessTab() {
       map[row.user_id].add(row.module_key);
     });
     setAccessMap(map);
+
+    const rMap: Record<string, string[]> = {};
+    rolesRes.data?.forEach((row: any) => {
+      if (!rMap[row.user_id]) rMap[row.user_id] = [];
+      rMap[row.user_id].push(row.role);
+    });
+    setRolesMap(rMap);
+
     setLoading(false);
   };
 
@@ -156,6 +166,7 @@ export default function ModuleAccessTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="sticky left-0 bg-card z-10 min-w-[180px]">Staff</TableHead>
+                  <TableHead className="text-center text-xs whitespace-nowrap px-2 min-w-[100px]">Role</TableHead>
                   {MODULE_KEYS.map((m) => (
                     <TableHead key={m.key} className="text-center text-xs whitespace-nowrap px-2 min-w-[80px]">
                       {m.label}
@@ -168,12 +179,12 @@ export default function ModuleAccessTab() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={MODULE_KEYS.length + 3} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
-                  </TableRow>
-                ) : filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={MODULE_KEYS.length + 3} className="text-center py-8 text-muted-foreground">No users found</TableCell>
-                  </TableRow>
+                     <TableCell colSpan={MODULE_KEYS.length + 4} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                   </TableRow>
+                 ) : filtered.length === 0 ? (
+                   <TableRow>
+                     <TableCell colSpan={MODULE_KEYS.length + 4} className="text-center py-8 text-muted-foreground">No users found</TableCell>
+                   </TableRow>
                 ) : filtered.map((p) => {
                   const userModules = accessMap[p.user_id] || new Set();
                   const allSelected = MODULE_KEYS.every((m) => userModules.has(m.key));
@@ -184,6 +195,14 @@ export default function ModuleAccessTab() {
                           <p className="font-medium text-sm">{p.surname} {p.first_name}</p>
                           <p className="text-xs text-muted-foreground">{p.email}</p>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-center px-2">
+                        {(rolesMap[p.user_id] || []).map((r) => (
+                          <Badge key={r} variant="outline" className="capitalize text-xs">{r.replace('_', ' ')}</Badge>
+                        ))}
+                        {(!rolesMap[p.user_id] || rolesMap[p.user_id].length === 0) && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       {MODULE_KEYS.map((m) => (
                         <TableCell key={m.key} className="text-center px-2">
