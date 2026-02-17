@@ -25,6 +25,7 @@ export const MODULE_KEYS = [
   { key: 'reports', label: 'Reports' },
   { key: 'staff-directory', label: 'Staff Management' },
   { key: 'staff-performance', label: 'Staff Performance' },
+  { key: 'staff-loan-tracker', label: 'Staff Loan Tracker' },
   { key: 'feedback-support', label: 'Feedback & Support' },
 ] as const;
 
