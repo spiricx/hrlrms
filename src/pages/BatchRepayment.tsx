@@ -971,7 +971,7 @@ export default function BatchRepayment() {
                     <td className="px-4 py-3 text-right">{formatCurrency(s.monthlyDue)}</td>
                     <td className={`px-4 py-3 text-right font-medium ${s.arrearsAmount > 0 ? 'text-destructive' : ''}`}>{s.arrearsAmount > 0 ? formatCurrency(s.arrearsAmount) : '—'}</td>
                     <td className={`px-4 py-3 text-right font-medium ${s.monthsInArrears > 0 ? 'text-destructive' : ''}`}>{s.monthsInArrears > 0 ? s.monthsInArrears : '—'}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{s.lastPaymentDate || '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{s.lastPaymentDate ? formatDate(new Date(s.lastPaymentDate)) : '—'}</td>
                     <td className="px-4 py-3 text-right">{s.lastPaymentAmount != null ? formatCurrency(s.lastPaymentAmount) : '—'}</td>
                     <td className="px-4 py-3"><StatusBadge status={batch.status} /></td>
                     <td className="px-4 py-3">
