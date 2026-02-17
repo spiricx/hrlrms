@@ -837,9 +837,21 @@ export default function BatchRepayment() {
                             <td className="px-4 py-3 text-right">{mLastTx ? formatCurrency(Number(mLastTx.amount)) : '—'}</td>
                             <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
                             <td className="px-4 py-3 text-center">
-                              <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => { e.stopPropagation(); navigate(`/beneficiary/${m.id}`); }}>
-                                <Eye className="w-3 h-3" /> View
-                              </Button>
+                              <div className="flex items-center justify-center gap-1">
+                                <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => { e.stopPropagation(); navigate(`/beneficiary/${m.id}`); }}>
+                                  <Eye className="w-3 h-3" /> View
+                                </Button>
+                                {(isAdmin || hasRole('loan_officer')) && mLastTx && (
+                                  <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Find the batch_repayment that matches this transaction
+                                    const matchingBatchRep = detailHistory.find(h => h.rrr_number === mLastTx.rrr_number && h.month_for === mLastTx.month_for);
+                                    openEditTx({ ...mLastTx, beneficiary_name: m.name }, matchingBatchRep?.id || '');
+                                  }}>
+                                    <Pencil className="w-3 h-3" /> Edit
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                           );
