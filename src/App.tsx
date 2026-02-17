@@ -24,6 +24,7 @@ import FeedbackSupport from "./pages/FeedbackSupport";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
+import StaffLoanTracker from "./pages/StaffLoanTracker";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -68,6 +69,7 @@ const App = () => (
                       <Route path="/npl-status" element={<NplStatus />} />
                       <Route path="/staff-directory" element={<StaffDirectory />} />
                       <Route path="/staff-performance" element={<StaffPerformance />} />
+                      <Route path="/staff-loan-tracker" element={<StaffLoanTracker />} />
                       <Route path="/loan-reconciliation" element={<LoanReconciliation />} />
                       <Route path="/loan-history" element={<LoanHistory />} />
                       <Route path="/reports" element={<Reports />} />
