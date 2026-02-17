@@ -7,7 +7,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History } from 'lucide-react';
+import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
@@ -189,6 +190,13 @@ export default function StaffDirectory() {
   // Audit state
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<StaffMember | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Admin emails for sorting
+  const [adminEmails, setAdminEmails] = useState<Set<string>>(new Set());
+
   const isAdmin = roles.includes('admin');
   const canEdit = isAdmin || roles.includes('loan_officer');
 
@@ -200,6 +208,27 @@ export default function StaffDirectory() {
   };
 
   useEffect(() => { fetchStaff(); }, []);
+
+  // Fetch admin emails for sorting admins to top
+  useEffect(() => {
+    const fetchAdminEmails = async () => {
+      const { data: adminRoles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'admin');
+      if (adminRoles && adminRoles.length > 0) {
+        const adminUserIds = adminRoles.map(r => r.user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('email')
+          .in('user_id', adminUserIds);
+        if (profiles) {
+          setAdminEmails(new Set(profiles.map(p => p.email.toLowerCase())));
+        }
+      }
+    };
+    fetchAdminEmails();
+  }, []);
 
   useEffect(() => {
     const channel = supabase.channel('staff-realtime')
@@ -232,7 +261,7 @@ export default function StaffDirectory() {
   const designations = useMemo(() => [...new Set(staff.map(s => s.designation).filter(Boolean))].sort(), [staff]);
 
   const filtered = useMemo(() => {
-    return staff.filter(s => {
+    const list = staff.filter(s => {
       const q = search.toLowerCase();
       const matchSearch = !q || [s.surname, s.first_name, s.other_names, s.staff_id, s.email, s.phone, s.designation, s.nhf_number, s.bvn_number, s.nin_number]
         .some(v => v?.toLowerCase().includes(q));
@@ -243,7 +272,15 @@ export default function StaffDirectory() {
       const matchStatus = filterStatus === 'all' || s.status.toLowerCase() === filterStatus.toLowerCase();
       return matchSearch && matchState && matchBranch && matchDept && matchDesig && matchStatus;
     });
-  }, [staff, search, filterState, filterBranch, filterDept, filterDesignation, filterStatus]);
+    // Sort admins to the top
+    return list.sort((a, b) => {
+      const aIsAdmin = adminEmails.has((a.email || '').toLowerCase());
+      const bIsAdmin = adminEmails.has((b.email || '').toLowerCase());
+      if (aIsAdmin && !bIsAdmin) return -1;
+      if (!aIsAdmin && bIsAdmin) return 1;
+      return (a.surname || '').localeCompare(b.surname || '');
+    });
+  }, [staff, search, filterState, filterBranch, filterDept, filterDesignation, filterStatus, adminEmails]);
 
   // Birthday alerts
   const upcomingBirthdays = useMemo(() => staff.filter(s => isUpcomingBirthday(s.date_of_birth)), [staff]);
@@ -453,7 +490,21 @@ export default function StaffDirectory() {
     }
   };
 
-  // --- Export helpers ---
+  // --- Delete Staff ---
+  const handleDeleteStaff = async () => {
+    if (!deleteTarget) return;
+    setSubmitting(true);
+    const { error } = await supabase.from('staff_members').delete().eq('id', deleteTarget.id);
+    setSubmitting(false);
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Staff record deleted', description: `${deleteTarget.title} ${deleteTarget.surname} ${deleteTarget.first_name} has been removed.` });
+      fetchStaff();
+    }
+    setShowDeleteConfirm(false);
+    setDeleteTarget(null);
+  };
   const exportExcel = () => {
     const rows = filtered.map((s, i) => ({
       'S/N': i + 1, Title: s.title, Surname: s.surname, 'First Name': s.first_name,
@@ -727,6 +778,7 @@ export default function StaffDirectory() {
                           {canEdit && <Button size="sm" variant="ghost" onClick={() => openEdit(s)} title="Edit"><Pencil className="w-4 h-4" /></Button>}
                           {isAdmin && <Button size="sm" variant="ghost" onClick={() => openTransfer(s)} title="Transfer"><ArrowRightLeft className="w-4 h-4" /></Button>}
                           {canEdit && <Button size="sm" variant="ghost" onClick={() => openLeave(s)} title="Leave"><Calendar className="w-4 h-4" /></Button>}
+                          {isAdmin && <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => { setDeleteTarget(s); setShowDeleteConfirm(true); }} title="Delete"><Trash2 className="w-4 h-4" /></Button>}
                         </div>
                       </td>
                     </tr>
@@ -952,6 +1004,30 @@ export default function StaffDirectory() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Staff Record</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete the staff record for{' '}
+              <strong>{deleteTarget?.title} {deleteTarget?.surname} {deleteTarget?.first_name}</strong>?
+              This action cannot be undone and will remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowDeleteConfirm(false); setDeleteTarget(null); }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStaff}
+              disabled={submitting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {submitting ? 'Deleting…' : 'Delete Staff'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
