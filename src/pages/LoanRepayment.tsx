@@ -566,7 +566,7 @@ export default function LoanRepayment() {
                         disabled={(date) => date > new Date()}
                         initialFocus
                         captionLayout="dropdown-buttons"
-                        fromYear={2020}
+fromYear={2016}
                         toYear={new Date().getFullYear()}
                         className={cn("p-3 pointer-events-auto")}
                       />
@@ -741,7 +741,7 @@ export default function LoanRepayment() {
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={paymentDate} onSelect={setPaymentDate} disabled={(date) => date > new Date()} initialFocus captionLayout="dropdown-buttons" fromYear={2020} toYear={new Date().getFullYear()} className="p-3 pointer-events-auto" />
+                    <Calendar mode="single" selected={paymentDate} onSelect={setPaymentDate} disabled={(date) => date > new Date()} initialFocus captionLayout="dropdown-buttons" fromYear={2016} toYear={new Date().getFullYear()} className="p-3 pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
               </div>
