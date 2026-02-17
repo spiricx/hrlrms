@@ -172,27 +172,58 @@ function RolesTab() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name or email..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" /> Assign Role</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Assign Role to User</DialogTitle><DialogDescription>Select a user and the role to assign.</DialogDescription></DialogHeader>
-            <div className="space-y-4 py-4">
-              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-                <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
-                <SelectContent>{users.map((u) => (<SelectItem key={u.user_id} value={u.user_id}>{u.surname} {u.first_name} ({u.email})</SelectItem>))}</SelectContent>
-              </Select>
-              <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as AppRole)}>
-                <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrator</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="loan_officer">Loan Officer</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter><Button onClick={addRole}>Assign Role</Button></DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild><Button size="sm"><Plus className="w-4 h-4 mr-1" /> Assign Role</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Assign Role to User</DialogTitle><DialogDescription>Select a user and the role to assign.</DialogDescription></DialogHeader>
+              <div className="space-y-4 py-4">
+                <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+                  <SelectTrigger><SelectValue placeholder="Select user" /></SelectTrigger>
+                  <SelectContent>{users.map((u) => (<SelectItem key={u.user_id} value={u.user_id}>{u.surname} {u.first_name} ({u.email})</SelectItem>))}</SelectContent>
+                </Select>
+                <Select value={selectedRole} onValueChange={(v) => setSelectedRole(v as AppRole)}>
+                  <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrator</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="loan_officer">Loan Officer</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter><Button onClick={addRole}>Assign Role</Button></DialogFooter>
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild><Button size="sm" variant="outline"><Shield className="w-4 h-4 mr-1" /> Create Role</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Available Roles</DialogTitle>
+                <DialogDescription>The system supports the following predefined roles. Use "Assign Role" to grant a role to a user.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-4">
+                <div className="p-3 rounded-lg bg-secondary/50 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="destructive" className="text-xs">Administrator</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Full system access including user management, all modules, and national data oversight.</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">Manager</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Can create beneficiaries and manage loan records within their assigned state and branch.</p>
+                </div>
+                <div className="p-3 rounded-lg bg-secondary/50 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge className="text-xs">Loan Officer</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Full operational access for loan processing, staff management, and NPL tracking within their state.</p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       <Card>
         <CardContent className="p-0">
