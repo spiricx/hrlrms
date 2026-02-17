@@ -1398,8 +1398,8 @@ export default function BatchRepayment() {
 
                 <div>
                   <Label>Remita Reference Number (RRR) *</Label>
-                  <Input value={payRrr} onChange={e => setPayRrr(e.target.value)} placeholder="e.g. 310007771234 or 310007771234, 310007775678" />
-                  <p className="text-xs text-muted-foreground mt-1">For double/advance repayment, enter two RRRs separated by a comma.</p>
+                  <Input value={payRrr} onChange={e => setPayRrr(e.target.value)} placeholder="e.g. 3405-2458-5572 or 3405-2458-5572, 3405-2458-6789" />
+                  <p className="text-xs text-muted-foreground mt-1">Enter RRR in format XXXX-XXXX-XXXX. For double/advance repayment, enter two RRRs separated by a comma.</p>
                 </div>
 
                 <div>
