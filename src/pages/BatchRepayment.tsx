@@ -135,6 +135,14 @@ export default function BatchRepayment() {
 
   // Expanded history rows and edit state
   const [expandedHistoryIds, setExpandedHistoryIds] = useState<Set<string>>(new Set());
+  const [editBatchRepOpen, setEditBatchRepOpen] = useState(false);
+  const [editBatchRep, setEditBatchRep] = useState<BatchRepaymentRecord | null>(null);
+  const [editBatchRepAmount, setEditBatchRepAmount] = useState('');
+  const [editBatchRepRrr, setEditBatchRepRrr] = useState('');
+  const [editBatchRepDate, setEditBatchRepDate] = useState<Date | undefined>();
+  const [editBatchRepReceipt, setEditBatchRepReceipt] = useState('');
+  const [editBatchRepNotes, setEditBatchRepNotes] = useState('');
+  const [editBatchRepSaving, setEditBatchRepSaving] = useState(false);
   const [editTxOpen, setEditTxOpen] = useState(false);
   const [editTx, setEditTx] = useState<{ id: string; beneficiary_id: string; beneficiary_name: string; amount: number; rrr_number: string; month_for: number; batch_repayment_id: string } | null>(null);
   const [editTxAmount, setEditTxAmount] = useState('');
@@ -627,6 +635,121 @@ export default function BatchRepayment() {
     }
   };
 
+  const openEditBatchRep = (record: BatchRepaymentRecord) => {
+    setEditBatchRep(record);
+    setEditBatchRepAmount(String(Number(record.actual_amount)));
+    setEditBatchRepRrr(record.rrr_number);
+    setEditBatchRepDate(new Date(record.payment_date));
+    setEditBatchRepReceipt(record.receipt_url || '');
+    setEditBatchRepNotes(record.notes || '');
+    setEditBatchRepOpen(true);
+  };
+
+  const handleEditBatchRepSave = async () => {
+    if (!editBatchRep) return;
+    const newAmount = parseFloat(editBatchRepAmount);
+    if (isNaN(newAmount) || newAmount <= 0) {
+      toast({ title: 'Invalid amount', variant: 'destructive' });
+      return;
+    }
+    if (!editBatchRepRrr.trim()) {
+      toast({ title: 'RRR is required', variant: 'destructive' });
+      return;
+    }
+    if (!editBatchRepDate) {
+      toast({ title: 'Payment date is required', variant: 'destructive' });
+      return;
+    }
+    setEditBatchRepSaving(true);
+    try {
+      const oldAmount = Number(editBatchRep.actual_amount);
+      const diff = newAmount - oldAmount;
+      const newDateStr = format(editBatchRepDate, 'yyyy-MM-dd');
+      const newRrr = editBatchRepRrr.trim();
+
+      // Update batch repayment record
+      const { error } = await supabase.from('batch_repayments').update({
+        actual_amount: newAmount,
+        rrr_number: newRrr,
+        payment_date: newDateStr,
+        receipt_url: editBatchRepReceipt.trim() || '',
+        notes: editBatchRepNotes.trim(),
+      }).eq('id', editBatchRep.id);
+      if (error) throw error;
+
+      // If amount changed, update individual transactions proportionally
+      if (diff !== 0) {
+        const { data: members } = await supabase
+          .from('beneficiaries')
+          .select('id')
+          .eq('batch_id', editBatchRep.batch_id);
+        const memberIds = (members || []).map((m: any) => m.id);
+
+        if (memberIds.length > 0) {
+          const { data: txs } = await supabase
+            .from('transactions')
+            .select('id, beneficiary_id, amount')
+            .eq('rrr_number', editBatchRep.rrr_number)
+            .eq('month_for', editBatchRep.month_for)
+            .in('beneficiary_id', memberIds);
+
+          if (txs && txs.length > 0) {
+            const oldTxTotal = txs.reduce((s, t) => s + Number(t.amount), 0);
+            for (const tx of txs) {
+              const ratio = oldTxTotal > 0 ? Number(tx.amount) / oldTxTotal : 1 / txs.length;
+              const txNewAmount = Math.round(newAmount * ratio * 100) / 100;
+              const txDiff = txNewAmount - Number(tx.amount);
+
+              await supabase.from('transactions').update({
+                amount: txNewAmount,
+                rrr_number: newRrr,
+                date_paid: newDateStr,
+                receipt_url: editBatchRepReceipt.trim() || '',
+              }).eq('id', tx.id);
+
+              // Update beneficiary balance
+              const { data: ben } = await supabase.from('beneficiaries')
+                .select('total_paid, outstanding_balance')
+                .eq('id', tx.beneficiary_id).single();
+              if (ben) {
+                await supabase.from('beneficiaries').update({
+                  total_paid: Math.max(0, Number(ben.total_paid) + txDiff),
+                  outstanding_balance: Math.max(0, Number(ben.outstanding_balance) - txDiff),
+                }).eq('id', tx.beneficiary_id);
+              }
+            }
+          }
+        }
+      } else {
+        // Amount didn't change but RRR/date/receipt might have — update transactions metadata
+        const { data: members } = await supabase
+          .from('beneficiaries')
+          .select('id')
+          .eq('batch_id', editBatchRep.batch_id);
+        const memberIds = (members || []).map((m: any) => m.id);
+        if (memberIds.length > 0) {
+          await supabase.from('transactions').update({
+            rrr_number: newRrr,
+            date_paid: newDateStr,
+            receipt_url: editBatchRepReceipt.trim() || '',
+          }).eq('rrr_number', editBatchRep.rrr_number)
+            .eq('month_for', editBatchRep.month_for)
+            .in('beneficiary_id', memberIds);
+        }
+      }
+
+      toast({ title: 'Updated', description: `Batch repayment for Month ${editBatchRep.month_for} updated.` });
+      setEditBatchRepOpen(false);
+      setEditBatchRep(null);
+      if (detailBatch) openDetail(detailBatch);
+      fetchBatches();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update.', variant: 'destructive' });
+    } finally {
+      setEditBatchRepSaving(false);
+    }
+  };
+
   const openDetail = async (batch: LoanBatch) => {
     setDetailBatch(batch);
     setDetailLoading(true);
@@ -890,6 +1013,9 @@ export default function BatchRepayment() {
                             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Payment Date</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Receipt</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</th>
+                            {(isAdmin || hasRole('loan_officer')) && (
+                              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -919,10 +1045,17 @@ export default function BatchRepayment() {
                                   ) : '—'}
                                 </td>
                                 <td className="px-4 py-3 text-muted-foreground text-xs max-w-[200px] truncate">{r.notes || '—'}</td>
+                                {(isAdmin || hasRole('loan_officer')) && (
+                                  <td className="px-4 py-3 text-center">
+                                    <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => { e.stopPropagation(); openEditBatchRep(r); }}>
+                                      <Pencil className="w-3 h-3" /> Edit
+                                    </Button>
+                                  </td>
+                                )}
                               </tr>
                               {isExpanded && (
                                 <tr key={`${r.id}-detail`}>
-                                  <td colSpan={9} className="p-0">
+                                  <td colSpan={10} className="p-0">
                                     <div className="bg-muted/30 border-t border-b border-border">
                                       <table className="w-full text-sm">
                                         <thead>
@@ -979,7 +1112,7 @@ export default function BatchRepayment() {
                             <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.expected_amount), 0))}</td>
                             <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.actual_amount), 0))}</td>
                             <td className="px-4 py-3 text-right">{formatCurrency(detailHistory.reduce((s, r) => s + Number(r.actual_amount) - Number(r.expected_amount), 0))}</td>
-                            <td colSpan={4} className="px-4 py-3 text-muted-foreground text-xs">{detailHistory.length} payment(s) recorded</td>
+                            <td colSpan={5} className="px-4 py-3 text-muted-foreground text-xs">{detailHistory.length} payment(s) recorded</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -1053,6 +1186,64 @@ export default function BatchRepayment() {
             </Tabs>
           </>
         )}
+
+        {/* Edit Batch Repayment Record Dialog */}
+        <Dialog open={editBatchRepOpen} onOpenChange={setEditBatchRepOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Batch Repayment</DialogTitle>
+              <DialogDescription>
+                Update the batch repayment record for Month {editBatchRep?.month_for}.
+              </DialogDescription>
+            </DialogHeader>
+            {editBatchRep && (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-muted/50 p-3 space-y-1 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Month</span><span className="font-medium">Month {editBatchRep.month_for}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Expected Amount</span><span className="font-medium">{formatCurrency(Number(editBatchRep.expected_amount))}</span></div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Actual Amount Paid (₦) *</Label>
+                  <Input type="number" step="0.01" min="0" value={editBatchRepAmount} onChange={e => setEditBatchRepAmount(e.target.value)} placeholder="Enter amount" />
+                  <p className="text-xs text-muted-foreground">Changing the amount will proportionally update all individual member transactions.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Remita Reference Number (RRR) *</Label>
+                  <Input value={editBatchRepRrr} onChange={e => setEditBatchRepRrr(e.target.value)} placeholder="e.g. 3405-2458-5572" />
+                  <p className="text-xs text-muted-foreground">Enter RRR in format XXXX-XXXX-XXXX.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Date *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !editBatchRepDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {editBatchRepDate ? format(editBatchRepDate, 'PPP') : 'Select date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={editBatchRepDate} onSelect={setEditBatchRepDate} initialFocus />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label>Receipt URL</Label>
+                  <Input value={editBatchRepReceipt} onChange={e => setEditBatchRepReceipt(e.target.value)} placeholder="https://remita.net/receipt/... (optional)" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea value={editBatchRepNotes} onChange={e => setEditBatchRepNotes(e.target.value)} placeholder="Optional notes" rows={2} />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditBatchRepOpen(false)} disabled={editBatchRepSaving}>Cancel</Button>
+              <Button onClick={handleEditBatchRepSave} disabled={editBatchRepSaving}>
+                {editBatchRepSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Individual Transaction Dialog */}
         <Dialog open={editTxOpen} onOpenChange={setEditTxOpen}>
