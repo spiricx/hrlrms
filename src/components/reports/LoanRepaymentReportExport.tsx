@@ -7,6 +7,7 @@ import { saveAs } from 'file-saver';
 import fmbnLogo from '@/assets/fmbn_logo.png';
 
 export interface RepaymentRecord {
+  beneficiaryId: string;
   beneficiaryName: string;
   employeeId: string;
   loanRef: string;
@@ -22,6 +23,14 @@ export interface RepaymentRecord {
   disbursementDate: string;
   commencementDate: string;
   status: string;
+  // Computed
+  expectedRepayment: number;
+  cumulativePayment: number;
+  lastRepaymentAmount: number;
+  overdueAmount: number;
+  monthsOverdue: number;
+  arrearsAmount: number;
+  monthsInArrears: number;
   // Transaction-level
   rrrNumber: string;
   datePaid: string;
@@ -101,9 +110,9 @@ export function exportRepaymentReportToExcel(data: RepaymentReportData) {
   XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
 
   // Detailed transactions
-  const detailHeaders = ['S/N', 'Beneficiary Name', 'Employee ID', 'Loan Ref', 'NHF Number', 'Organisation', 'State', 'Branch', 'RRR Number', 'Payment Date', 'Amount Paid (₦)', 'Month For', 'Loan Amount (₦)', 'Monthly EMI (₦)', 'Total Paid (₦)', 'Outstanding (₦)', 'Status'];
+  const detailHeaders = ['S/N', 'Beneficiary Name', 'Employee ID', 'Loan Ref', 'NHF Number', 'Organisation', 'State', 'Branch', 'Loan Amount (₦)', 'Monthly Repayment (₦)', 'Expected Repayment (₦)', 'RRR Number', 'Payment Date', 'Period', 'Amount Paid (₦)', 'Cumulative Payment (₦)', 'Outstanding (₦)', 'Last Repayment Amt (₦)', 'Overdue Amt (₦)', 'Months Overdue', 'Arrears Amt (₦)', 'Months in Arrears', 'Status'];
   const detailRows = data.records.map((r, i) => [
-    i + 1, r.beneficiaryName, r.employeeId, r.loanRef, r.nhfNumber, r.organisation, r.state, r.branch, r.rrrNumber, r.datePaid, r.amount, r.monthFor, r.loanAmount, r.monthlyEmi, r.totalPaid, r.outstandingBalance, r.status,
+    i + 1, r.beneficiaryName, r.employeeId, r.loanRef, r.nhfNumber, r.organisation, r.state, r.branch, r.loanAmount, r.monthlyEmi, r.expectedRepayment, r.rrrNumber, r.datePaid, r.monthFor, r.amount, r.cumulativePayment, r.outstandingBalance, r.lastRepaymentAmount, r.overdueAmount, r.monthsOverdue, r.arrearsAmount, r.monthsInArrears, r.status,
   ]);
   const detailWs = XLSX.utils.aoa_to_sheet([detailHeaders, ...detailRows]);
   detailWs['!cols'] = detailHeaders.map(() => ({ wch: 18 }));
@@ -253,15 +262,17 @@ export async function exportRepaymentReportToPDF(data: RepaymentReportData) {
 
   autoTable(doc, {
     startY: 18,
-    head: [['S/N', 'Beneficiary', 'Employee ID', 'Organisation', 'State', 'Branch', 'RRR', 'Payment Date', 'Amount (₦)', 'Month', 'Outstanding (₦)', 'Status']],
+    head: [['S/N', 'Beneficiary', 'Org', 'State', 'Branch', 'Loan Amt', 'Monthly', 'Expected', 'RRR', 'Date', 'Period', 'Amt Paid', 'Cumulative', 'Outstanding', 'Last Repay', 'Overdue Amt', 'Mths O/D', 'Arrears', 'Mths Arr', 'Status']],
     body: data.records.map((r, i) => [
-      i + 1, r.beneficiaryName, r.employeeId, r.organisation, r.state, r.branch,
-      r.rrrNumber, r.datePaid, formatCurrency(r.amount), r.monthFor,
-      formatCurrency(r.outstandingBalance), r.status,
+      i + 1, r.beneficiaryName, r.organisation, r.state, r.branch,
+      formatCurrency(r.loanAmount), formatCurrency(r.monthlyEmi), formatCurrency(r.expectedRepayment),
+      r.rrrNumber, r.datePaid, r.monthFor, formatCurrency(r.amount), formatCurrency(r.cumulativePayment),
+      formatCurrency(r.outstandingBalance), formatCurrency(r.lastRepaymentAmount),
+      formatCurrency(r.overdueAmount), r.monthsOverdue, formatCurrency(r.arrearsAmount), r.monthsInArrears, r.status,
     ]),
-    styles: { fontSize: 7, cellPadding: 2 },
-    headStyles: { fillColor: [0, 100, 60], fontStyle: 'bold', fontSize: 7 },
-    margin: { left: 8, right: 8 },
+    styles: { fontSize: 6, cellPadding: 1.5 },
+    headStyles: { fillColor: [0, 100, 60], fontStyle: 'bold', fontSize: 6 },
+    margin: { left: 6, right: 6 },
   });
 
   // Footer on all pages
@@ -345,12 +356,16 @@ export function printRepaymentReport(data: RepaymentReportData) {
 
       <div class="section-title">Detailed Repayment Records</div>
       <table>
-        <thead><tr><th>S/N</th><th>Beneficiary</th><th>Employee ID</th><th>Organisation</th><th>State</th><th>Branch</th><th>RRR</th><th>Payment Date</th><th>Amount (₦)</th><th>Month</th><th>Outstanding (₦)</th><th>Status</th></tr></thead>
+        <thead><tr><th>S/N</th><th>Beneficiary</th><th>Org</th><th>State</th><th>Branch</th><th>Loan Amt</th><th>Monthly</th><th>Expected</th><th>RRR</th><th>Date</th><th>Period</th><th>Amt Paid</th><th>Cumulative</th><th>Outstanding</th><th>Last Repay</th><th>Overdue Amt</th><th>Mths O/D</th><th>Arrears</th><th>Mths Arr</th><th>Status</th></tr></thead>
         <tbody>
           ${data.records.map((r, i) => `<tr>
-            <td>${i + 1}</td><td>${r.beneficiaryName}</td><td>${r.employeeId}</td><td>${r.organisation}</td>
-            <td>${r.state}</td><td>${r.branch}</td><td>${r.rrrNumber}</td><td>${r.datePaid}</td>
-            <td>${formatCurrency(r.amount)}</td><td>${r.monthFor}</td><td>${formatCurrency(r.outstandingBalance)}</td><td>${r.status}</td>
+            <td>${i + 1}</td><td>${r.beneficiaryName}</td><td>${r.organisation}</td>
+            <td>${r.state}</td><td>${r.branch}</td><td>${formatCurrency(r.loanAmount)}</td><td>${formatCurrency(r.monthlyEmi)}</td><td>${formatCurrency(r.expectedRepayment)}</td>
+            <td>${r.rrrNumber}</td><td>${r.datePaid}</td><td>${r.monthFor}</td><td>${formatCurrency(r.amount)}</td><td>${formatCurrency(r.cumulativePayment)}</td>
+            <td>${formatCurrency(r.outstandingBalance)}</td><td>${formatCurrency(r.lastRepaymentAmount)}</td>
+            <td style="color:${r.overdueAmount > 0 ? 'red' : 'inherit'}">${formatCurrency(r.overdueAmount)}</td><td style="color:${r.monthsOverdue > 0 ? 'red' : 'inherit'}">${r.monthsOverdue}</td>
+            <td style="color:${r.arrearsAmount > 0 ? 'red' : 'inherit'}">${formatCurrency(r.arrearsAmount)}</td><td style="color:${r.monthsInArrears > 0 ? 'red' : 'inherit'}">${r.monthsInArrears}</td>
+            <td>${r.status}</td>
           </tr>`).join('')}
         </tbody>
       </table>

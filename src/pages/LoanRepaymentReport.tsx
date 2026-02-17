@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, getOverdueAndArrears, getMonthsDue } from '@/lib/loanCalculations';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -19,6 +20,7 @@ type Transaction = Tables<'transactions'>;
 
 export default function LoanRepaymentReport() {
   const { user, hasRole } = useAuth();
+  const navigate = useNavigate();
   const isAdmin = hasRole('admin');
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -76,10 +78,28 @@ export default function LoanRepaymentReport() {
   useEffect(() => { setBranchFilter('all'); }, [stateFilter]);
 
   // Filtered records
+  // Compute per-beneficiary cumulative payments and last repayment amounts
+  const beneficiaryCumulativeMap = useMemo(() => {
+    const map = new Map<string, { cumulative: number; lastAmount: number }>();
+    // Sort transactions by date ascending for cumulative
+    const sorted = [...transactions].sort((a, b) => a.date_paid.localeCompare(b.date_paid));
+    sorted.forEach(t => {
+      const prev = map.get(t.beneficiary_id) || { cumulative: 0, lastAmount: 0 };
+      prev.cumulative += Number(t.amount);
+      prev.lastAmount = Number(t.amount);
+      map.set(t.beneficiary_id, { ...prev });
+    });
+    return map;
+  }, [transactions]);
+
+  // Build running cumulative per beneficiary as we iterate
   const filteredRecords = useMemo(() => {
     const records: RepaymentRecord[] = [];
+    // Sort transactions by date for proper cumulative tracking
+    const sortedTxns = [...transactions].sort((a, b) => a.date_paid.localeCompare(b.date_paid));
+    const runningCumulative = new Map<string, number>();
 
-    transactions.forEach(t => {
+    sortedTxns.forEach(t => {
       const b = beneficiaryMap.get(t.beneficiary_id);
       if (!b) return;
 
@@ -102,7 +122,26 @@ export default function LoanRepaymentReport() {
         if (!match) return;
       }
 
+      // Running cumulative
+      const prevCum = runningCumulative.get(t.beneficiary_id) || 0;
+      const newCum = prevCum + Number(t.amount);
+      runningCumulative.set(t.beneficiary_id, newCum);
+
+      // Compute overdue/arrears
+      const overdueInfo = getOverdueAndArrears(
+        b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+        Number(b.total_paid), Number(b.outstanding_balance), b.status
+      );
+
+      // Expected repayment = months due * EMI
+      const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
+      const expectedRepayment = monthsDue * Number(b.monthly_emi);
+
+      // Last repayment amount for this beneficiary
+      const benCum = beneficiaryCumulativeMap.get(b.id);
+
       records.push({
+        beneficiaryId: b.id,
         beneficiaryName: b.name,
         employeeId: b.employee_id,
         loanRef: b.loan_reference_number || '',
@@ -118,6 +157,13 @@ export default function LoanRepaymentReport() {
         disbursementDate: b.disbursement_date,
         commencementDate: b.commencement_date,
         status: b.status,
+        expectedRepayment,
+        cumulativePayment: newCum,
+        lastRepaymentAmount: benCum?.lastAmount || 0,
+        overdueAmount: overdueInfo.overdueAmount,
+        monthsOverdue: overdueInfo.overdueMonths,
+        arrearsAmount: overdueInfo.arrearsAmount,
+        monthsInArrears: overdueInfo.monthsInArrears,
         rrrNumber: t.rrr_number,
         datePaid: t.date_paid,
         amount: Number(t.amount),
@@ -126,7 +172,7 @@ export default function LoanRepaymentReport() {
     });
 
     return records;
-  }, [transactions, beneficiaryMap, fromDate, toDate, stateFilter, branchFilter, orgFilter, searchQuery]);
+  }, [transactions, beneficiaryMap, beneficiaryCumulativeMap, fromDate, toDate, stateFilter, branchFilter, orgFilter, searchQuery]);
 
   // Aggregations
   const reportData: RepaymentReportData = useMemo(() => {
@@ -343,32 +389,52 @@ export default function LoanRepaymentReport() {
                 <TableRow>
                   <TableHead className="w-12">S/N</TableHead>
                   <TableHead>Beneficiary</TableHead>
-                  <TableHead>Employee ID</TableHead>
                   <TableHead>Organisation</TableHead>
                   <TableHead>State</TableHead>
                   <TableHead>Branch</TableHead>
-                  <TableHead>RRR Number</TableHead>
+                  <TableHead className="text-right">Loan Amount</TableHead>
+                  <TableHead className="text-right">Monthly Repayment</TableHead>
+                  <TableHead className="text-right">Expected Repayment</TableHead>
+                  <TableHead>RRR</TableHead>
                   <TableHead>Payment Date</TableHead>
-                  <TableHead className="text-right">Amount (₦)</TableHead>
-                  <TableHead className="text-center">Month</TableHead>
-                  <TableHead className="text-right">Outstanding (₦)</TableHead>
+                  <TableHead className="text-center">Period</TableHead>
+                  <TableHead className="text-right">Amount Paid</TableHead>
+                  <TableHead className="text-right">Cumulative Payment</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-right">Last Repay Amt</TableHead>
+                  <TableHead className="text-right">Overdue Amt</TableHead>
+                  <TableHead className="text-center">Mths Overdue</TableHead>
+                  <TableHead className="text-right">Arrears Amt</TableHead>
+                  <TableHead className="text-center">Mths in Arrears</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredRecords.slice(0, 500).map((r, i) => (
-                  <TableRow key={`${r.rrrNumber}-${r.datePaid}-${i}`}>
+                  <TableRow
+                    key={`${r.rrrNumber}-${r.datePaid}-${i}`}
+                    className="cursor-pointer hover:border-l-[3px] hover:border-l-primary hover:bg-primary/5 transition-all"
+                    onClick={() => navigate(`/beneficiaries/${r.beneficiaryId}`)}
+                  >
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell className="font-medium">{r.beneficiaryName}</TableCell>
-                    <TableCell>{r.employeeId}</TableCell>
-                    <TableCell className="max-w-[150px] truncate">{r.organisation}</TableCell>
+                    <TableCell className="font-medium text-primary underline-offset-2 hover:underline whitespace-nowrap">{r.beneficiaryName}</TableCell>
+                    <TableCell className="max-w-[140px] truncate">{r.organisation}</TableCell>
                     <TableCell>{r.state}</TableCell>
                     <TableCell>{r.branch}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(r.loanAmount)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(r.monthlyEmi)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(r.expectedRepayment)}</TableCell>
                     <TableCell className="font-mono text-xs">{r.rrrNumber}</TableCell>
                     <TableCell>{r.datePaid}</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(r.amount)}</TableCell>
                     <TableCell className="text-center">{r.monthFor}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(r.amount)}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatCurrency(r.cumulativePayment)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.outstandingBalance)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(r.lastRepaymentAmount)}</TableCell>
+                    <TableCell className={`text-right ${r.overdueAmount > 0 ? 'text-destructive font-semibold' : ''}`}>{formatCurrency(r.overdueAmount)}</TableCell>
+                    <TableCell className={`text-center ${r.monthsOverdue > 0 ? 'text-destructive font-semibold' : ''}`}>{r.monthsOverdue}</TableCell>
+                    <TableCell className={`text-right ${r.arrearsAmount > 0 ? 'text-destructive font-semibold' : ''}`}>{formatCurrency(r.arrearsAmount)}</TableCell>
+                    <TableCell className={`text-center ${r.monthsInArrears > 0 ? 'text-destructive font-semibold' : ''}`}>{r.monthsInArrears}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={statusColor(r.status)}>
                         {r.status}
