@@ -9,7 +9,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime, getOverdueAndArrears } from '@/lib/loanCalculations';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -151,22 +151,72 @@ export default function BatchRepayment() {
   }, []);
 
   // Compute batch stats
-  const [batchStats, setBatchStats] = useState<Record<string, { count: number; totalAmount: number; monthlyDue: number }>>({});
+  interface BatchStat {
+    count: number;
+    totalAmount: number;
+    monthlyDue: number;
+    outstanding: number;
+    tenorMonths: number;
+    arrearsAmount: number;
+    monthsInArrears: number;
+    lastPaymentDate: string | null;
+    lastPaymentAmount: number | null;
+  }
+  const [batchStats, setBatchStats] = useState<Record<string, BatchStat>>({});
   useEffect(() => {
     if (batches.length === 0) return;
     const fetchStats = async () => {
       const { data } = await supabase
         .from('beneficiaries')
-        .select('batch_id, loan_amount, monthly_emi')
+        .select('batch_id, loan_amount, monthly_emi, outstanding_balance, tenor_months, total_paid, commencement_date, status')
         .not('batch_id', 'is', null);
+
+      // Fetch last batch repayment per batch
+      const { data: repayments } = await supabase
+        .from('batch_repayments')
+        .select('batch_id, payment_date, actual_amount')
+        .order('payment_date', { ascending: false });
+
+      const lastPaymentMap: Record<string, { date: string; amount: number }> = {};
+      if (repayments) {
+        repayments.forEach((r: any) => {
+          if (!lastPaymentMap[r.batch_id]) {
+            lastPaymentMap[r.batch_id] = { date: r.payment_date, amount: Number(r.actual_amount) };
+          }
+        });
+      }
+
       if (data) {
-        const stats: Record<string, { count: number; totalAmount: number; monthlyDue: number }> = {};
+        const stats: Record<string, BatchStat> = {};
         data.forEach((b: any) => {
           if (!b.batch_id) return;
-          if (!stats[b.batch_id]) stats[b.batch_id] = { count: 0, totalAmount: 0, monthlyDue: 0 };
-          stats[b.batch_id].count++;
-          stats[b.batch_id].totalAmount += Number(b.loan_amount);
-          stats[b.batch_id].monthlyDue += Number(b.monthly_emi);
+          if (!stats[b.batch_id]) stats[b.batch_id] = {
+            count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0,
+            tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0,
+            lastPaymentDate: null, lastPaymentAmount: null,
+          };
+          const s = stats[b.batch_id];
+          s.count++;
+          s.totalAmount += Number(b.loan_amount);
+          s.monthlyDue += Number(b.monthly_emi);
+          s.outstanding += Number(b.outstanding_balance);
+          // Use max tenor for display
+          if (b.tenor_months > s.tenorMonths) s.tenorMonths = b.tenor_months;
+          // Aggregate arrears
+          const arrears = getOverdueAndArrears(
+            b.commencement_date, b.tenor_months, Number(b.monthly_emi),
+            Number(b.total_paid), Number(b.outstanding_balance), b.status
+          );
+          s.arrearsAmount += arrears.arrearsAmount;
+          if (arrears.monthsInArrears > s.monthsInArrears) s.monthsInArrears = arrears.monthsInArrears;
+        });
+        // Attach last payment info
+        Object.keys(stats).forEach(batchId => {
+          const lp = lastPaymentMap[batchId];
+          if (lp) {
+            stats[batchId].lastPaymentDate = lp.date;
+            stats[batchId].lastPaymentAmount = lp.amount;
+          }
         });
         setBatchStats(stats);
       }
@@ -889,16 +939,22 @@ export default function BatchRepayment() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount Disbursed (₦)</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiaries</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Disbursed (₦)</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Due (₦)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding (₦)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment (₦)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount in Arrears (₦)</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment Date</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment Made (₦)</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map(batch => {
-                const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0 };
+                const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
                 return (
                   <tr key={batch.id} className="table-row-highlight">
                     <td className="px-4 py-3 font-mono text-xs">{batch.batch_code}</td>
@@ -908,9 +964,15 @@ export default function BatchRepayment() {
                       </button>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{batch.state || '—'}</td>
-                    <td className="px-4 py-3 text-right">{s.count}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(s.totalAmount)}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{s.tenorMonths > 0 ? formatTenor(s.tenorMonths) : '—'}</td>
+                    <td className="px-4 py-3 text-right">{s.count}</td>
+                    <td className="px-4 py-3 text-right">{formatCurrency(s.outstanding)}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(s.monthlyDue)}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${s.arrearsAmount > 0 ? 'text-destructive' : ''}`}>{s.arrearsAmount > 0 ? formatCurrency(s.arrearsAmount) : '—'}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${s.monthsInArrears > 0 ? 'text-destructive' : ''}`}>{s.monthsInArrears > 0 ? s.monthsInArrears : '—'}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{s.lastPaymentDate || '—'}</td>
+                    <td className="px-4 py-3 text-right">{s.lastPaymentAmount != null ? formatCurrency(s.lastPaymentAmount) : '—'}</td>
                     <td className="px-4 py-3"><StatusBadge status={batch.status} /></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1 flex-wrap">
@@ -929,7 +991,7 @@ export default function BatchRepayment() {
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">No batches found. Create your first batch to get started.</td></tr>
+                <tr><td colSpan={14} className="px-4 py-12 text-center text-muted-foreground">No batches found. Create your first batch to get started.</td></tr>
               )}
             </tbody>
           </table>
