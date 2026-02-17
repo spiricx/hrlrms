@@ -722,12 +722,20 @@ export default function BatchRepayment() {
                           <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly EMI</th>
                           <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Paid</th>
                           <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount in Arrears</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Months in Arrears</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment Date</th>
+                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Payment Made</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
                           <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {detailMembers.map(m => (
+                        {detailMembers.map(m => {
+                          const mArrears = getOverdueAndArrears(m.commencement_date, m.tenor_months, Number(m.monthly_emi), Number(m.total_paid), Number(m.outstanding_balance), m.status);
+                          const mTxs = (detailTransactions[m.id] || []).sort((a: any, b: any) => new Date(b.date_paid).getTime() - new Date(a.date_paid).getTime());
+                          const mLastTx = mTxs[0] || null;
+                          return (
                           <tr key={m.id} className="table-row-highlight cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
                             <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
@@ -737,6 +745,10 @@ export default function BatchRepayment() {
                             <td className="px-4 py-3 text-right">{formatCurrency(Number(m.monthly_emi))}</td>
                             <td className="px-4 py-3 text-right">{formatCurrency(Number(m.total_paid))}</td>
                             <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(m.outstanding_balance))}</td>
+                            <td className={`px-4 py-3 text-right font-medium ${mArrears.arrearsAmount > 0 ? 'text-destructive' : ''}`}>{mArrears.arrearsAmount > 0 ? formatCurrency(mArrears.arrearsAmount) : '—'}</td>
+                            <td className={`px-4 py-3 text-right font-medium ${mArrears.monthsInArrears > 0 ? 'text-destructive' : ''}`}>{mArrears.monthsInArrears > 0 ? mArrears.monthsInArrears : '—'}</td>
+                            <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{mLastTx ? formatDate(new Date(mLastTx.date_paid)) : '—'}</td>
+                            <td className="px-4 py-3 text-right">{mLastTx ? formatCurrency(Number(mLastTx.amount)) : '—'}</td>
                             <td className="px-4 py-3"><StatusBadge status={m.status} /></td>
                             <td className="px-4 py-3 text-center">
                               <Button size="sm" variant="ghost" className="gap-1 text-xs" onClick={(e) => { e.stopPropagation(); navigate(`/beneficiary/${m.id}`); }}>
@@ -744,9 +756,10 @@ export default function BatchRepayment() {
                               </Button>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                         {detailMembers.length === 0 && (
-                          <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">No members in this batch yet.</td></tr>
+                          <tr><td colSpan={14} className="px-4 py-12 text-center text-muted-foreground">No members in this batch yet.</td></tr>
                         )}
                       </tbody>
                     </table>
