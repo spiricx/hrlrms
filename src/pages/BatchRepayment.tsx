@@ -1687,10 +1687,13 @@ export default function BatchRepayment() {
                         ) : '—'}
                       </td>
                       {(isAdmin || hasRole('loan_officer')) && (
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-3 py-2 text-center space-x-1">
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setHistoryOpen(false); openEditBatchRep(r); }}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" disabled={deletingRepaymentId === r.id}>
+                              <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={deletingRepaymentId === r.id}>
                                 {deletingRepaymentId === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                               </Button>
                             </AlertDialogTrigger>
