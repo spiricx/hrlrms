@@ -148,7 +148,10 @@ export default function LoanRepayment() {
   const handleSave = async () => {
     if (!selectedBen || !paymentDate) return;
 
-    if (!amountPaid || Number(amountPaid) <= 0) {
+    // Default to expected amount if blank
+    const effectiveAmount = amountPaid.trim() === '' ? String(selectedBen.monthly_emi) : amountPaid;
+
+    if (Number(effectiveAmount) <= 0) {
       toast({ title: 'Validation Error', description: 'Enter a valid amount.', variant: 'destructive' });
       return;
     }
@@ -158,10 +161,6 @@ export default function LoanRepayment() {
     }
     if (!repaymentMonth) {
       toast({ title: 'Validation Error', description: 'Select the starting repayment month.', variant: 'destructive' });
-      return;
-    }
-    if (!receiptUrl.trim()) {
-      toast({ title: 'Validation Error', description: 'Receipt URL is required.', variant: 'destructive' });
       return;
     }
 
@@ -177,7 +176,7 @@ export default function LoanRepayment() {
     }
 
     setSaving(true);
-    const totalAmount = Number(amountPaid);
+    const totalAmount = Number(effectiveAmount);
     const startMonth = Number(repaymentMonth);
     const emi = Number(selectedBen.monthly_emi);
     const maxMonth = selectedBen.tenor_months;
@@ -539,8 +538,9 @@ export default function LoanRepayment() {
                 </div>
 
                 <div>
-                  <Label>Amount Paid (₦) *</Label>
-                  <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder="0.00" />
+                  <Label>Amount Paid (₦)</Label>
+                  <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(e.target.value)} placeholder={selectedBen ? Number(selectedBen.monthly_emi).toLocaleString() : '0.00'} />
+                  <p className="text-xs text-muted-foreground mt-1">Leave blank to use expected amount ({selectedBen ? formatCurrency(Number(selectedBen.monthly_emi)) : '—'}). Enter different amount for partial payment.</p>
                   {selectedBen && amountPaid && Number(amountPaid) > Number(selectedBen.monthly_emi) && repaymentMonth && (
                     <div className="mt-2 p-2.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-medium">
                       💡 This payment covers <strong>{Math.min(Math.floor(Number(amountPaid) / Number(selectedBen.monthly_emi)), selectedBen.tenor_months - Number(repaymentMonth) + 1)} month(s)</strong> starting from Month {repaymentMonth}
@@ -553,7 +553,8 @@ export default function LoanRepayment() {
 
                 <div>
                   <Label>Remita Reference Number (RRR) *</Label>
-                  <Input value={rrrNumber} onChange={(e) => setRrrNumber(e.target.value)} placeholder="e.g. 310007771234" />
+                  <Input value={rrrNumber} onChange={(e) => setRrrNumber(e.target.value)} placeholder="e.g. 3405-2458-5572" />
+                  <p className="text-xs text-muted-foreground mt-1">Enter RRR in format XXXX-XXXX-XXXX.</p>
                 </div>
 
                 <div>
@@ -583,8 +584,8 @@ fromYear={2016}
                 </div>
 
                 <div>
-                  <Label>Remita Receipt URL *</Label>
-                  <Input value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} placeholder="https://remita.net/receipt/..." />
+                  <Label>Remita Receipt URL</Label>
+                  <Input value={receiptUrl} onChange={(e) => setReceiptUrl(e.target.value)} placeholder="https://remita.net/receipt/... (optional)" />
                 </div>
 
                 <div>
