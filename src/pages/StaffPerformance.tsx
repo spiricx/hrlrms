@@ -200,7 +200,7 @@ export default function StaffPerformance() {
       const rankingValue = recoveryAllTime;
 
       const nplOutstanding = nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0);
-      const nplRatio = portfolioValue > 0 ? (nplOutstanding / portfolioValue * 100) : 0;
+      const nplRatio = totalOutstanding > 0 ? (nplOutstanding / totalOutstanding * 100) : 0;
       // Recovery rate: percentage of expected monthly EMI recovered in the report period
       const expectedMonthlyEmi = activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0);
       const recoveryRate = expectedMonthlyEmi > 0 ? (recoveryMTD / expectedMonthlyEmi * 100) : 0;
@@ -274,7 +274,7 @@ export default function StaffPerformance() {
       totalPaid: active.reduce((s, b) => s + Number(b.total_paid), 0),
       recoveryMTD: recoveryAllTime,
       nplCount: npl.length,
-      nplRatio: active.length > 0 ? (npl.reduce((s, b) => s + Number(b.outstanding_balance), 0) / active.reduce((s, b) => s + Number(b.loan_amount), 0) * 100) : 0,
+      nplRatio: active.length > 0 ? (npl.reduce((s, b) => s + Number(b.outstanding_balance), 0) / active.reduce((s, b) => s + Number(b.outstanding_balance), 0) * 100) : 0,
     };
   }, [beneficiaries, transactions, filterState]);
 
@@ -306,6 +306,8 @@ export default function StaffPerformance() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const map = new Map<string, { state: string; totalStaff: number; totalLoans: number; activeLoans: number; portfolioValue: number; totalOutstanding: number; totalPaid: number; nplCount: number; recoveryMTD: number; }>();
     
     // Count staff per state
@@ -316,7 +318,32 @@ export default function StaffPerformance() {
     filtered.forEach(b => {
       const existing = map.get(b.state);
       const isActive = b.status === 'active';
-      const isNpl = b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3;
+
+      // Correct NPL: 90+ DPD using total_paid/monthly_emi (same as Dashboard & NPL module)
+      const isNpl = (() => {
+        if (!isActive || Number(b.outstanding_balance) <= 0) return false;
+        const commDate = new Date(b.commencement_date);
+        commDate.setHours(0, 0, 0, 0);
+        if (today < commDate) return false;
+        const monthlyEmi = Number(b.monthly_emi);
+        if (monthlyEmi <= 0) return false;
+        const totalPaid = Number(b.total_paid);
+        let dueMonths = 0;
+        for (let i = 1; i <= b.tenor_months; i++) {
+          const dueDate = new Date(commDate);
+          dueDate.setMonth(dueDate.getMonth() + (i - 1));
+          if (today >= dueDate) dueMonths = i; else break;
+        }
+        if (dueMonths <= 0) return false;
+        const paidMonths = Math.floor(totalPaid / monthlyEmi);
+        if (paidMonths >= dueMonths) return false;
+        const firstUnpaidDue = new Date(commDate);
+        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+        firstUnpaidDue.setHours(0, 0, 0, 0);
+        const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        return dpd >= 90;
+      })();
+
       const benTxns = transactions.filter(t => {
         if (t.beneficiary_id !== b.id) return false;
         const d = new Date(t.date_paid);
@@ -358,6 +385,8 @@ export default function StaffPerformance() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const map = new Map<string, { branch: string; state: string; totalStaff: number; totalLoans: number; activeLoans: number; portfolioValue: number; totalOutstanding: number; totalPaid: number; nplCount: number; recoveryMTD: number; }>();
 
     // Count staff per branch
@@ -372,7 +401,31 @@ export default function StaffPerformance() {
       const key = `${b.state}-${b.bank_branch}`;
       const existing = map.get(key);
       const isActive = b.status === 'active';
-      const isNpl = b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3;
+
+      // Correct NPL: 90+ DPD using total_paid/monthly_emi (same as Dashboard & NPL module)
+      const isNpl = (() => {
+        if (!isActive || Number(b.outstanding_balance) <= 0) return false;
+        const commDate = new Date(b.commencement_date);
+        commDate.setHours(0, 0, 0, 0);
+        if (today < commDate) return false;
+        const monthlyEmi = Number(b.monthly_emi);
+        if (monthlyEmi <= 0) return false;
+        const totalPaid = Number(b.total_paid);
+        let dueMonths = 0;
+        for (let i = 1; i <= b.tenor_months; i++) {
+          const dueDate = new Date(commDate);
+          dueDate.setMonth(dueDate.getMonth() + (i - 1));
+          if (today >= dueDate) dueMonths = i; else break;
+        }
+        if (dueMonths <= 0) return false;
+        const paidMonths = Math.floor(totalPaid / monthlyEmi);
+        if (paidMonths >= dueMonths) return false;
+        const firstUnpaidDue = new Date(commDate);
+        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+        firstUnpaidDue.setHours(0, 0, 0, 0);
+        const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        return dpd >= 90;
+      })();
       const benTxns = transactions.filter(t => {
         if (t.beneficiary_id !== b.id) return false;
         const d = new Date(t.date_paid);
