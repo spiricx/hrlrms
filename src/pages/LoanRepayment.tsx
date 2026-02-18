@@ -550,12 +550,13 @@ export default function LoanRepayment() {
 
       {/* Record Repayment Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Record Repayment</DialogTitle>
             <DialogDescription>Enter repayment details from the Remita receipt.</DialogDescription>
           </DialogHeader>
 
+          <div className="flex-1 overflow-y-auto pr-1">
           {selectedBen &&
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-secondary/50">
@@ -663,8 +664,9 @@ export default function LoanRepayment() {
               </div>
             </div>
           }
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Saving...' : 'Save Repayment'}
