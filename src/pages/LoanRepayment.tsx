@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ExternalLink, Banknote, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { Search, ExternalLink, Banknote, Pencil, Trash2, MessageSquare, CalendarIcon } from 'lucide-react';
 import { formatCurrency, formatDate, formatTenor, getOverdueAndArrears } from '@/lib/loanCalculations';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DateInput } from '@/components/ui/date-input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -619,13 +620,27 @@ export default function LoanRepayment() {
                 <div>
                   <Label>Payment Date (as on Remita receipt) *</Label>
                   <p className="text-xs text-muted-foreground mb-1">Enter the exact date shown on the Remita receipt — this is the official repayment date.</p>
-                  <DateInput
-                    value={paymentDate}
-                    onChange={setPaymentDate}
-                    max={new Date()}
-                    min={new Date('2016-01-01')}
-                    placeholder="Select payment date"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn('w-full justify-start text-left font-normal', !paymentDate && 'text-muted-foreground')}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {paymentDate ? format(paymentDate, 'dd MMM yyyy') : 'Select payment date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={paymentDate}
+                        onSelect={setPaymentDate}
+                        disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div>
@@ -850,13 +865,27 @@ export default function LoanRepayment() {
               </div>
               <div>
                 <Label>Payment Date (as on Remita receipt) *</Label>
-                <DateInput
-                  value={paymentDate}
-                  onChange={setPaymentDate}
-                  max={new Date()}
-                  min={new Date('2016-01-01')}
-                  placeholder="Select payment date"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn('w-full justify-start text-left font-normal', !paymentDate && 'text-muted-foreground')}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {paymentDate ? format(paymentDate, 'dd MMM yyyy') : 'Select payment date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={paymentDate}
+                      onSelect={setPaymentDate}
+                      disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <Label>Remita Receipt URL *</Label>
