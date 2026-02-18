@@ -69,6 +69,23 @@ export default function StaffPerformance() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
+    // Pre-index transactions by recorded_by for O(1) lookup
+    const txnsByRecorder = new Map<string, Transaction[]>();
+    transactions.forEach(t => {
+      if (!t.recorded_by) return;
+      const list = txnsByRecorder.get(t.recorded_by) || [];
+      list.push(t);
+      txnsByRecorder.set(t.recorded_by, list);
+    });
+
+    // Pre-index transactions by beneficiary_id for fallback
+    const txnsByBeneficiary = new Map<string, Transaction[]>();
+    transactions.forEach(t => {
+      const list = txnsByBeneficiary.get(t.beneficiary_id) || [];
+      list.push(t);
+      txnsByBeneficiary.set(t.beneficiary_id, list);
+    });
+
     const q = searchQuery.toLowerCase().trim();
     return staff.filter(s => {
       const matchesState = filterState === 'all' || s.state === filterState;
@@ -80,6 +97,7 @@ export default function StaffPerformance() {
       // Resolve this staff member's user_id via email → profiles lookup
       const userId = emailToUserId.get((s.email || '').toLowerCase()) || null;
 
+      // --- LOAN PORTFOLIO (created_by attribution) ---
       // Loans CREATED by this staff member specifically (via created_by = userId)
       // Fall back to state+branch match if no userId found
       const myBeneficiaries = userId
@@ -92,25 +110,37 @@ export default function StaffPerformance() {
       const totalOutstanding = activeBens.reduce((sum, b) => sum + Number(b.outstanding_balance), 0);
       const totalPaid = activeBens.reduce((sum, b) => sum + Number(b.total_paid), 0);
 
-      // Recovery MTD: transactions RECORDED BY this specific staff member this month
-      const monthTxns = userId
-        ? transactions.filter(t => {
-            if (t.recorded_by !== userId) return false;
+      // --- RECOVERY MTD (recorded_by attribution — INDEPENDENT of loan creation) ---
+      // A staff member may record repayments on ANY beneficiary, not just ones they created.
+      // We must look up ALL transactions recorded_by this staff's userId, regardless of which
+      // beneficiary the loan belongs to. This is the correct individual recovery attribution.
+      let monthTxns: Transaction[] = [];
+      if (userId) {
+        // Primary: all transactions this month recorded by this specific user
+        const allRecorded = txnsByRecorder.get(userId) || [];
+        monthTxns = allRecorded.filter(t => {
+          const d = new Date(t.date_paid);
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+      } else {
+        // Fallback: transactions on beneficiaries in their state+branch this month
+        const benIds = new Set(myBeneficiaries.map(b => b.id));
+        benIds.forEach(benId => {
+          const benTxns = txnsByBeneficiary.get(benId) || [];
+          benTxns.forEach(t => {
             const d = new Date(t.date_paid);
-            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-          })
-        : (() => {
-            const benIds = new Set(myBeneficiaries.map(b => b.id));
-            return transactions.filter(t => {
-              if (!benIds.has(t.beneficiary_id)) return false;
-              const d = new Date(t.date_paid);
-              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-            });
-          })();
+            if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+              monthTxns.push(t);
+            }
+          });
+        });
+      }
 
       const recoveryMTD = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
       const nplRatio = portfolioValue > 0 ? (nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0) / portfolioValue * 100) : 0;
-      const recoveryRate = totalOutstanding > 0 ? (recoveryMTD / (activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0) || 1) * 100) : 0;
+      // Recovery rate: how much of the expected monthly EMI total was recovered this month
+      const expectedMonthlyEmi = activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0);
+      const recoveryRate = expectedMonthlyEmi > 0 ? (recoveryMTD / expectedMonthlyEmi * 100) : 0;
 
       return {
         ...s,
