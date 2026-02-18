@@ -20,6 +20,17 @@ interface BeneficiaryWithPayment extends Beneficiary {
 
 type StatusInfo = {label: string;className: string;};
 
+function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
+  if (overdueMonths <= 0 || Number(b.monthly_emi) <= 0) return 0;
+  const today = stripTime(new Date());
+  const comm = stripTime(new Date(b.commencement_date));
+  const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+  const firstUnpaidDue = new Date(comm);
+  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+  const due = stripTime(firstUnpaidDue);
+  return Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
+}
+
 function getStatusInfo(b: Beneficiary): StatusInfo {
   const oa = getOverdueAndArrears(
     b.commencement_date, b.tenor_months, Number(b.monthly_emi),
@@ -43,10 +54,10 @@ function getStatusInfo(b: Beneficiary): StatusInfo {
     return { label: 'Overdue', className: 'bg-warning/10 text-warning border-warning/20' };
   }
 
-  // Calculate DPD from arrears months
-  const dpd = oa.monthsInArrears * 30;
+  // Use actual DPD (days since first unpaid instalment's due date)
+  const dpd = computeActualDpd(b, oa.overdueMonths);
   if (dpd >= 90) {
-    return { label: `NPL / ${dpd} Days`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
+    return { label: `NPL / ${dpd} DPD`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
   }
   return { label: `${dpd} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
 }

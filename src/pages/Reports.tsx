@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { formatCurrency } from '@/lib/loanCalculations';
+import { formatCurrency, getOverdueAndArrears, stripTime } from '@/lib/loanCalculations';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
@@ -80,37 +80,50 @@ export default function Reports() {
   const defaultedCount = filtered.filter(b => b.status === 'defaulted').length;
 
   // Compute defaulted using 90+ DPD aging logic (consistent with Dashboard)
+  // Uses the same getOverdueAndArrears utility for accuracy
   const computedDefaulted = useMemo(() => {
-    const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
     return filtered.filter(b => {
       if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
-      const comm = new Date(b.commencement_date);
-      const commStripped = new Date(comm.getFullYear(), comm.getMonth(), comm.getDate());
-      if (today < commStripped) return false;
-      // Find earliest unpaid installment
       const emi = Number(b.monthly_emi);
       if (emi <= 0) return false;
-      let monthsDue = 0;
-      for (let i = 1; i <= b.tenor_months; i++) {
-        const dueDate = new Date(commStripped);
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
-        if (today >= dueDate) monthsDue = i; else break;
-      }
-      const expectedTotal = monthsDue * emi;
-      const deficit = expectedTotal - Number(b.total_paid);
-      if (deficit <= 0) return false;
-      const overdueMonths = Math.min(Math.ceil(deficit / emi), monthsDue);
-      // Find due date of earliest unpaid month
-      const earliestUnpaidMonth = monthsDue - overdueMonths + 1;
-      const earliestDue = new Date(commStripped);
-      earliestDue.setMonth(earliestDue.getMonth() + (earliestUnpaidMonth - 1));
-      const diffMs = today.getTime() - earliestDue.getTime();
-      const dpd = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24))) + 1;
+      const today = stripTime(new Date());
+      const comm = stripTime(new Date(b.commencement_date));
+      if (today < comm) return false;
+
+      const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, emi, Number(b.total_paid), Number(b.outstanding_balance), b.status);
+      if (oa.overdueMonths <= 0) return false;
+
+      // Find due date of first unpaid instalment
+      const paidMonths = Math.min(Math.floor(Number(b.total_paid) / emi), b.tenor_months);
+      const firstUnpaidDue = new Date(comm);
+      firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+      const due = stripTime(firstUnpaidDue);
+      const dpd = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
       return dpd >= 90;
     }).length;
   }, [filtered]);
 
-  const computedActive = filtered.filter(b => b.status !== 'completed' && Number(b.outstanding_balance) > 0).length - computedDefaulted;
+  // Active = not completed, not defaulted (90+ DPD), has outstanding balance
+  const computedActive = useMemo(() => {
+    return filtered.filter(b => {
+      if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
+      const emi = Number(b.monthly_emi);
+      if (emi <= 0) return true; // pre-commencement = active
+      const today = stripTime(new Date());
+      const comm = stripTime(new Date(b.commencement_date));
+      if (today < comm) return true;
+
+      const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, emi, Number(b.total_paid), Number(b.outstanding_balance), b.status);
+      if (oa.overdueMonths <= 0) return true;
+
+      const paidMonths = Math.min(Math.floor(Number(b.total_paid) / emi), b.tenor_months);
+      const firstUnpaidDue = new Date(comm);
+      firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+      const due = stripTime(firstUnpaidDue);
+      const dpd = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
+      return dpd < 90; // active if below 90 DPD threshold
+    }).length;
+  }, [filtered]);
   const totalFacilities = filtered.length;
 
   const statusData = [

@@ -156,10 +156,14 @@ export interface OverdueArrearsInfo {
  * Calculate overdue and arrears metrics for a beneficiary.
  *
  * Key distinction:
- * - **Overdue**: any instalment whose due date has arrived and is unpaid.
- *   On the due date itself, the payment is "overdue" (1 month overdue).
- * - **In Arrears**: an instalment where the NEXT month's due date has also
- *   arrived. On the due date, arrears = 0. One period later, arrears = 1.
+ * - **Overdue**: any instalment whose due date has arrived (today >= dueDate) and is unpaid.
+ *   On the due date itself the first instalment is 1 month overdue.
+ * - **In Arrears**: overdue instalments where the *next* period's due date has ALSO arrived.
+ *   i.e. an instalment only enters "arrears" once it is at least 30 days past its own due date.
+ *   This ensures DPD-based thresholds (30, 60, 90 days) are correctly sequenced.
+ *
+ * Calculation uses only total_paid vs expected schedule (no transaction-level lookup needed)
+ * because the beneficiaries table is kept in sync by DB triggers after every repayment.
  */
 export function getOverdueAndArrears(
   commencementDate: string | Date,
@@ -178,17 +182,47 @@ export function getOverdueAndArrears(
   const emi = monthlyEmi;
   if (emi <= 0) return zero;
 
-  // Overdue: all months due including current
+  const today = stripTime(new Date());
+  const comm = stripTime(new Date(commencementDate));
+
+  // Expected cumulative total for all months that are due
   const expectedTotal = monthsDue * emi;
   const overdueDeficit = Math.max(0, expectedTotal - totalPaid);
+
+  if (overdueDeficit <= 0) return zero;
+
+  // How many full EMIs are unpaid (capped at months due)
   const overdueMonths = Math.min(Math.ceil(overdueDeficit / emi), monthsDue);
   const overdueAmount = Math.round(overdueDeficit * 100) / 100;
 
-  // Arrears: same as overdue — once a due date passes without payment, it's in arrears
-  const monthsInArrears = overdueMonths;
-  const arrearsAmount = overdueAmount;
+  // "In Arrears" = those overdue instalments where the NEXT instalment's due date has arrived.
+  // i.e. the due date of the first unpaid instalment is STRICTLY before today (DPD >= 1 and
+  // the following period has also elapsed, meaning DPD >= 30 effectively).
+  // We count arrears months as those unpaid instalments whose due date is strictly < today
+  // AND whose NEXT due date is also <= today (they are at least one full period overdue).
+  const paidMonths = Math.min(Math.floor(totalPaid / emi), tenorMonths);
 
-  return { overdueMonths, overdueAmount, monthsInArrears, arrearsAmount };
+  let arrearsMonths = 0;
+  for (let m = paidMonths + 1; m <= paidMonths + overdueMonths && m <= tenorMonths; m++) {
+    // Due date of instalment m (0-indexed offset from commencement)
+    const dueDate = new Date(comm);
+    dueDate.setMonth(dueDate.getMonth() + (m - 1));
+    const due = stripTime(dueDate);
+
+    // Due date of the NEXT instalment
+    const nextDue = new Date(comm);
+    nextDue.setMonth(nextDue.getMonth() + m); // m is already +1
+    const nextDueStripped = stripTime(nextDue);
+
+    // In arrears only when the next instalment's due date has also arrived
+    if (today >= nextDueStripped) {
+      arrearsMonths++;
+    }
+  }
+
+  const arrearsAmount = Math.round(arrearsMonths * emi * 100) / 100;
+
+  return { overdueMonths, overdueAmount, monthsInArrears: arrearsMonths, arrearsAmount };
 }
 
 export interface Beneficiary {
