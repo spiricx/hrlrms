@@ -16,6 +16,7 @@ import {
   Download,
   Loader2,
   ArrowLeftRight,
+  Trash2,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -47,8 +48,9 @@ const findColumn = (headers: string[], patterns: RegExp[]): string | null => {
   return null;
 };
 
-const REMITA_PATTERNS = [/remita/i, /rrr/i, /retrieval/i, /reference/i, /ref/i];
+const REMITA_PATTERNS = [/rrr/i, /remita/i, /retrieval/i, /reference/i, /ref/i];
 const AMOUNT_PATTERNS = [/amount/i, /sum/i, /value/i, /paid/i, /credit/i];
+const NAME_PATTERNS = [/name/i, /beneficiary/i, /customer/i, /payer/i, /subscriber/i];
 const RECEIPT_PATTERNS = [/receipt/i, /url/i, /link/i, /proof/i];
 
 export default function LoanReconciliation() {
@@ -58,6 +60,7 @@ export default function LoanReconciliation() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [remitaCol, setRemitaCol] = useState('');
   const [amountCol, setAmountCol] = useState('');
+  const [nameCol, setNameCol] = useState('');
   const [receiptCol, setReceiptCol] = useState('');
   const [results, setResults] = useState<MatchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,9 +94,11 @@ export default function LoanReconciliation() {
         // Auto-detect columns
         const autoRemita = findColumn(cols, REMITA_PATTERNS) || '';
         const autoAmount = findColumn(cols, AMOUNT_PATTERNS) || '';
+        const autoName = findColumn(cols, NAME_PATTERNS) || '';
         const autoReceipt = findColumn(cols, RECEIPT_PATTERNS) || '';
         setRemitaCol(autoRemita);
         setAmountCol(autoAmount);
+        setNameCol(autoName);
         setReceiptCol(autoReceipt);
 
         const rows: CBNRow[] = jsonData.map((row, i) => ({
@@ -113,6 +118,21 @@ export default function LoanReconciliation() {
     };
     reader.readAsBinaryString(f);
   }, [toast]);
+
+  // Clear all uploaded data
+  const handleClear = useCallback(() => {
+    setFile(null);
+    setCbnData([]);
+    setHeaders([]);
+    setRemitaCol('');
+    setAmountCol('');
+    setNameCol('');
+    setReceiptCol('');
+    setResults([]);
+    setParsed(false);
+    setReconciled(false);
+    setSearchTerm('');
+  }, []);
 
   // Re-map columns when user changes selection
   const remapData = useCallback(() => {
@@ -287,12 +307,21 @@ export default function LoanReconciliation() {
               </div>
               <Input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileUpload} />
             </label>
+            {file && (
+              <Button
+                variant="outline"
+                onClick={handleClear}
+                className="shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Clear File
+              </Button>
+            )}
           </div>
 
           {parsed && headers.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Remita/RRR Column</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">RRR Column *</label>
                 <select value={remitaCol} onChange={e => { setRemitaCol(e.target.value); setTimeout(remapData, 0); }}
                   className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="">-- Select --</option>
@@ -300,7 +329,7 @@ export default function LoanReconciliation() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Amount Column</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount Column *</label>
                 <select value={amountCol} onChange={e => { setAmountCol(e.target.value); setTimeout(remapData, 0); }}
                   className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="">-- Select --</option>
@@ -308,7 +337,15 @@ export default function LoanReconciliation() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Receipt Column (optional)</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Names Column</label>
+                <select value={nameCol} onChange={e => setNameCol(e.target.value)}
+                  className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <option value="">-- None --</option>
+                  {headers.map(h => <option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Receipt Column</label>
                 <select value={receiptCol} onChange={e => { setReceiptCol(e.target.value); setTimeout(remapData, 0); }}
                   className="w-full mt-1 rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="">-- None --</option>
@@ -319,7 +356,7 @@ export default function LoanReconciliation() {
           )}
 
           {parsed && (
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button onClick={handleReconcile} disabled={loading || !remitaCol}>
                 {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Search className="w-4 h-4 mr-2" />}
                 {loading ? 'Reconciling...' : 'Run Reconciliation'}
@@ -329,6 +366,13 @@ export default function LoanReconciliation() {
                   <Download className="w-4 h-4 mr-2" /> Export Results
                 </Button>
               )}
+              <Button
+                variant="outline"
+                onClick={handleClear}
+                className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Clear & Reset
+              </Button>
             </div>
           )}
         </CardContent>
