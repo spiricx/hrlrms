@@ -1260,14 +1260,22 @@ export default function BatchRepayment() {
                         {editBatchRepDate ? format(editBatchRepDate, 'dd MMM yyyy') : 'Select payment date'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent
+                      className="w-auto p-0 z-[200]"
+                      align="start"
+                      side="bottom"
+                      sideOffset={4}
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
                       <Calendar
                         mode="single"
                         selected={editBatchRepDate}
                         onSelect={setEditBatchRepDate}
                         disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        captionLayout="dropdown-buttons"
+                        fromYear={2016}
+                        toYear={new Date().getFullYear()}
                         initialFocus
-                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
@@ -1652,14 +1660,22 @@ export default function BatchRepayment() {
                         {payDate ? format(payDate, 'dd MMM yyyy') : 'Select payment date'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent
+                      className="w-auto p-0 z-[200]"
+                      align="start"
+                      side="bottom"
+                      sideOffset={4}
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                    >
                       <Calendar
                         mode="single"
                         selected={payDate}
                         onSelect={setPayDate}
                         disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        captionLayout="dropdown-buttons"
+                        fromYear={2016}
+                        toYear={new Date().getFullYear()}
                         initialFocus
-                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
