@@ -86,6 +86,26 @@ export default function StaffPerformance() {
       txnsByBeneficiary.set(t.beneficiary_id, list);
     });
 
+    // Determine the latest month/year that has any transactions (for meaningful MTD)
+    let latestYear = currentYear;
+    let latestMonth = currentMonth;
+    transactions.forEach(t => {
+      const d = new Date(t.date_paid);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      if (y > latestYear || (y === latestYear && m > latestMonth)) {
+        latestYear = y;
+        latestMonth = m;
+      }
+    });
+    // If no transactions exist in current month, fall back to latest available month
+    const hasCurrentMonthTxns = transactions.some(t => {
+      const d = new Date(t.date_paid);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    });
+    const reportMonth = hasCurrentMonthTxns ? currentMonth : latestMonth;
+    const reportYear = hasCurrentMonthTxns ? currentYear : latestYear;
+
     const q = searchQuery.toLowerCase().trim();
     return staff.filter(s => {
       const matchesState = filterState === 'all' || s.state === filterState;
@@ -105,31 +125,69 @@ export default function StaffPerformance() {
         : beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
 
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
-      const nplBens = myBeneficiaries.filter(b => b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3);
+
+      // --- CORRECT NPL CALCULATION using 90+ Days Past Due (not a proxy) ---
+      // Mirrors the logic in Dashboard.tsx and NplStatus.tsx for consistency
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nplBens = activeBens.filter(b => {
+        if (Number(b.outstanding_balance) <= 0) return false;
+        const commDate = new Date(b.commencement_date);
+        commDate.setHours(0, 0, 0, 0);
+        if (today < commDate) return false;
+        const monthlyEmi = Number(b.monthly_emi);
+        if (monthlyEmi <= 0) return false;
+        const totalPaid = Number(b.total_paid);
+        // Count how many instalments are due
+        let dueMonths = 0;
+        for (let i = 1; i <= b.tenor_months; i++) {
+          const dueDate = new Date(commDate);
+          dueDate.setMonth(dueDate.getMonth() + (i - 1));
+          if (today >= dueDate) dueMonths = i;
+          else break;
+        }
+        if (dueMonths <= 0) return false;
+        const expectedTotal = dueMonths * monthlyEmi;
+        const unpaid = Math.max(0, expectedTotal - totalPaid);
+        const overdueMonths = Math.ceil(unpaid / monthlyEmi);
+        if (overdueMonths <= 0) return false;
+        // Find the first unpaid month's due date for DPD
+        const paidMonths = Math.floor(totalPaid / monthlyEmi);
+        const firstUnpaidIdx = paidMonths; // 0-based
+        const firstUnpaidDue = new Date(commDate);
+        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + firstUnpaidIdx);
+        firstUnpaidDue.setHours(0, 0, 0, 0);
+        const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        return dpd >= 90;
+      });
+
       const portfolioValue = activeBens.reduce((sum, b) => sum + Number(b.loan_amount), 0);
       const totalOutstanding = activeBens.reduce((sum, b) => sum + Number(b.outstanding_balance), 0);
       const totalPaid = activeBens.reduce((sum, b) => sum + Number(b.total_paid), 0);
 
-      // --- RECOVERY MTD (recorded_by attribution — INDEPENDENT of loan creation) ---
+      // --- RECOVERY: recorded_by attribution — INDEPENDENT of loan creation ---
       // A staff member may record repayments on ANY beneficiary, not just ones they created.
-      // We must look up ALL transactions recorded_by this staff's userId, regardless of which
-      // beneficiary the loan belongs to. This is the correct individual recovery attribution.
+      // We look up ALL transactions recorded_by this staff's userId.
       let monthTxns: Transaction[] = [];
+      let allTimeTxns: Transaction[] = [];
+
       if (userId) {
-        // Primary: all transactions this month recorded by this specific user
         const allRecorded = txnsByRecorder.get(userId) || [];
+        allTimeTxns = allRecorded;
+        // MTD: use latest month with data (fallback from current month if no current-month txns)
         monthTxns = allRecorded.filter(t => {
           const d = new Date(t.date_paid);
-          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+          return d.getMonth() === reportMonth && d.getFullYear() === reportYear;
         });
       } else {
-        // Fallback: transactions on beneficiaries in their state+branch this month
+        // Fallback: transactions on beneficiaries in their state+branch
         const benIds = new Set(myBeneficiaries.map(b => b.id));
         benIds.forEach(benId => {
           const benTxns = txnsByBeneficiary.get(benId) || [];
           benTxns.forEach(t => {
+            allTimeTxns.push(t);
             const d = new Date(t.date_paid);
-            if (d.getMonth() === currentMonth && d.getFullYear() === currentYear) {
+            if (d.getMonth() === reportMonth && d.getFullYear() === reportYear) {
               monthTxns.push(t);
             }
           });
@@ -137,8 +195,13 @@ export default function StaffPerformance() {
       }
 
       const recoveryMTD = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
-      const nplRatio = portfolioValue > 0 ? (nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0) / portfolioValue * 100) : 0;
-      // Recovery rate: how much of the expected monthly EMI total was recovered this month
+      const recoveryAllTime = allTimeTxns.reduce((sum, t) => sum + Number(t.amount), 0);
+      // Use all-time recovery for ranking when MTD is zero for everyone
+      const rankingValue = recoveryAllTime;
+
+      const nplOutstanding = nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0);
+      const nplRatio = portfolioValue > 0 ? (nplOutstanding / portfolioValue * 100) : 0;
+      // Recovery rate: percentage of expected monthly EMI recovered in the report period
       const expectedMonthlyEmi = activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0);
       const recoveryRate = expectedMonthlyEmi > 0 ? (recoveryMTD / expectedMonthlyEmi * 100) : 0;
 
@@ -151,35 +214,65 @@ export default function StaffPerformance() {
         totalOutstanding,
         totalPaid,
         recoveryMTD,
+        recoveryAllTime,
+        rankingValue,
         nplCount: nplBens.length,
         nplRatio: Math.round(nplRatio * 10) / 10,
         recoveryRate: Math.min(Math.round(recoveryRate), 200),
         beneficiaries: myBeneficiaries,
+        reportMonth,
+        reportYear,
       };
-    }).sort((a, b) => b.recoveryMTD - a.recoveryMTD);
+    }).sort((a, b) => b.rankingValue - a.rankingValue);
   }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery]);
 
   // Deduplicated portfolio totals (from beneficiaries directly, not staff metrics which double-count)
   const portfolioTotals = useMemo(() => {
     const filtered = filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState);
     const active = filtered.filter(b => b.status === 'active');
-    const npl = filtered.filter(b => b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3);
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const benIds = new Set(filtered.map(b => b.id));
-    const monthTxns = transactions.filter(t => {
-      if (!benIds.has(t.beneficiary_id)) return false;
-      const d = new Date(t.date_paid);
-      return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+
+    // Correct NPL: 90+ DPD using installment aging (same logic as Dashboard & NPL modules)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const npl = active.filter(b => {
+      if (Number(b.outstanding_balance) <= 0) return false;
+      const commDate = new Date(b.commencement_date);
+      commDate.setHours(0, 0, 0, 0);
+      if (today < commDate) return false;
+      const monthlyEmi = Number(b.monthly_emi);
+      if (monthlyEmi <= 0) return false;
+      const totalPaid = Number(b.total_paid);
+      let dueMonths = 0;
+      for (let i = 1; i <= b.tenor_months; i++) {
+        const dueDate = new Date(commDate);
+        dueDate.setMonth(dueDate.getMonth() + (i - 1));
+        if (today >= dueDate) dueMonths = i; else break;
+      }
+      if (dueMonths <= 0) return false;
+      const unpaid = Math.max(0, dueMonths * monthlyEmi - totalPaid);
+      const overdueMonths = Math.ceil(unpaid / monthlyEmi);
+      if (overdueMonths <= 0) return false;
+      const paidMonths = Math.floor(totalPaid / monthlyEmi);
+      const firstUnpaidDue = new Date(commDate);
+      firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+      firstUnpaidDue.setHours(0, 0, 0, 0);
+      const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      return dpd >= 90;
     });
+
+    // Recovery: total all-time (since transactions are historical, not current-month)
+    const recoveryAllTime = transactions.reduce((s, t) => {
+      const b = filtered.find(b => b.id === t.beneficiary_id);
+      return b ? s + Number(t.amount) : s;
+    }, 0);
+
     return {
       totalLoans: filtered.length,
       activeLoans: active.length,
       portfolioValue: active.reduce((s, b) => s + Number(b.loan_amount), 0),
       totalOutstanding: active.reduce((s, b) => s + Number(b.outstanding_balance), 0),
       totalPaid: active.reduce((s, b) => s + Number(b.total_paid), 0),
-      recoveryMTD: monthTxns.reduce((s, t) => s + Number(t.amount), 0),
+      recoveryMTD: recoveryAllTime,
       nplCount: npl.length,
       nplRatio: active.length > 0 ? (npl.reduce((s, b) => s + Number(b.outstanding_balance), 0) / active.reduce((s, b) => s + Number(b.loan_amount), 0) * 100) : 0,
     };
@@ -201,6 +294,7 @@ export default function StaffPerformance() {
       nplCount: s.nplCount,
       nplRatio: s.nplRatio,
       recoveryMTD: s.recoveryMTD,
+      recoveryAllTime: s.recoveryAllTime ?? 0,
       recoveryRate: s.recoveryRate,
       beneficiaries: s.beneficiaries,
     }));
@@ -528,9 +622,9 @@ export default function StaffPerformance() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Staff</div><div className="text-2xl font-bold">{staffMetrics.length}</div></CardContent></Card>
         <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Portfolio</div><div className="text-2xl font-bold">{formatNaira(portfolioTotals.portfolioValue)}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Outstanding</div><div className="text-2xl font-bold text-amber-600">{formatNaira(portfolioTotals.totalOutstanding)}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Recovery (MTD)</div><div className="text-2xl font-bold text-emerald-600">{formatNaira(portfolioTotals.recoveryMTD)}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Avg NPL Ratio</div><div className="text-2xl font-bold">{portfolioTotals.nplRatio.toFixed(1)}%</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Outstanding</div><div className="text-2xl font-bold text-warning">{formatNaira(portfolioTotals.totalOutstanding)}</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">Total Recovery (All-Time)</div><div className="text-2xl font-bold text-success">{formatNaira(portfolioTotals.recoveryMTD)}</div></CardContent></Card>
+        <Card><CardContent className="pt-4"><div className="text-sm text-muted-foreground">NPL Ratio</div><div className="text-2xl font-bold">{portfolioTotals.nplRatio.toFixed(1)}%</div></CardContent></Card>
       </div>
 
       {/* Top Performers */}
@@ -538,17 +632,21 @@ export default function StaffPerformance() {
         <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2"><Award className="w-5 h-5 text-primary" /> Top Performers – Reward Recommendations</CardTitle>
+            <p className="text-xs text-muted-foreground">Ranked by Total Loan Recovery (All-Time) recorded by individual staff</p>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {topPerformers.map((p, i) => (
-                <div key={p.id} className="flex items-center gap-3 text-sm">
+                <div key={p.id} className="flex flex-wrap items-center gap-3 text-sm">
                   <Badge variant={i === 0 ? 'default' : 'secondary'}>{i + 1}{i === 0 ? 'st' : i === 1 ? 'nd' : 'rd'}</Badge>
                   <span className="font-medium">{p.title} {p.surname} {p.first_name}</span>
-                  <span className="text-muted-foreground">({p.branch})</span>
-                  <span className="text-emerald-600 font-medium">{formatNaira(p.recoveryMTD)} recovered</span>
+                  <span className="text-muted-foreground">({p.branch}, {p.state})</span>
+                  <span className="text-success font-semibold">{formatNaira(p.recoveryAllTime ?? 0)} total recovered</span>
+                  {(p.recoveryMTD ?? 0) > 0 && (
+                    <span className="text-muted-foreground">| MTD: {formatNaira(p.recoveryMTD)}</span>
+                  )}
                   <span className="text-muted-foreground">| {p.activeLoans} active loans | Portfolio: {formatNaira(p.portfolioValue)}</span>
-                  {i === 0 && <Badge className="bg-amber-100 text-amber-700">★ Recommended for Bonus</Badge>}
+                  {i === 0 && <Badge className="bg-primary/10 text-primary border-primary/30">★ Recommended for Reward</Badge>}
                 </div>
               ))}
             </div>
@@ -570,15 +668,18 @@ export default function StaffPerformance() {
         <TabsContent value="overview">
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <CardHeader><CardTitle className="text-base">Recovery by Staff (Top 10)</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-base">Total Recovery by Staff (Top 10 – All Time)</CardTitle>
+                <p className="text-xs text-muted-foreground">All repayments recorded by each staff member</p>
+              </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={staffMetrics.slice(0, 10)}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="surname" tick={{ fontSize: 11 }} />
                     <YAxis tickFormatter={v => formatNaira(v)} tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => formatNaira(v)} />
-                    <Bar dataKey="recoveryMTD" fill="hsl(var(--primary))" name="Recovery (MTD)" radius={[4, 4, 0, 0]} />
+                    <Tooltip formatter={(v: number) => formatNaira(v)} labelFormatter={(label) => `Staff: ${label}`} />
+                    <Bar dataKey="recoveryAllTime" fill="hsl(var(--primary))" name="Total Recovery (All-Time)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -608,7 +709,7 @@ export default function StaffPerformance() {
               <div className="overflow-auto max-h-[65vh]">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/80 backdrop-blur z-10"><tr>
-                    {['S/N', 'Staff Name', 'Staff ID', 'State', 'Branch', 'Designation', 'Total Loans', 'Active', 'Portfolio (₦)', 'Outstanding (₦)', 'Paid (₦)', 'NPL', 'NPL %', 'Recovery MTD', 'Recovery Rate'].map(h => <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>)}
+                    {['S/N', 'Staff Name', 'Staff ID', 'State', 'Branch', 'Designation', 'Total Loans', 'Active', 'Portfolio (₦)', 'Outstanding (₦)', 'Paid (₦)', 'NPL', 'NPL %', 'Total Recovery (All-Time)', 'Recovery Rate'].map(h => <th key={h} className="px-3 py-2.5 text-left font-semibold whitespace-nowrap">{h}</th>)}
                   </tr></thead>
                   <tbody>
                     {staffPortfolio.map((s, i) => (
@@ -622,11 +723,11 @@ export default function StaffPerformance() {
                         <td className="px-3 py-2">{s.totalLoans}</td>
                         <td className="px-3 py-2">{s.activeLoans}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatNaira(s.portfolioValue)}</td>
-                        <td className="px-3 py-2 text-right text-amber-600">{formatNaira(s.totalOutstanding)}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(s.totalPaid)}</td>
+                        <td className="px-3 py-2 text-right text-warning">{formatNaira(s.totalOutstanding)}</td>
+                        <td className="px-3 py-2 text-right text-success">{formatNaira(s.totalPaid)}</td>
                         <td className="px-3 py-2">{s.nplCount}</td>
                         <td className="px-3 py-2">{s.nplRatio}%</td>
-                        <td className="px-3 py-2 text-right text-emerald-600 font-medium">{formatNaira(s.recoveryMTD)}</td>
+                        <td className="px-3 py-2 text-right text-success font-semibold">{formatNaira(s.recoveryAllTime)}</td>
                         <td className="px-3 py-2">{s.recoveryRate}%</td>
                       </tr>
                     ))}
@@ -656,11 +757,11 @@ export default function StaffPerformance() {
                         <td className="px-3 py-2">{s.totalLoans}</td>
                         <td className="px-3 py-2">{s.activeLoans}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatNaira(s.portfolioValue)}</td>
-                        <td className="px-3 py-2 text-right text-amber-600">{formatNaira(s.totalOutstanding)}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(s.totalPaid)}</td>
+                        <td className="px-3 py-2 text-right text-warning">{formatNaira(s.totalOutstanding)}</td>
+                        <td className="px-3 py-2 text-right text-success">{formatNaira(s.totalPaid)}</td>
                         <td className="px-3 py-2">{s.nplCount}</td>
                         <td className="px-3 py-2">{s.portfolioValue > 0 ? (s.nplCount / s.totalLoans * 100).toFixed(1) : 0}%</td>
-                        <td className="px-3 py-2 text-right text-emerald-600 font-medium">{formatNaira(s.recoveryMTD)}</td>
+                        <td className="px-3 py-2 text-right text-success font-medium">{formatNaira(s.recoveryMTD)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -690,10 +791,10 @@ export default function StaffPerformance() {
                         <td className="px-3 py-2">{b.totalLoans}</td>
                         <td className="px-3 py-2">{b.activeLoans}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatNaira(b.portfolioValue)}</td>
-                        <td className="px-3 py-2 text-right text-amber-600">{formatNaira(b.totalOutstanding)}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(b.totalPaid)}</td>
+                        <td className="px-3 py-2 text-right text-warning">{formatNaira(b.totalOutstanding)}</td>
+                        <td className="px-3 py-2 text-right text-success">{formatNaira(b.totalPaid)}</td>
                         <td className="px-3 py-2">{b.nplCount}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600 font-medium">{formatNaira(b.recoveryMTD)}</td>
+                        <td className="px-3 py-2 text-right text-success font-medium">{formatNaira(b.recoveryMTD)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -723,8 +824,8 @@ export default function StaffPerformance() {
                         <td className="px-3 py-2">{b.state}</td>
                         <td className="px-3 py-2">{b.bank_branch}</td>
                         <td className="px-3 py-2 text-right">{formatNaira(Number(b.loan_amount))}</td>
-                        <td className="px-3 py-2 text-right text-amber-600">{formatNaira(Number(b.outstanding_balance))}</td>
-                        <td className="px-3 py-2 text-right text-emerald-600">{formatNaira(Number(b.total_paid))}</td>
+                        <td className="px-3 py-2 text-right text-warning">{formatNaira(Number(b.outstanding_balance))}</td>
+                        <td className="px-3 py-2 text-right text-success">{formatNaira(Number(b.total_paid))}</td>
                         <td className="px-3 py-2 text-right">{formatNaira(Number(b.monthly_emi))}</td>
                         <td className="px-3 py-2">{b.tenor_months}m</td>
                         <td className="px-3 py-2">
