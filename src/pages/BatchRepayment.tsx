@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
   FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye, Trash2,
-  Pencil, ChevronDown, ChevronRight
+  Pencil, ChevronDown, ChevronRight, CalendarIcon
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -17,7 +17,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { DateInput } from '@/components/ui/date-input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import StatusBadge from '@/components/StatusBadge';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
@@ -1248,14 +1249,28 @@ export default function BatchRepayment() {
                   <p className="text-xs text-muted-foreground">Enter RRR in format XXXX-XXXX-XXXX.</p>
                 </div>
                 <div className="space-y-2">
-                 <Label>Payment Date *</Label>
-                  <DateInput
-                    value={editBatchRepDate}
-                    onChange={setEditBatchRepDate}
-                    max={new Date()}
-                    min={new Date('2016-01-01')}
-                    placeholder="Select payment date"
-                  />
+                  <Label>Payment Date *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn('w-full justify-start text-left font-normal', !editBatchRepDate && 'text-muted-foreground')}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {editBatchRepDate ? format(editBatchRepDate, 'dd MMM yyyy') : 'Select payment date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={editBatchRepDate}
+                        onSelect={setEditBatchRepDate}
+                        disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-2">
                   <Label>Receipt URL</Label>
@@ -1627,13 +1642,27 @@ export default function BatchRepayment() {
                 <div>
                   <Label>Payment Date (as on Remita receipt) *</Label>
                   <p className="text-xs text-muted-foreground mb-1">Enter the exact date shown on the Remita receipt — this is the official repayment date.</p>
-                  <DateInput
-                    value={payDate}
-                    onChange={setPayDate}
-                    max={new Date()}
-                    min={new Date('2016-01-01')}
-                    placeholder="Select payment date"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn('w-full justify-start text-left font-normal', !payDate && 'text-muted-foreground')}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {payDate ? format(payDate, 'dd MMM yyyy') : 'Select payment date'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={payDate}
+                        onSelect={setPayDate}
+                        disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
 
                 <div>
