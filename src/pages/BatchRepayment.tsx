@@ -1556,12 +1556,13 @@ export default function BatchRepayment() {
 
       {/* Record Batch Payment Dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle>Record Batch Repayment</DialogTitle>
             <DialogDescription>One Remita receipt for all {batchMembers.length} members in {payBatch?.name}.</DialogDescription>
           </DialogHeader>
 
+          <div className="flex-1 overflow-y-auto pr-1">
           {payBatch && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-secondary/50">
@@ -1693,8 +1694,9 @@ export default function BatchRepayment() {
               </div>
             </div>
           )}
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
             <Button onClick={handleRecordBatchPayment} disabled={saving}>
               {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
