@@ -41,49 +41,51 @@ interface NplAccount {
   monthlyEmi: number;
 }
 
-function calculateDPD(
-  beneficiary: Beneficiary,
-  transactions: Transaction[]
-): number {
-  const bTxns = transactions.filter(t => t.beneficiary_id === beneficiary.id);
+/**
+ * Calculate DPD using total_paid / monthly_emi to determine how many instalments
+ * have been paid. This is the canonical method used across Dashboard, Beneficiaries,
+ * and StaffPerformance — ensuring NPL ratios are 100% consistent across all modules.
+ *
+ * NOTE: We do NOT use transaction month_for records because beneficiaries often
+ * make partial / bulk payments tracked in total_paid, not per-instalment records.
+ * Using month_for would falsely classify almost every loan as NPL (100% ratio bug).
+ */
+function calculateDPD(beneficiary: Beneficiary): number {
   const today = stripTime(new Date());
   const commDate = stripTime(new Date(beneficiary.commencement_date));
 
   if (today < commDate) return 0;
+  if (Number(beneficiary.outstanding_balance) <= 0) return 0;
 
-  // Count how many instalments are due (due date <= today)
-  let expectedMonths = 0;
+  const monthlyEmi = Number(beneficiary.monthly_emi);
+  if (monthlyEmi <= 0) return 0;
+
+  const totalPaid = Number(beneficiary.total_paid);
+
+  // Count how many instalments are due (due date <= today), capped at tenor
+  let dueMonths = 0;
   for (let i = 1; i <= beneficiary.tenor_months; i++) {
     const dueDate = new Date(commDate);
     dueDate.setMonth(dueDate.getMonth() + (i - 1));
-    if (today >= stripTime(dueDate)) expectedMonths = i;
+    if (today >= stripTime(dueDate)) dueMonths = i;
     else break;
   }
 
-  if (expectedMonths <= 0) return 0;
+  if (dueMonths <= 0) return 0;
 
-  // Find the highest month_for that has been paid
-  const paidMonths = new Set(bTxns.map(t => t.month_for));
+  // How many full instalments have been paid
+  const paidMonths = Math.min(Math.floor(totalPaid / monthlyEmi), beneficiary.tenor_months);
 
-  // Find earliest unpaid month among expected months
-  let firstUnpaidMonth = 0;
-  for (let m = 1; m <= expectedMonths; m++) {
-    if (!paidMonths.has(m)) {
-      firstUnpaidMonth = m;
-      break;
-    }
-  }
+  // If all due instalments are paid, no DPD
+  if (paidMonths >= dueMonths) return 0;
 
-  if (firstUnpaidMonth === 0) return 0;
+  // Due date of the first unpaid instalment (0-indexed offset)
+  const firstUnpaidDue = new Date(commDate);
+  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+  const dueDateStripped = stripTime(firstUnpaidDue);
 
-  // DPD = days since the due date of the first unpaid instalment (inclusive)
-  const dueDate = new Date(commDate);
-  dueDate.setMonth(dueDate.getMonth() + (firstUnpaidMonth - 1));
-  const dueDateStripped = stripTime(dueDate);
-
-  const diffMs = today.getTime() - dueDateStripped.getTime();
-  // Inclusive: on the due date itself = 1 day past due
-  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24))) + 1;
+  // DPD inclusive: 1 on the due date itself
+  return Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
 }
 
 function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[]): string | null {
@@ -200,7 +202,7 @@ export default function NplStatus() {
       branch: b.bank_branch,
       loanAmount: Number(b.loan_amount),
       outstandingBalance: Number(b.outstanding_balance),
-      dpd: calculateDPD(b, transactions),
+      dpd: calculateDPD(b),
       lastPaymentDate: getLastPaymentDate(b, transactions),
       amountInArrears: getAmountInArrears(b),
       monthlyEmi: Number(b.monthly_emi),
