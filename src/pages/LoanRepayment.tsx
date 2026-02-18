@@ -11,6 +11,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,6 +60,11 @@ export default function LoanRepayment() {
   const [deletingTxn, setDeletingTxn] = useState<Transaction | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Bulk select state
+  const [selectedTxnIds, setSelectedTxnIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
 
   // Form state
   const [repaymentMonth, setRepaymentMonth] = useState('');
@@ -136,6 +142,7 @@ export default function LoanRepayment() {
     setHistoryBen(b);
     setHistoryOpen(true);
     setHistoryLoading(true);
+    setSelectedTxnIds(new Set()); // reset selection on open
     const { data } = await supabase
       .from('transactions')
       .select('*')
@@ -349,6 +356,54 @@ export default function LoanRepayment() {
     setDeleting(false);
     setDeleteDialogOpen(false);
     toast({ title: 'Repayment Deleted', description: 'Transaction removed and balance restored.' });
+    openHistory(historyBen);
+  };
+
+  // Bulk select helpers
+  const deletableTxnIds = historyTxns.filter(t => canDeleteTxn(t)).map(t => t.id);
+
+  const toggleTxnSelect = (id: string) => {
+    setSelectedTxnIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllTxnSelect = () => {
+    if (selectedTxnIds.size === deletableTxnIds.length && deletableTxnIds.length > 0) {
+      setSelectedTxnIds(new Set());
+    } else {
+      setSelectedTxnIds(new Set(deletableTxnIds));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!historyBen || selectedTxnIds.size === 0) return;
+    setBulkDeleting(true);
+
+    const toDelete = historyTxns.filter(t => selectedTxnIds.has(t.id));
+    const totalAmount = toDelete.reduce((sum, t) => sum + Number(t.amount), 0);
+
+    const { error } = await supabase.from('transactions').delete().in('id', Array.from(selectedTxnIds));
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      setBulkDeleting(false);
+      setBulkDeleteDialogOpen(false);
+      return;
+    }
+
+    // Reverse combined balance
+    await supabase.from('beneficiaries').update({
+      total_paid: Math.max(0, Number(historyBen.total_paid) - totalAmount),
+      outstanding_balance: Number(historyBen.outstanding_balance) + totalAmount,
+      status: 'active'
+    }).eq('id', historyBen.id);
+
+    setBulkDeleting(false);
+    setBulkDeleteDialogOpen(false);
+    setSelectedTxnIds(new Set());
+    toast({ title: `${toDelete.length} Repayment(s) Deleted`, description: `${formatCurrency(totalAmount)} reversed and balance restored.` });
     openHistory(historyBen);
   };
 
@@ -639,10 +694,41 @@ fromYear={2016}
                   </div>
                 </div>
 
+                {/* Bulk action toolbar */}
+                {deletableTxnIds.length > 0 && (
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedTxnIds.size === deletableTxnIds.length && deletableTxnIds.length > 0}
+                        onCheckedChange={toggleAllTxnSelect}
+                        id="select-all-txns"
+                      />
+                      <label htmlFor="select-all-txns" className="text-sm text-muted-foreground cursor-pointer select-none">
+                        {selectedTxnIds.size === 0
+                          ? `Select all deletable (${deletableTxnIds.length})`
+                          : `${selectedTxnIds.size} of ${deletableTxnIds.length} selected`}
+                      </label>
+                    </div>
+                    {selectedTxnIds.size > 0 && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => setBulkDeleteDialogOpen(true)}
+                        disabled={bulkDeleting}
+                        className="gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Selected ({selectedTxnIds.size})
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 <div className="overflow-x-auto rounded-lg border border-border">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-secondary/60">
+                        {deletableTxnIds.length > 0 && <th className="px-3 py-3 text-center w-10"></th>}
                         <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Repayment Month</th>
                         <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Date on Remita Receipt</th>
                         <th className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Amount on Remita Receipt</th>
@@ -661,7 +747,17 @@ fromYear={2016}
                           ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.moratorium_months)
                           : historyTxns.map(t => ({ ...t, loanBalance: 0 }));
                         return withBalances.map((t) => (
-                          <tr key={t.id} className="table-row-highlight">
+                          <tr key={t.id} className={cn("table-row-highlight", selectedTxnIds.has(t.id) && "bg-primary/5")}>
+                            {deletableTxnIds.length > 0 && (
+                              <td className="px-3 py-3.5 text-center">
+                                {canDeleteTxn(t) ? (
+                                  <Checkbox
+                                    checked={selectedTxnIds.has(t.id)}
+                                    onCheckedChange={() => toggleTxnSelect(t.id)}
+                                  />
+                                ) : <span className="w-4 h-4 block" />}
+                              </td>
+                            )}
                             <td className="px-4 py-3.5 font-semibold text-base">Month {t.month_for}</td>
                             <td className="px-4 py-3.5">{formatDate(new Date(t.date_paid))}</td>
                             <td className="px-4 py-3.5 text-right font-semibold text-base">{formatCurrency(Number(t.amount))}</td>
@@ -712,6 +808,28 @@ fromYear={2016}
           }
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Delete Confirmation */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedTxnIds.size} Repayment(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedTxnIds.size} repayment record(s) and restore the combined amount to the outstanding balance. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? 'Deleting...' : 'Delete All Selected'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit Repayment Modal */}
       <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
