@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 type StaffMember = { id: string; title: string; surname: string; first_name: string; staff_id: string; state: string; branch: string; designation: string; email: string; status: string; nhf_number: string | null; };
 type Beneficiary = { id: string; state: string; bank_branch: string; status: string; loan_amount: number; outstanding_balance: number; total_paid: number; monthly_emi: number; created_by: string | null; name: string; employee_id: string; tenor_months: number; interest_rate: number; commencement_date: string; termination_date: string; loan_reference_number: string | null; };
 type Transaction = { id: string; beneficiary_id: string; amount: number; date_paid: string; recorded_by: string | null; };
+type Profile = { user_id: string; email: string; };
 
 function formatNaira(n: number) {
   if (n >= 1e9) return `₦${(n / 1e9).toFixed(1)}B`;
@@ -34,6 +35,7 @@ export default function StaffPerformance() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterState, setFilterState] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,17 +43,26 @@ export default function StaffPerformance() {
 
   useEffect(() => {
     (async () => {
-      const [s, b, t] = await Promise.all([
+      const [s, b, t, p] = await Promise.all([
         supabase.from('staff_members').select('id,title,surname,first_name,staff_id,state,branch,designation,email,status,nhf_number'),
         supabase.from('beneficiaries').select('id,state,bank_branch,status,loan_amount,outstanding_balance,total_paid,monthly_emi,created_by,name,employee_id,tenor_months,interest_rate,commencement_date,termination_date,loan_reference_number'),
         supabase.from('transactions').select('id,beneficiary_id,amount,date_paid,recorded_by'),
+        supabase.from('profiles').select('user_id,email'),
       ]);
       setStaff((s.data as any[]) || []);
       setBeneficiaries((b.data as any[]) || []);
       setTransactions((t.data as any[]) || []);
+      setProfiles((p.data as any[]) || []);
       setLoading(false);
     })();
   }, []);
+
+  // Build a map from staff email -> user_id using profiles
+  const emailToUserId = useMemo(() => {
+    const map = new Map<string, string>();
+    profiles.forEach(p => { if (p.email) map.set(p.email.toLowerCase(), p.user_id); });
+    return map;
+  }, [profiles]);
 
   const staffMetrics = useMemo(() => {
     const now = new Date();
@@ -66,25 +77,44 @@ export default function StaffPerformance() {
       const fullName = `${s.title} ${s.surname} ${s.first_name}`.toLowerCase();
       return fullName.includes(q) || s.staff_id.toLowerCase().includes(q) || (s.nhf_number || '').toLowerCase().includes(q);
     }).map(s => {
-      const myBeneficiaries = beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
+      // Resolve this staff member's user_id via email → profiles lookup
+      const userId = emailToUserId.get((s.email || '').toLowerCase()) || null;
+
+      // Loans CREATED by this staff member specifically (via created_by = userId)
+      // Fall back to state+branch match if no userId found
+      const myBeneficiaries = userId
+        ? beneficiaries.filter(b => b.created_by === userId)
+        : beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
+
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
       const nplBens = myBeneficiaries.filter(b => b.outstanding_balance > 0 && b.status === 'active' && b.total_paid < b.monthly_emi * 3);
       const portfolioValue = activeBens.reduce((sum, b) => sum + Number(b.loan_amount), 0);
       const totalOutstanding = activeBens.reduce((sum, b) => sum + Number(b.outstanding_balance), 0);
       const totalPaid = activeBens.reduce((sum, b) => sum + Number(b.total_paid), 0);
 
-      const benIds = new Set(myBeneficiaries.map(b => b.id));
-      const monthTxns = transactions.filter(t => {
-        if (!benIds.has(t.beneficiary_id)) return false;
-        const d = new Date(t.date_paid);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-      });
+      // Recovery MTD: transactions RECORDED BY this specific staff member this month
+      const monthTxns = userId
+        ? transactions.filter(t => {
+            if (t.recorded_by !== userId) return false;
+            const d = new Date(t.date_paid);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+          })
+        : (() => {
+            const benIds = new Set(myBeneficiaries.map(b => b.id));
+            return transactions.filter(t => {
+              if (!benIds.has(t.beneficiary_id)) return false;
+              const d = new Date(t.date_paid);
+              return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+          })();
+
       const recoveryMTD = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
       const nplRatio = portfolioValue > 0 ? (nplBens.reduce((s, b) => s + Number(b.outstanding_balance), 0) / portfolioValue * 100) : 0;
       const recoveryRate = totalOutstanding > 0 ? (recoveryMTD / (activeBens.reduce((s, b) => s + Number(b.monthly_emi), 0) || 1) * 100) : 0;
 
       return {
         ...s,
+        userId,
         totalLoans: myBeneficiaries.length,
         activeLoans: activeBens.length,
         portfolioValue,
@@ -97,7 +127,7 @@ export default function StaffPerformance() {
         beneficiaries: myBeneficiaries,
       };
     }).sort((a, b) => b.recoveryMTD - a.recoveryMTD);
-  }, [staff, beneficiaries, transactions, filterState, searchQuery]);
+  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery]);
 
   // Deduplicated portfolio totals (from beneficiaries directly, not staff metrics which double-count)
   const portfolioTotals = useMemo(() => {
