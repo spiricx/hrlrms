@@ -4,6 +4,7 @@ import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } 
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue, stripTime } from '@/lib/loanCalculations';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,6 +37,17 @@ function formatPaymentDate(date: string): string {
 
 type StatusInfo = {label: string;className: string;};
 
+function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
+  if (overdueMonths <= 0 || Number(b.monthly_emi) <= 0) return 0;
+  const today = stripTime(new Date());
+  const comm = stripTime(new Date(b.commencement_date));
+  const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+  const firstUnpaidDue = new Date(comm);
+  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+  const due = stripTime(firstUnpaidDue);
+  return Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
+}
+
 function getStatusInfo(b: Beneficiary): StatusInfo {
   const oa = getOverdueAndArrears(
     b.commencement_date, b.tenor_months, Number(b.monthly_emi),
@@ -59,9 +71,10 @@ function getStatusInfo(b: Beneficiary): StatusInfo {
     return { label: 'Overdue', className: 'bg-warning/10 text-warning border-warning/20' };
   }
 
-  const dpd = oa.monthsInArrears * 30;
+  // Use actual DPD (days since first unpaid instalment's due date)
+  const dpd = computeActualDpd(b, oa.overdueMonths);
   if (dpd >= 90) {
-    return { label: `NPL / ${dpd} Days`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
+    return { label: `NPL / ${dpd} DPD`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
   }
   return { label: `${dpd} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
 }
@@ -223,12 +236,21 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   };
 
    const handleExport = () => {
+    const today = stripTime(new Date());
     const rows = filtered.map((b, idx) => {
       const oa = getOverdueAndArrears(
         b.commencement_date, b.tenor_months, Number(b.monthly_emi),
         Number(b.total_paid), Number(b.outstanding_balance), b.status
       );
-      const dpd = oa.monthsInArrears * 30;
+      let dpd = 0;
+      if (oa.overdueMonths > 0 && Number(b.monthly_emi) > 0) {
+        const comm = stripTime(new Date(b.commencement_date));
+        const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+        const firstUnpaidDue = new Date(comm);
+        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
+        const due = stripTime(firstUnpaidDue);
+        dpd = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
+      }
       return {
         '#': idx + 1,
         'Beneficiary': b.name,
@@ -390,7 +412,18 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
                 b.commencement_date, b.tenor_months, Number(b.monthly_emi),
                 Number(b.total_paid), Number(b.outstanding_balance), b.status
               );
-              const dpd = oa.monthsInArrears * 30;
+              // Accurate DPD: days since the due date of the first unpaid instalment (inclusive)
+              const today = stripTime(new Date());
+              const comm = stripTime(new Date(b.commencement_date));
+              let dpd = 0;
+              if (oa.overdueMonths > 0 && Number(b.monthly_emi) > 0) {
+                const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+                const firstUnpaidMonth = paidMonths + 1;
+                const firstUnpaidDue = new Date(comm);
+                firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + (firstUnpaidMonth - 1));
+                const dueDateStripped = stripTime(firstUnpaidDue);
+                dpd = Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
+              }
               return (
                 <tr key={b.id} className="table-row-highlight group">
                     {/* # */}

@@ -422,14 +422,20 @@ export default function LoanRepayment() {
   };
 
   // Compute running loan balance for history
-  const computeHistoryBalances = (txns: Transaction[], loanAmount: number, interestRate: number, moratoriumMonths: number) => {
+  // Starting balance = totalPayment (EMI × tenor) per the annuity formula.
+  // Per business rules the moratorium period does NOT capitalise or add extra interest.
+  const computeHistoryBalances = (txns: Transaction[], loanAmount: number, interestRate: number, tenorMonths: number) => {
     const monthlyRate = interestRate / 100 / 12;
-    const moratoriumInterest = loanAmount * monthlyRate * moratoriumMonths;
-    const startingBalance = loanAmount + moratoriumInterest;
+    const emi =
+      monthlyRate === 0
+        ? loanAmount / tenorMonths
+        : (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenorMonths)) /
+          (Math.pow(1 + monthlyRate, tenorMonths) - 1);
+    const startingBalance = Math.round(emi * tenorMonths * 100) / 100;
     let runningBalance = startingBalance;
     return txns.map((t) => {
       runningBalance = Math.max(0, runningBalance - Number(t.amount));
-      return { ...t, loanBalance: runningBalance };
+      return { ...t, loanBalance: Math.round(runningBalance * 100) / 100 };
     });
   };
 
@@ -744,7 +750,7 @@ fromYear={2016}
                     <tbody className="divide-y divide-border">
                       {(() => {
                         const withBalances = historyBen
-                          ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.moratorium_months)
+                          ? computeHistoryBalances(historyTxns, Number(historyBen.loan_amount), historyBen.interest_rate, historyBen.tenor_months)
                           : historyTxns.map(t => ({ ...t, loanBalance: 0 }));
                         return withBalances.map((t) => (
                           <tr key={t.id} className={cn("table-row-highlight", selectedTxnIds.has(t.id) && "bg-primary/5")}>

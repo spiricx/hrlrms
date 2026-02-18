@@ -93,7 +93,7 @@ function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[
   return bTxns[0]?.date_paid ?? null;
 }
 
-function getAmountInArrears(beneficiary: Beneficiary, transactions: Transaction[]): number {
+function getAmountInArrears(beneficiary: Beneficiary): number {
   const today = stripTime(new Date());
   const commDate = stripTime(new Date(beneficiary.commencement_date));
 
@@ -108,7 +108,9 @@ function getAmountInArrears(beneficiary: Beneficiary, transactions: Transaction[
 
   const expectedTotal = dueMonths * Number(beneficiary.monthly_emi);
   const totalPaid = Number(beneficiary.total_paid);
-  return Math.max(0, expectedTotal - totalPaid);
+  // Only the portion that is in arrears (next period has passed)
+  // For NPL display purposes show total overdue deficit
+  return Math.max(0, Math.round((expectedTotal - totalPaid) * 100) / 100);
 }
 
 type ParThreshold = 'par30' | 'par60' | 'par90' | 'par120' | 'par180';
@@ -200,7 +202,7 @@ export default function NplStatus() {
       outstandingBalance: Number(b.outstanding_balance),
       dpd: calculateDPD(b, transactions),
       lastPaymentDate: getLastPaymentDate(b, transactions),
-      amountInArrears: getAmountInArrears(b, transactions),
+      amountInArrears: getAmountInArrears(b),
       monthlyEmi: Number(b.monthly_emi),
     }));
   }, [beneficiaries, transactions]);
