@@ -225,6 +225,13 @@ export type Database = {
             referencedRelation: "beneficiaries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "default_logs_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "v_loan_arrears"
+            referencedColumns: ["id"]
+          },
         ]
       }
       feedback_submissions: {
@@ -281,6 +288,72 @@ export type Database = {
           submitter_state?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      integrity_checks: {
+        Row: {
+          balance_variance: number
+          check_date: string
+          check_type: string
+          created_at: string
+          discrepancy_details: Json | null
+          id: string
+          loans_with_discrepancies: number
+          notes: string | null
+          npl_count: number
+          npl_ratio: number
+          par_30_count: number
+          par_90_count: number
+          payment_variance: number
+          status: string
+          total_loans: number
+          total_paid_system: number
+          total_paid_transactions: number
+          total_portfolio_balance: number
+          verified_portfolio_balance: number
+        }
+        Insert: {
+          balance_variance?: number
+          check_date?: string
+          check_type?: string
+          created_at?: string
+          discrepancy_details?: Json | null
+          id?: string
+          loans_with_discrepancies?: number
+          notes?: string | null
+          npl_count?: number
+          npl_ratio?: number
+          par_30_count?: number
+          par_90_count?: number
+          payment_variance?: number
+          status?: string
+          total_loans?: number
+          total_paid_system?: number
+          total_paid_transactions?: number
+          total_portfolio_balance?: number
+          verified_portfolio_balance?: number
+        }
+        Update: {
+          balance_variance?: number
+          check_date?: string
+          check_type?: string
+          created_at?: string
+          discrepancy_details?: Json | null
+          id?: string
+          loans_with_discrepancies?: number
+          notes?: string | null
+          npl_count?: number
+          npl_ratio?: number
+          par_30_count?: number
+          par_90_count?: number
+          payment_variance?: number
+          status?: string
+          total_loans?: number
+          total_paid_system?: number
+          total_paid_transactions?: number
+          total_portfolio_balance?: number
+          verified_portfolio_balance?: number
         }
         Relationships: []
       }
@@ -841,6 +914,13 @@ export type Database = {
             referencedRelation: "beneficiaries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "v_loan_arrears"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_module_access: {
@@ -887,7 +967,51 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_loan_arrears: {
+        Row: {
+          arrears_amount: number | null
+          arrears_months: number | null
+          bank_branch: string | null
+          batch_id: string | null
+          commencement_date: string | null
+          created_by: string | null
+          days_past_due: number | null
+          department: string | null
+          disbursement_date: string | null
+          dpd_bucket: string | null
+          employee_id: string | null
+          first_unpaid_due_date: string | null
+          has_payment_discrepancy: boolean | null
+          id: string | null
+          interest_rate: number | null
+          is_npl: boolean | null
+          loan_amount: number | null
+          loan_health: string | null
+          monthly_emi: number | null
+          months_due: number | null
+          months_paid: number | null
+          name: string | null
+          outstanding_balance: number | null
+          overdue_amount: number | null
+          overdue_months: number | null
+          state: string | null
+          status: string | null
+          tenor_months: number | null
+          termination_date: string | null
+          total_expected: number | null
+          total_paid: number | null
+          verified_total_paid: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beneficiaries_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "loan_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_default_count: {
