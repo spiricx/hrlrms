@@ -60,7 +60,7 @@ function calculateDPD(beneficiary: Beneficiary): number {
   const monthlyEmi = Number(beneficiary.monthly_emi);
   if (monthlyEmi <= 0) return 0;
 
-  const totalPaid = Number(beneficiary.total_paid);
+  const totalPaid = Math.round(Number(beneficiary.total_paid) * 100) / 100;
 
   // Count how many instalments are due (due date <= today), capped at tenor
   let dueMonths = 0;
@@ -74,7 +74,7 @@ function calculateDPD(beneficiary: Beneficiary): number {
   if (dueMonths <= 0) return 0;
 
   // How many full instalments have been paid
-  const paidMonths = Math.min(Math.floor(totalPaid / monthlyEmi), beneficiary.tenor_months);
+  const paidMonths = Math.min(Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi), beneficiary.tenor_months);
 
   // If all due instalments are paid, no DPD
   if (paidMonths >= dueMonths) return 0;
@@ -109,7 +109,7 @@ function getAmountInArrears(beneficiary: Beneficiary): number {
   }
 
   const expectedTotal = dueMonths * Number(beneficiary.monthly_emi);
-  const totalPaid = Number(beneficiary.total_paid);
+  const totalPaid = Math.round(Number(beneficiary.total_paid) * 100) / 100;
   // Only the portion that is in arrears (next period has passed)
   // For NPL display purposes show total overdue deficit
   return Math.max(0, Math.round((expectedTotal - totalPaid) * 100) / 100);

@@ -94,7 +94,7 @@ export default function Reports() {
       if (oa.overdueMonths <= 0) return false;
 
       // Find due date of first unpaid instalment
-      const paidMonths = Math.min(Math.floor(Number(b.total_paid) / emi), b.tenor_months);
+      const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / emi), b.tenor_months);
       const firstUnpaidDue = new Date(comm);
       firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
       const due = stripTime(firstUnpaidDue);
@@ -116,7 +116,7 @@ export default function Reports() {
       const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, emi, Number(b.total_paid), Number(b.outstanding_balance), b.status);
       if (oa.overdueMonths <= 0) return true;
 
-      const paidMonths = Math.min(Math.floor(Number(b.total_paid) / emi), b.tenor_months);
+      const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / emi), b.tenor_months);
       const firstUnpaidDue = new Date(comm);
       firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
       const due = stripTime(firstUnpaidDue);

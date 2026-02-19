@@ -41,7 +41,7 @@ function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
   if (overdueMonths <= 0 || Number(b.monthly_emi) <= 0) return 0;
   const today = stripTime(new Date());
   const comm = stripTime(new Date(b.commencement_date));
-  const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+  const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
   const firstUnpaidDue = new Date(comm);
   firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
   const due = stripTime(firstUnpaidDue);
@@ -98,7 +98,7 @@ function isDefaulted(b: Beneficiary): boolean {
   if (monthlyEmi <= 0 || today < comm) return false;
   const arrears = getOverdueAndArrears(b.commencement_date, b.tenor_months, monthlyEmi, totalPaid, Number(b.outstanding_balance), b.status);
   if (arrears.overdueMonths > 0) {
-    const paidMonths = Math.floor(totalPaid / monthlyEmi);
+    const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
     const firstUnpaidDate = new Date(comm);
     firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() + paidMonths);
     const dueDateStripped = stripTime(firstUnpaidDate);
@@ -245,7 +245,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
       let dpd = 0;
       if (oa.overdueMonths > 0 && Number(b.monthly_emi) > 0) {
         const comm = stripTime(new Date(b.commencement_date));
-        const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+        const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
         const firstUnpaidDue = new Date(comm);
         firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
         const due = stripTime(firstUnpaidDue);
@@ -417,7 +417,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
               const comm = stripTime(new Date(b.commencement_date));
               let dpd = 0;
               if (oa.overdueMonths > 0 && Number(b.monthly_emi) > 0) {
-                const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+                const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
                 const firstUnpaidMonth = paidMonths + 1;
                 const firstUnpaidDue = new Date(comm);
                 firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + (firstUnpaidMonth - 1));

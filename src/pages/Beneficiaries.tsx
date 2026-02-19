@@ -24,7 +24,7 @@ function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
   if (overdueMonths <= 0 || Number(b.monthly_emi) <= 0) return 0;
   const today = stripTime(new Date());
   const comm = stripTime(new Date(b.commencement_date));
-  const paidMonths = Math.min(Math.floor(Number(b.total_paid) / Number(b.monthly_emi)), b.tenor_months);
+  const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
   const firstUnpaidDue = new Date(comm);
   firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
   const due = stripTime(firstUnpaidDue);
