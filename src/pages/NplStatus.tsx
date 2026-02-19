@@ -11,6 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -152,7 +157,7 @@ export default function NplStatus() {
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
   const [parFilter, setParFilter] = useState<ParThreshold>('par90');
   const [searchQuery, setSearchQuery] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
@@ -214,17 +219,12 @@ export default function NplStatus() {
 
   const parDays = PAR_OPTIONS.find(p => p.value === parFilter)?.days ?? 90;
 
-  // Available years from commencement dates
+  // Year options from 2010 to 2060
   const availableYears = useMemo(() => {
-    const years = new Set<number>();
-    beneficiaries.forEach(b => {
-      years.add(new Date(b.commencement_date).getFullYear());
-      years.add(new Date(b.termination_date).getFullYear());
-    });
-    // Also add current year
-    years.add(new Date().getFullYear());
-    return Array.from(years).sort((a, b) => b - a);
-  }, [beneficiaries]);
+    const years: number[] = [];
+    for (let y = 2060; y >= 2010; y--) years.push(y);
+    return years;
+  }, []);
 
   // Available branches (filtered by selected state)
   const availableBranches = useMemo(() => {
@@ -242,12 +242,6 @@ export default function NplStatus() {
     return Array.from(orgs).sort();
   }, [beneficiaries]);
 
-  // Available dates from disbursement dates for date filter
-  const availableDates = useMemo(() => {
-    const dates = new Set<string>();
-    beneficiaries.forEach(b => { if (b.disbursement_date) dates.add(b.disbursement_date); });
-    return Array.from(dates).sort((a, b) => b.localeCompare(a));
-  }, [beneficiaries]);
 
   const MONTHS = [
     { value: '1', label: 'January' }, { value: '2', label: 'February' },
@@ -276,10 +270,11 @@ export default function NplStatus() {
       });
     }
     // Date filter (disbursement date)
-    if (dateFilter !== 'all') {
+    if (dateFilter) {
+      const dateStr = format(dateFilter, 'yyyy-MM-dd');
       accts = accts.filter(a => {
         const b = beneficiaries.find(b => b.id === a.id);
-        return b?.disbursement_date === dateFilter;
+        return b?.disbursement_date === dateStr;
       });
     }
     // Filter by month/year
@@ -463,36 +458,85 @@ export default function NplStatus() {
               {availableOrgs.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
             </SelectContent>
           </Select>
-          {/* 4. Date Filter */}
-          <Select value={dateFilter} onValueChange={setDateFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Dates" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Dates</SelectItem>
-              {availableDates.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {/* 5. Month Filter */}
-          <Select value={monthFilter} onValueChange={setMonthFilter}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="All Months" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {/* 6. Year Filter */}
-          <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="All Years" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          {/* 4. Date Filter (Calendar) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateFilter && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateFilter ? format(dateFilter, 'dd MMM yyyy') : 'All Dates'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <Calendar
+                mode="single"
+                selected={dateFilter}
+                onSelect={(d) => setDateFilter(d)}
+                className={cn("p-3 pointer-events-auto")}
+                captionLayout="dropdown-buttons"
+                fromYear={2010}
+                toYear={2060}
+              />
+              {dateFilter && (
+                <div className="p-2 pt-0 border-t">
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setDateFilter(undefined)}>
+                    Clear Date
+                  </Button>
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+          {/* 5. Month Filter (Calendar-style) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-40 justify-start text-left font-normal", monthFilter === 'all' && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {monthFilter !== 'all' ? MONTHS.find(m => m.value === monthFilter)?.label : 'All Months'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <div className="grid grid-cols-3 gap-1">
+                <Button variant={monthFilter === 'all' ? 'default' : 'ghost'} size="sm" className="text-xs" onClick={() => setMonthFilter('all')}>All</Button>
+                {MONTHS.map(m => (
+                  <Button
+                    key={m.value}
+                    variant={monthFilter === m.value ? 'default' : 'ghost'}
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setMonthFilter(m.value)}
+                  >
+                    {m.label.slice(0, 3)}
+                  </Button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          {/* 6. Year Filter (Calendar-style grid) */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-32 justify-start text-left font-normal", yearFilter === 'all' && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {yearFilter !== 'all' ? yearFilter : 'All Years'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <div className="max-h-64 overflow-y-auto">
+                <div className="grid grid-cols-4 gap-1">
+                  <Button variant={yearFilter === 'all' ? 'default' : 'ghost'} size="sm" className="text-xs" onClick={() => setYearFilter('all')}>All</Button>
+                  {availableYears.map(y => (
+                    <Button
+                      key={y}
+                      variant={yearFilter === String(y) ? 'default' : 'ghost'}
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setYearFilter(String(y))}
+                    >
+                      {y}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           {/* PAR Threshold */}
           <Select value={parFilter} onValueChange={(v) => setParFilter(v as ParThreshold)}>
             <SelectTrigger className="w-36">
