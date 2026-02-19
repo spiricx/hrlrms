@@ -284,6 +284,7 @@ export default function LoanReconciliation() {
   }, [results]);
 
   const isFullyMatched = reconciled && stats.unmatched === 0 && stats.mismatch === 0 && stats.matched > 0;
+  const canSave = reconciled && stats.matched > 0;
 
   const filteredResults = useMemo(() => {
     if (!searchTerm) return results;
@@ -373,12 +374,18 @@ export default function LoanReconciliation() {
 
   // ─── Fetch Session Matches ────────────────────────────────────────────────
   const fetchSessionMatches = useCallback(async (sessionId: string) => {
+    // Toggle collapse if already expanded
+    if (expandedSession === sessionId) {
+      setExpandedSession(null);
+      return;
+    }
+    // If already fetched, just expand
     if (sessionMatches[sessionId]) {
-      // Toggle off if already loaded
-      setExpandedSession(prev => prev === sessionId ? null : sessionId);
+      setExpandedSession(sessionId);
       return;
     }
     setMatchesLoading(sessionId);
+    setExpandedSession(sessionId);
     try {
       const { data, error } = await supabase
         .from('reconciliation_matches')
@@ -387,13 +394,13 @@ export default function LoanReconciliation() {
         .order('created_at', { ascending: true });
       if (error) throw error;
       setSessionMatches(prev => ({ ...prev, [sessionId]: (data || []) as ReconciliationMatch[] }));
-      setExpandedSession(sessionId);
     } catch (err: any) {
       toast({ title: 'Failed to load matches', description: err.message, variant: 'destructive' });
+      setExpandedSession(null);
     } finally {
       setMatchesLoading(null);
     }
-  }, [sessionMatches, toast]);
+  }, [expandedSession, sessionMatches, toast]);
 
   // ─── Fetch History ────────────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -542,7 +549,7 @@ export default function LoanReconciliation() {
                       <Download className="w-4 h-4 mr-2" /> Export Results
                     </Button>
                   )}
-                  {isFullyMatched && (
+                  {canSave && (
                     <Button
                       variant="default"
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -557,12 +564,15 @@ export default function LoanReconciliation() {
                 </div>
               )}
 
-              {reconciled && isFullyMatched && (
-                <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              {reconciled && canSave && (
+                <div className={`flex items-center gap-3 p-3 rounded-lg border ${isFullyMatched ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                  <CheckCircle2 className={`w-5 h-5 shrink-0 ${isFullyMatched ? 'text-emerald-600' : 'text-amber-600'}`} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">All {stats.matched} records fully matched!</p>
-                    <p className="text-xs text-emerald-600 dark:text-emerald-500">Click <strong>Save to History</strong> to record this reconciliation.</p>
+                    {isFullyMatched
+                      ? <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">All {stats.matched} records fully matched!</p>
+                      : <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">{stats.matched} matched, {stats.mismatch} mismatches, {stats.unmatched} unmatched</p>
+                    }
+                    <p className="text-xs text-muted-foreground">Click <strong>Save to History</strong> to record this reconciliation.</p>
                   </div>
                 </div>
               )}
@@ -929,9 +939,10 @@ export default function LoanReconciliation() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-sm text-emerald-700 dark:text-emerald-400">
+            <div className={`p-3 border rounded-lg text-sm ${isFullyMatched ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400'}`}>
               <CheckCircle2 className="w-4 h-4 inline mr-1" />
-              <strong>{stats.matched}</strong> records fully matched — {fmt(stats.matchedTotal)}
+              <strong>{stats.matched}</strong> matched — {fmt(stats.matchedTotal)}
+              {!isFullyMatched && <span className="ml-1">({stats.mismatch} mismatches, {stats.unmatched} unmatched will also be recorded)</span>}
             </div>
             <div className="space-y-1">
               <Label htmlFor="save-org">Organization / Batch Name *</Label>
