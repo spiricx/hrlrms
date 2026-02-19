@@ -878,19 +878,24 @@ export default function LoanReconciliation() {
                                             ) : (
                                               <div className="overflow-x-auto rounded border border-border">
                                                 <Table>
-                                                  <TableHeader>
+                                                   <TableHeader>
                                                     <TableRow className="bg-muted/40">
+                                                      <TableHead className="text-xs h-8 py-1 w-10">#</TableHead>
                                                       <TableHead className="text-xs h-8 py-1">RRR Number</TableHead>
                                                       <TableHead className="text-xs h-8 py-1">Beneficiary / Batch</TableHead>
                                                       <TableHead className="text-xs h-8 py-1">Source</TableHead>
                                                       <TableHead className="text-right text-xs h-8 py-1">System Amount</TableHead>
                                                       <TableHead className="text-right text-xs h-8 py-1">CBN Amount</TableHead>
+                                                      <TableHead className="text-right text-xs h-8 py-1">Variance</TableHead>
                                                       <TableHead className="text-center text-xs h-8 py-1">Status</TableHead>
                                                     </TableRow>
                                                   </TableHeader>
                                                   <TableBody>
-                                                    {matches.map(m => (
+                                                    {matches.map((m, idx) => {
+                                                      const variance = m.cbn_amount - m.system_amount;
+                                                      return (
                                                       <TableRow key={m.id} className="hover:bg-emerald-500/5">
+                                                        <TableCell className="text-xs py-2 text-muted-foreground">{idx + 1}</TableCell>
                                                         <TableCell className="font-mono text-xs py-2">{m.rrr_number || '-'}</TableCell>
                                                         <TableCell className="text-xs py-2 font-medium">{m.beneficiary_name || m.batch_name || '-'}</TableCell>
                                                         <TableCell className="text-xs py-2">
@@ -900,13 +905,17 @@ export default function LoanReconciliation() {
                                                         </TableCell>
                                                         <TableCell className="text-right font-mono text-xs py-2">{fmt(m.system_amount)}</TableCell>
                                                         <TableCell className="text-right font-mono text-xs py-2">{fmt(m.cbn_amount)}</TableCell>
+                                                        <TableCell className={`text-right font-mono text-xs py-2 ${variance === 0 ? 'text-emerald-600' : variance > 0 ? 'text-amber-600' : 'text-destructive'}`}>
+                                                          {variance === 0 ? '—' : (variance > 0 ? '+' : '') + fmt(variance)}
+                                                        </TableCell>
                                                         <TableCell className="text-center py-2">
                                                           <Badge className="bg-emerald-600 text-white gap-1 text-xs">
                                                             <CheckCircle2 className="w-3 h-3" /> Matched
                                                           </Badge>
                                                         </TableCell>
                                                       </TableRow>
-                                                    ))}
+                                                      );
+                                                    })}
                                                   </TableBody>
                                                 </Table>
                                               </div>
