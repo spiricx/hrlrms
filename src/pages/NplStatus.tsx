@@ -157,11 +157,10 @@ export default function NplStatus() {
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [parFilter, setParFilter] = useState<ParThreshold>('par90');
   const [searchQuery, setSearchQuery] = useState('');
-  const [monthFilter, setMonthFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('all');
   const [staffName, setStaffName] = useState('');
 
   const [drillLevel, setDrillLevel] = useState<DrillLevel>('state');
@@ -219,12 +218,6 @@ export default function NplStatus() {
 
   const parDays = PAR_OPTIONS.find(p => p.value === parFilter)?.days ?? 90;
 
-  // Year options from 2010 to 2060
-  const availableYears = useMemo(() => {
-    const years: number[] = [];
-    for (let y = 2060; y >= 2010; y--) years.push(y);
-    return years;
-  }, []);
 
   // Available branches (filtered by selected state)
   const availableBranches = useMemo(() => {
@@ -243,14 +236,6 @@ export default function NplStatus() {
   }, [beneficiaries]);
 
 
-  const MONTHS = [
-    { value: '1', label: 'January' }, { value: '2', label: 'February' },
-    { value: '3', label: 'March' }, { value: '4', label: 'April' },
-    { value: '5', label: 'May' }, { value: '6', label: 'June' },
-    { value: '7', label: 'July' }, { value: '8', label: 'August' },
-    { value: '9', label: 'September' }, { value: '10', label: 'October' },
-    { value: '11', label: 'November' }, { value: '12', label: 'December' },
-  ];
 
   // Reset branch filter when state changes
   useEffect(() => {
@@ -269,42 +254,23 @@ export default function NplStatus() {
         return b?.department === orgFilter;
       });
     }
-    // Date filter (disbursement date)
-    if (dateFilter) {
-      const dateStr = format(dateFilter, 'yyyy-MM-dd');
+    // Date range filter (disbursement date between from and to)
+    if (dateFrom || dateTo) {
       accts = accts.filter(a => {
         const b = beneficiaries.find(b => b.id === a.id);
-        return b?.disbursement_date === dateStr;
+        if (!b) return false;
+        const disbDate = new Date(b.disbursement_date);
+        if (dateFrom && disbDate < dateFrom) return false;
+        if (dateTo) {
+          const toEnd = new Date(dateTo);
+          toEnd.setHours(23, 59, 59, 999);
+          if (disbDate > toEnd) return false;
+        }
+        return true;
       });
     }
-    // Filter by month/year
-    if (yearFilter !== 'all') {
-      const yr = parseInt(yearFilter);
-      if (monthFilter !== 'all') {
-        const mo = parseInt(monthFilter) - 1;
-        const periodStart = new Date(yr, mo, 1);
-        const periodEnd = new Date(yr, mo + 1, 0);
-        accts = accts.filter(a => {
-          const b = beneficiaries.find(b => b.id === a.id);
-          if (!b) return false;
-          const comm = new Date(b.commencement_date);
-          const term = new Date(b.termination_date);
-          return comm <= periodEnd && term >= periodStart;
-        });
-      } else {
-        const periodStart = new Date(yr, 0, 1);
-        const periodEnd = new Date(yr, 11, 31);
-        accts = accts.filter(a => {
-          const b = beneficiaries.find(b => b.id === a.id);
-          if (!b) return false;
-          const comm = new Date(b.commencement_date);
-          const term = new Date(b.termination_date);
-          return comm <= periodEnd && term >= periodStart;
-        });
-      }
-    }
     return accts;
-  }, [nplAccounts, stateFilter, branchFilter, orgFilter, dateFilter, monthFilter, yearFilter, beneficiaries]);
+  }, [nplAccounts, stateFilter, branchFilter, orgFilter, dateFrom, dateTo, beneficiaries]);
 
   const activePortfolio = filteredAccounts;
   const totalActiveAmount = activePortfolio.reduce((s, a) => s + a.outstandingBalance, 0);
@@ -385,8 +351,8 @@ export default function NplStatus() {
     stateData,
     accountsList,
     staffName,
-    filters: { state: stateFilter, month: monthFilter, year: yearFilter, par: parFilter },
-  }), [totalActiveAmount, totalNplAmount, nplRatio, nplList.length, par30Amount, par90Amount, stateData, accountsList, staffName, stateFilter, monthFilter, yearFilter, parFilter]);
+    filters: { state: stateFilter, dateFrom: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : undefined, dateTo: dateTo ? format(dateTo, 'yyyy-MM-dd') : undefined, par: parFilter },
+  }), [totalActiveAmount, totalNplAmount, nplRatio, nplList.length, par30Amount, par90Amount, stateData, accountsList, staffName, stateFilter, dateFrom, dateTo, parFilter]);
 
   const navigateTo = (level: DrillLevel, state?: string, branch?: string) => {
     setDrillLevel(level);
@@ -458,83 +424,60 @@ export default function NplStatus() {
               {availableOrgs.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
             </SelectContent>
           </Select>
-          {/* 4. Date Filter (Calendar) */}
+          {/* 4. From Date Filter (Calendar) */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateFilter && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateFilter ? format(dateFilter, 'dd MMM yyyy') : 'All Dates'}
+                {dateFrom ? format(dateFrom, 'dd MMM yyyy') : 'From Date'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
               <Calendar
                 mode="single"
-                selected={dateFilter}
-                onSelect={(d) => setDateFilter(d)}
+                selected={dateFrom}
+                onSelect={(d) => setDateFrom(d)}
+                disabled={dateTo ? (date) => date > dateTo : undefined}
                 className={cn("p-3 pointer-events-auto")}
                 captionLayout="dropdown-buttons"
                 fromYear={2010}
                 toYear={2060}
               />
-              {dateFilter && (
+              {dateFrom && (
                 <div className="p-2 pt-0 border-t">
-                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setDateFilter(undefined)}>
-                    Clear Date
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setDateFrom(undefined)}>
+                    Clear
                   </Button>
                 </div>
               )}
             </PopoverContent>
           </Popover>
-          {/* 5. Month Filter (Calendar-style) */}
+          {/* 5. To Date Filter (Calendar) */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-40 justify-start text-left font-normal", monthFilter === 'all' && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {monthFilter !== 'all' ? MONTHS.find(m => m.value === monthFilter)?.label : 'All Months'}
+                {dateTo ? format(dateTo, 'dd MMM yyyy') : 'To Date'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-48 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-              <div className="grid grid-cols-3 gap-1">
-                <Button variant={monthFilter === 'all' ? 'default' : 'ghost'} size="sm" className="text-xs" onClick={() => setMonthFilter('all')}>All</Button>
-                {MONTHS.map(m => (
-                  <Button
-                    key={m.value}
-                    variant={monthFilter === m.value ? 'default' : 'ghost'}
-                    size="sm"
-                    className="text-xs"
-                    onClick={() => setMonthFilter(m.value)}
-                  >
-                    {m.label.slice(0, 3)}
+            <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
+              <Calendar
+                mode="single"
+                selected={dateTo}
+                onSelect={(d) => setDateTo(d)}
+                disabled={dateFrom ? (date) => date < dateFrom : undefined}
+                className={cn("p-3 pointer-events-auto")}
+                captionLayout="dropdown-buttons"
+                fromYear={2010}
+                toYear={2060}
+              />
+              {dateTo && (
+                <div className="p-2 pt-0 border-t">
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setDateTo(undefined)}>
+                    Clear
                   </Button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
-          {/* 6. Year Filter (Calendar-style grid) */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-32 justify-start text-left font-normal", yearFilter === 'all' && "text-muted-foreground")}>
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {yearFilter !== 'all' ? yearFilter : 'All Years'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-              <div className="max-h-64 overflow-y-auto">
-                <div className="grid grid-cols-4 gap-1">
-                  <Button variant={yearFilter === 'all' ? 'default' : 'ghost'} size="sm" className="text-xs" onClick={() => setYearFilter('all')}>All</Button>
-                  {availableYears.map(y => (
-                    <Button
-                      key={y}
-                      variant={yearFilter === String(y) ? 'default' : 'ghost'}
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => setYearFilter(String(y))}
-                    >
-                      {y}
-                    </Button>
-                  ))}
                 </div>
-              </div>
+              )}
             </PopoverContent>
           </Popover>
           {/* PAR Threshold */}

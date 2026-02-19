@@ -42,8 +42,8 @@ export interface NplReportData {
   staffName: string;
   filters: {
     state: string;
-    month: string;
-    year: string;
+    dateFrom?: string;
+    dateTo?: string;
     par: string;
   };
 }
@@ -68,9 +68,8 @@ async function getLogoBase64(): Promise<string> {
 
 function getFilterSummary(filters: NplReportData['filters']): string {
   const parts: string[] = [];
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  if (filters.month !== 'all') parts.push(MONTHS[Number(filters.month) - 1]);
-  if (filters.year !== 'all') parts.push(filters.year);
+  if (filters.dateFrom) parts.push(`From: ${filters.dateFrom}`);
+  if (filters.dateTo) parts.push(`To: ${filters.dateTo}`);
   if (filters.state !== 'all') parts.push(filters.state);
   if (filters.par !== 'par90') parts.push(filters.par.toUpperCase().replace('PAR', 'PAR '));
   return parts.length > 0 ? parts.join(' | ') : 'All Records';
