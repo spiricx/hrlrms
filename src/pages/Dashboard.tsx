@@ -72,7 +72,7 @@ export default function Dashboard() {
         );
 
         if (arrears.overdueMonths > 0) {
-          const paidMonths = Math.floor(totalPaid / monthlyEmi);
+          const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
           const firstUnpaidMonth = paidMonths + 1;
           const firstUnpaidDate = new Date(comm);
           firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() + (firstUnpaidMonth - 1));

@@ -152,7 +152,7 @@ export default function StaffPerformance() {
         const overdueMonths = Math.ceil(unpaid / monthlyEmi);
         if (overdueMonths <= 0) return false;
         // Find the first unpaid month's due date for DPD
-        const paidMonths = Math.floor(totalPaid / monthlyEmi);
+        const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
         const firstUnpaidIdx = paidMonths; // 0-based
         const firstUnpaidDue = new Date(commDate);
         firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + firstUnpaidIdx);
@@ -252,7 +252,7 @@ export default function StaffPerformance() {
       const unpaid = Math.max(0, dueMonths * monthlyEmi - totalPaid);
       const overdueMonths = Math.ceil(unpaid / monthlyEmi);
       if (overdueMonths <= 0) return false;
-      const paidMonths = Math.floor(totalPaid / monthlyEmi);
+      const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
       const firstUnpaidDue = new Date(commDate);
       firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
       firstUnpaidDue.setHours(0, 0, 0, 0);
@@ -335,7 +335,7 @@ export default function StaffPerformance() {
           if (today >= dueDate) dueMonths = i; else break;
         }
         if (dueMonths <= 0) return false;
-        const paidMonths = Math.floor(totalPaid / monthlyEmi);
+        const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
         if (paidMonths >= dueMonths) return false;
         const firstUnpaidDue = new Date(commDate);
         firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
@@ -418,7 +418,7 @@ export default function StaffPerformance() {
           if (today >= dueDate) dueMonths = i; else break;
         }
         if (dueMonths <= 0) return false;
-        const paidMonths = Math.floor(totalPaid / monthlyEmi);
+        const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
         if (paidMonths >= dueMonths) return false;
         const firstUnpaidDue = new Date(commDate);
         firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);

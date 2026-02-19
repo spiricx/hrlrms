@@ -322,7 +322,7 @@ export default function LoanHistory() {
                   const comm = stripTime(new Date(b.commencement_date));
                   // Find the earliest unpaid month's due date
                   const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
-                  const monthsPaid = Math.floor(Number(b.total_paid) / Number(b.monthly_emi));
+                  const monthsPaid = Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi));
                   if (monthsDue > monthsPaid && Number(b.monthly_emi) > 0) {
                     // The earliest unpaid month's due date
                     const unpaidMonthIndex = monthsPaid; // 0-based: month (monthsPaid+1) due date

@@ -207,7 +207,7 @@ export function getOverdueAndArrears(
   // the following period has also elapsed, meaning DPD >= 30 effectively).
   // We count arrears months as those unpaid instalments whose due date is strictly < today
   // AND whose NEXT due date is also <= today (they are at least one full period overdue).
-  const paidMonths = Math.min(Math.floor(totalPaid / emi), tenorMonths);
+  const paidMonths = Math.min(Math.floor(Math.round(totalPaid * 100) / 100 / emi), tenorMonths);
 
   let arrearsMonths = 0;
   for (let m = paidMonths + 1; m <= paidMonths + overdueMonths && m <= tenorMonths; m++) {
