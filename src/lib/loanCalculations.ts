@@ -31,11 +31,14 @@ export function calculateLoan(params: LoanParams): LoanSummary {
 
   // EMI formula: P * r * (1+r)^n / ((1+r)^n - 1)
   const n = tenorMonths;
-  const emi =
+  const rawEmi =
     monthlyRate === 0
       ? principal / n
       : (principal * monthlyRate * Math.pow(1 + monthlyRate, n)) /
         (Math.pow(1 + monthlyRate, n) - 1);
+
+  // Round EMI to 2 decimal places FIRST, then use everywhere for consistency
+  const emi = Math.round(rawEmi * 100) / 100;
 
   const commencementDate = new Date(disbursementDate);
   commencementDate.setMonth(commencementDate.getMonth() + moratoriumMonths);
@@ -43,36 +46,40 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const schedule: ScheduleEntry[] = [];
   let balance = principal;
 
-  // Moratorium only delays commencement; no interest capitalization
-  const adjustedEMI = emi;
-
   for (let i = 1; i <= n; i++) {
     const dueDate = new Date(commencementDate);
     dueDate.setMonth(dueDate.getMonth() + (i - 1));
 
-    const interest = balance * monthlyRate;
-    const principalPart = adjustedEMI - interest;
-    const closingBalance = Math.max(0, balance - principalPart);
+    const interest = Math.round(balance * monthlyRate * 100) / 100;
+
+    // For the last month, absorb any rounding remainder so closing balance is exactly 0
+    const isLastMonth = i === n;
+    const principalPart = isLastMonth
+      ? Math.round(balance * 100) / 100
+      : Math.round((emi - interest) * 100) / 100;
+    const lastEmi = isLastMonth ? Math.round((principalPart + interest) * 100) / 100 : emi;
+    const closingBalance = isLastMonth ? 0 : Math.round((balance - principalPart) * 100) / 100;
 
     schedule.push({
       month: i,
       dueDate,
       openingBalance: Math.round(balance * 100) / 100,
-      principal: Math.round(principalPart * 100) / 100,
-      interest: Math.round(interest * 100) / 100,
-      emi: Math.round(adjustedEMI * 100) / 100,
-      closingBalance: Math.round(closingBalance * 100) / 100,
+      principal: principalPart,
+      interest,
+      emi: lastEmi,
+      closingBalance,
     });
 
     balance = closingBalance;
   }
 
   const terminationDate = schedule[schedule.length - 1]?.dueDate ?? commencementDate;
+  const totalPayment = Math.round(emi * n * 100) / 100;
 
   return {
-    monthlyEMI: Math.round(adjustedEMI * 100) / 100,
-    totalInterest: Math.round(schedule.reduce((sum, e) => sum + e.interest, 0) * 100) / 100,
-    totalPayment: Math.round(adjustedEMI * n * 100) / 100,
+    monthlyEMI: emi,
+    totalInterest: Math.round((totalPayment - principal) * 100) / 100,
+    totalPayment,
     terminationDate,
     commencementDate,
     schedule,
