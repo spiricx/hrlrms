@@ -27,6 +27,8 @@ import {
   Building2,
   CalendarDays,
   TrendingUp,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -65,6 +67,17 @@ interface ReconciliationSession {
   notes: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+interface ReconciliationMatch {
+  id: string;
+  session_id: string;
+  rrr_number: string;
+  beneficiary_name: string;
+  batch_name: string;
+  source: string;
+  system_amount: number;
+  cbn_amount: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -128,6 +141,9 @@ export default function LoanReconciliation() {
   const [filterYear, setFilterYear] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [activeTab, setActiveTab] = useState('reconcile');
+  const [expandedSession, setExpandedSession] = useState<string | null>(null);
+  const [sessionMatches, setSessionMatches] = useState<Record<string, ReconciliationMatch[]>>({});
+  const [matchesLoading, setMatchesLoading] = useState<string | null>(null);
 
   // ─── Parse Excel ──────────────────────────────────────────────────────────
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,29 +322,47 @@ export default function LoanReconciliation() {
     }
     setSaving(true);
     try {
-      const { error } = await supabase.from('reconciliation_sessions').insert({
-        organization: saveOrg.trim(),
-        payment_month: parseInt(saveMonth),
-        payment_year: parseInt(saveYear),
-        file_name: file?.name || '',
-        total_records: results.length,
-        matched_count: stats.matched,
-        mismatch_count: stats.mismatch,
-        unmatched_count: stats.unmatched,
-        total_cbn_amount: stats.cbnTotal,
-        matched_amount: stats.matchedTotal,
-        notes: saveNotes.trim() || null,
-        created_by: user?.id ?? null,
-      });
+      const { data: sessionData, error } = await supabase
+        .from('reconciliation_sessions')
+        .insert({
+          organization: saveOrg.trim(),
+          payment_month: parseInt(saveMonth),
+          payment_year: parseInt(saveYear),
+          file_name: file?.name || '',
+          total_records: results.length,
+          matched_count: stats.matched,
+          mismatch_count: stats.mismatch,
+          unmatched_count: stats.unmatched,
+          total_cbn_amount: stats.cbnTotal,
+          matched_amount: stats.matchedTotal,
+          notes: saveNotes.trim() || null,
+          created_by: user?.id ?? null,
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Save individual matched rows for detail view
+      const matchedRows = results.filter(r => r.matchType === 'exact');
+      if (matchedRows.length > 0 && sessionData?.id) {
+        const matchInserts = matchedRows.map(r => ({
+          session_id: sessionData.id,
+          rrr_number: r.cbnRow.remitaNumber,
+          beneficiary_name: r.beneficiaryName || '',
+          batch_name: r.batchName || '',
+          source: r.source || '',
+          system_amount: r.dbAmount ?? 0,
+          cbn_amount: r.cbnRow.amount,
+        }));
+        await supabase.from('reconciliation_matches').insert(matchInserts);
+      }
 
       toast({ title: 'Saved!', description: `Reconciliation for ${saveOrg} – ${MONTHS[parseInt(saveMonth) - 1]} ${saveYear} has been recorded.` });
       setSaveOpen(false);
       setSaveOrg('');
       setSaveNotes('');
       fetchHistory();
-      // Switch to history tab so user can see the saved record
       setActiveTab('history');
     } catch (err: any) {
       toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
@@ -336,6 +370,30 @@ export default function LoanReconciliation() {
       setSaving(false);
     }
   };
+
+  // ─── Fetch Session Matches ────────────────────────────────────────────────
+  const fetchSessionMatches = useCallback(async (sessionId: string) => {
+    if (sessionMatches[sessionId]) {
+      // Toggle off if already loaded
+      setExpandedSession(prev => prev === sessionId ? null : sessionId);
+      return;
+    }
+    setMatchesLoading(sessionId);
+    try {
+      const { data, error } = await supabase
+        .from('reconciliation_matches')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      setSessionMatches(prev => ({ ...prev, [sessionId]: (data || []) as ReconciliationMatch[] }));
+      setExpandedSession(sessionId);
+    } catch (err: any) {
+      toast({ title: 'Failed to load matches', description: err.message, variant: 'destructive' });
+    } finally {
+      setMatchesLoading(null);
+    }
+  }, [sessionMatches, toast]);
 
   // ─── Fetch History ────────────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
@@ -484,13 +542,15 @@ export default function LoanReconciliation() {
                       <Download className="w-4 h-4 mr-2" /> Export Results
                     </Button>
                   )}
-                  <Button
-                    variant="default"
-                    className={isFullyMatched ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
-                    onClick={() => setSaveOpen(true)}
-                  >
-                    <Save className="w-4 h-4 mr-2" /> Save to History
-                  </Button>
+                  {isFullyMatched && (
+                    <Button
+                      variant="default"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      onClick={() => setSaveOpen(true)}
+                    >
+                      <Save className="w-4 h-4 mr-2" /> Save to History
+                    </Button>
+                  )}
                   <Button variant="outline" onClick={handleClear} className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="w-4 h-4 mr-2" /> Clear & Reset
                   </Button>
@@ -751,6 +811,7 @@ export default function LoanReconciliation() {
                               <TableHead>File</TableHead>
                               <TableHead>Recorded</TableHead>
                               <TableHead>Status</TableHead>
+                              <TableHead className="w-10"></TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -758,29 +819,80 @@ export default function LoanReconciliation() {
                               .sort((a, b) => b.payment_year - a.payment_year || b.payment_month - a.payment_month)
                               .map(s => {
                                 const isFullMatch = s.unmatched_count === 0 && s.mismatch_count === 0;
+                                const isExpanded = expandedSession === s.id;
+                                const matches = sessionMatches[s.id] || [];
+                                const isLoadingMatches = matchesLoading === s.id;
                                 return (
-                                  <TableRow key={s.id}>
-                                    <TableCell className="font-medium">
-                                      <span className="flex items-center gap-1.5">
-                                        <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
-                                        {MONTHS[s.payment_month - 1].slice(0, 3)} {s.payment_year}
-                                      </span>
-                                    </TableCell>
-                                    <TableCell className="text-right">{s.total_records}</TableCell>
-                                    <TableCell className="text-right text-emerald-600 font-semibold">{s.matched_count}</TableCell>
-                                    <TableCell className="text-right text-amber-600">{s.mismatch_count}</TableCell>
-                                    <TableCell className="text-right text-destructive">{s.unmatched_count}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm">{fmt(s.matched_amount)}</TableCell>
-                                    <TableCell className="text-right font-mono text-sm text-muted-foreground">{fmt(s.total_cbn_amount)}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate" title={s.file_name}>{s.file_name || '-'}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
-                                    <TableCell>
-                                      {isFullMatch
-                                        ? <Badge className="bg-emerald-600 text-white gap-1 text-xs"><CheckCircle2 className="w-3 h-3" /> Full Match</Badge>
-                                        : <Badge className="bg-amber-500 text-white gap-1 text-xs"><XCircle className="w-3 h-3" /> Partial</Badge>
-                                      }
-                                    </TableCell>
-                                  </TableRow>
+                                  <>
+                                    <TableRow key={s.id}>
+                                      <TableCell className="font-medium">
+                                        <span className="flex items-center gap-1.5">
+                                          <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
+                                          {MONTHS[s.payment_month - 1].slice(0, 3)} {s.payment_year}
+                                        </span>
+                                      </TableCell>
+                                      <TableCell className="text-right">{s.total_records}</TableCell>
+                                      <TableCell className="text-right text-emerald-600 font-semibold">{s.matched_count}</TableCell>
+                                      <TableCell className="text-right text-amber-600">{s.mismatch_count}</TableCell>
+                                      <TableCell className="text-right text-destructive">{s.unmatched_count}</TableCell>
+                                      <TableCell className="text-right font-mono text-sm">{fmt(s.matched_amount)}</TableCell>
+                                      <TableCell className="text-right font-mono text-sm text-muted-foreground">{fmt(s.total_cbn_amount)}</TableCell>
+                                      <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate" title={s.file_name}>{s.file_name || '-'}</TableCell>
+                                      <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
+                                      <TableCell>
+                                        {isFullMatch
+                                          ? <Badge className="bg-emerald-600 text-white gap-1 text-xs"><CheckCircle2 className="w-3 h-3" /> Full Match</Badge>
+                                          : <Badge className="bg-amber-500 text-white gap-1 text-xs"><XCircle className="w-3 h-3" /> Partial</Badge>
+                                        }
+                                      </TableCell>
+                                      <TableCell>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => fetchSessionMatches(s.id)} disabled={isLoadingMatches}>
+                                          {isLoadingMatches ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                    {isExpanded && (
+                                      <TableRow key={`${s.id}-detail`}>
+                                        <TableCell colSpan={11} className="p-0 bg-muted/30">
+                                          <div className="p-4">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Matched Records</p>
+                                            {matches.length === 0 ? (
+                                              <p className="text-xs text-muted-foreground italic">No matched record details stored for this session.</p>
+                                            ) : (
+                                              <div className="overflow-x-auto rounded border border-border">
+                                                <Table>
+                                                  <TableHeader>
+                                                    <TableRow>
+                                                      <TableHead className="text-xs">RRR Number</TableHead>
+                                                      <TableHead className="text-xs">Beneficiary / Batch</TableHead>
+                                                      <TableHead className="text-xs">Source</TableHead>
+                                                      <TableHead className="text-right text-xs">System Amount</TableHead>
+                                                      <TableHead className="text-right text-xs">CBN Amount</TableHead>
+                                                    </TableRow>
+                                                  </TableHeader>
+                                                  <TableBody>
+                                                    {matches.map(m => (
+                                                      <TableRow key={m.id}>
+                                                        <TableCell className="font-mono text-xs">{m.rrr_number || '-'}</TableCell>
+                                                        <TableCell className="text-xs">{m.beneficiary_name || m.batch_name || '-'}</TableCell>
+                                                        <TableCell className="text-xs">
+                                                          {m.source === 'individual' && <Badge variant="outline" className="text-xs">Loan Repayment</Badge>}
+                                                          {m.source === 'batch' && <Badge variant="secondary" className="text-xs">Batch</Badge>}
+                                                          {!m.source && '-'}
+                                                        </TableCell>
+                                                        <TableCell className="text-right font-mono text-xs">{fmt(m.system_amount)}</TableCell>
+                                                        <TableCell className="text-right font-mono text-xs">{fmt(m.cbn_amount)}</TableCell>
+                                                      </TableRow>
+                                                    ))}
+                                                  </TableBody>
+                                                </Table>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </>
                                 );
                               })}
                           </TableBody>

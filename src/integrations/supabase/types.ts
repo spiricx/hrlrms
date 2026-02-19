@@ -368,6 +368,50 @@ export type Database = {
         }
         Relationships: []
       }
+      reconciliation_matches: {
+        Row: {
+          batch_name: string
+          beneficiary_name: string
+          cbn_amount: number
+          created_at: string
+          id: string
+          rrr_number: string
+          session_id: string
+          source: string
+          system_amount: number
+        }
+        Insert: {
+          batch_name?: string
+          beneficiary_name?: string
+          cbn_amount?: number
+          created_at?: string
+          id?: string
+          rrr_number?: string
+          session_id: string
+          source?: string
+          system_amount?: number
+        }
+        Update: {
+          batch_name?: string
+          beneficiary_name?: string
+          cbn_amount?: number
+          created_at?: string
+          id?: string
+          rrr_number?: string
+          session_id?: string
+          source?: string
+          system_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_matches_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "reconciliation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reconciliation_sessions: {
         Row: {
           created_at: string
