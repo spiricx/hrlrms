@@ -7,7 +7,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2 } from 'lucide-react';
+import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2, Upload } from 'lucide-react';
+import BulkStaffUpload from '@/components/staff/BulkStaffUpload';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -653,6 +654,14 @@ export default function StaffDirectory() {
         </div>
       </div>
 
+      <Tabs defaultValue="directory" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="directory"><Users className="w-4 h-4 mr-1" />Staff Directory</TabsTrigger>
+          {canEdit && <TabsTrigger value="bulk-upload"><Upload className="w-4 h-4 mr-1" />Bulk Staff Creation</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="directory" className="space-y-6 mt-0">
+
       {/* Birthday Alerts Banner */}
       {upcomingBirthdays.length > 0 && (
         <Card className="rgb-blink border-2">
@@ -789,8 +798,15 @@ export default function StaffDirectory() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
 
-      {/* Profile Dialog with Tabs */}
+        {canEdit && (
+          <TabsContent value="bulk-upload" className="mt-0">
+            <BulkStaffUpload />
+          </TabsContent>
+        )}
+      </Tabs>
+
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           {selected && (
