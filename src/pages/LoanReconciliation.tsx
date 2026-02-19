@@ -484,15 +484,13 @@ export default function LoanReconciliation() {
                       <Download className="w-4 h-4 mr-2" /> Export Results
                     </Button>
                   )}
-                  {isFullyMatched && (
-                    <Button
-                      variant="default"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      onClick={() => setSaveOpen(true)}
-                    >
-                      <Save className="w-4 h-4 mr-2" /> Save to History
-                    </Button>
-                  )}
+                  <Button
+                    variant="default"
+                    className={isFullyMatched ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}
+                    onClick={() => setSaveOpen(true)}
+                  >
+                    <Save className="w-4 h-4 mr-2" /> Save to History
+                  </Button>
                   <Button variant="outline" onClick={handleClear} className="border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="w-4 h-4 mr-2" /> Clear & Reset
                   </Button>
@@ -506,19 +504,7 @@ export default function LoanReconciliation() {
                     <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">All {stats.matched} records fully matched!</p>
                     <p className="text-xs text-emerald-600 dark:text-emerald-500">Click <strong>Save to History</strong> to record this reconciliation.</p>
                   </div>
-                  <Button
-                    size="sm"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
-                    onClick={() => setSaveOpen(true)}
-                  >
-                    <Save className="w-4 h-4 mr-1.5" /> Save to History
-                  </Button>
                 </div>
-              )}
-              {reconciled && !isFullyMatched && stats.matched > 0 && (
-                <p className="text-xs text-muted-foreground italic">
-                  💡 Only <strong>fully matched</strong> reconciliations (no mismatches or unmatched records) can be saved to History.
-                </p>
               )}
             </CardContent>
           </Card>
