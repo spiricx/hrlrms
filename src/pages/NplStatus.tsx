@@ -150,6 +150,9 @@ export default function NplStatus() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [orgFilter, setOrgFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
   const [parFilter, setParFilter] = useState<ParThreshold>('par90');
   const [searchQuery, setSearchQuery] = useState('');
   const [monthFilter, setMonthFilter] = useState('all');
@@ -223,6 +226,29 @@ export default function NplStatus() {
     return Array.from(years).sort((a, b) => b - a);
   }, [beneficiaries]);
 
+  // Available branches (filtered by selected state)
+  const availableBranches = useMemo(() => {
+    let filtered = beneficiaries;
+    if (stateFilter !== 'all') filtered = filtered.filter(b => b.state === stateFilter);
+    const branches = new Set<string>();
+    filtered.forEach(b => { if (b.bank_branch) branches.add(b.bank_branch); });
+    return Array.from(branches).sort();
+  }, [beneficiaries, stateFilter]);
+
+  // Available organizations (department field)
+  const availableOrgs = useMemo(() => {
+    const orgs = new Set<string>();
+    beneficiaries.forEach(b => { if (b.department) orgs.add(b.department); });
+    return Array.from(orgs).sort();
+  }, [beneficiaries]);
+
+  // Available dates from disbursement dates for date filter
+  const availableDates = useMemo(() => {
+    const dates = new Set<string>();
+    beneficiaries.forEach(b => { if (b.disbursement_date) dates.add(b.disbursement_date); });
+    return Array.from(dates).sort((a, b) => b.localeCompare(a));
+  }, [beneficiaries]);
+
   const MONTHS = [
     { value: '1', label: 'January' }, { value: '2', label: 'February' },
     { value: '3', label: 'March' }, { value: '4', label: 'April' },
@@ -232,17 +258,37 @@ export default function NplStatus() {
     { value: '11', label: 'November' }, { value: '12', label: 'December' },
   ];
 
+  // Reset branch filter when state changes
+  useEffect(() => {
+    setBranchFilter('all');
+  }, [stateFilter]);
+
   // Apply filters
   const filteredAccounts = useMemo(() => {
     let accts = nplAccounts;
     if (stateFilter !== 'all') accts = accts.filter(a => a.state === stateFilter);
-    // Filter by month/year: show accounts that were active (commencement <= end of period, termination >= start of period)
+    if (branchFilter !== 'all') accts = accts.filter(a => a.branch === branchFilter);
+    // Organization filter
+    if (orgFilter !== 'all') {
+      accts = accts.filter(a => {
+        const b = beneficiaries.find(b => b.id === a.id);
+        return b?.department === orgFilter;
+      });
+    }
+    // Date filter (disbursement date)
+    if (dateFilter !== 'all') {
+      accts = accts.filter(a => {
+        const b = beneficiaries.find(b => b.id === a.id);
+        return b?.disbursement_date === dateFilter;
+      });
+    }
+    // Filter by month/year
     if (yearFilter !== 'all') {
       const yr = parseInt(yearFilter);
       if (monthFilter !== 'all') {
-        const mo = parseInt(monthFilter) - 1; // 0-indexed
+        const mo = parseInt(monthFilter) - 1;
         const periodStart = new Date(yr, mo, 1);
-        const periodEnd = new Date(yr, mo + 1, 0); // last day of month
+        const periodEnd = new Date(yr, mo + 1, 0);
         accts = accts.filter(a => {
           const b = beneficiaries.find(b => b.id === a.id);
           if (!b) return false;
@@ -263,7 +309,7 @@ export default function NplStatus() {
       }
     }
     return accts;
-  }, [nplAccounts, stateFilter, monthFilter, yearFilter, beneficiaries]);
+  }, [nplAccounts, stateFilter, branchFilter, orgFilter, dateFilter, monthFilter, yearFilter, beneficiaries]);
 
   const activePortfolio = filteredAccounts;
   const totalActiveAmount = activePortfolio.reduce((s, a) => s + a.outstandingBalance, 0);
@@ -385,10 +431,11 @@ export default function NplStatus() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* 1. State Filter */}
           {isAdmin && drillLevel === 'state' && (
             <Select value={stateFilter} onValueChange={setStateFilter}>
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Filter by state" />
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="All States" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All States</SelectItem>
@@ -396,24 +443,57 @@ export default function NplStatus() {
               </SelectContent>
             </Select>
           )}
-          <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Year" />
+          {/* 2. Branch Filter */}
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Branches" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              <SelectItem value="all">All Branches</SelectItem>
+              {availableBranches.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
             </SelectContent>
           </Select>
+          {/* 3. Organization Filter */}
+          <Select value={orgFilter} onValueChange={setOrgFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue placeholder="All Organizations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Organizations</SelectItem>
+              {availableOrgs.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {/* 4. Date Filter */}
+          <Select value={dateFilter} onValueChange={setDateFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All Dates" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Dates</SelectItem>
+              {availableDates.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {/* 5. Month Filter */}
           <Select value={monthFilter} onValueChange={setMonthFilter}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="Month" />
+              <SelectValue placeholder="All Months" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Months</SelectItem>
               {MONTHS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          {/* 6. Year Filter */}
+          <Select value={yearFilter} onValueChange={setYearFilter}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="All Years" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {availableYears.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {/* PAR Threshold */}
           <Select value={parFilter} onValueChange={(v) => setParFilter(v as ParThreshold)}>
             <SelectTrigger className="w-36">
               <SelectValue />
