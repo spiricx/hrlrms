@@ -368,6 +368,57 @@ export type Database = {
         }
         Relationships: []
       }
+      reconciliation_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          file_name: string
+          id: string
+          matched_amount: number
+          matched_count: number
+          mismatch_count: number
+          notes: string | null
+          organization: string
+          payment_month: number
+          payment_year: number
+          total_cbn_amount: number
+          total_records: number
+          unmatched_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          matched_amount?: number
+          matched_count?: number
+          mismatch_count?: number
+          notes?: string | null
+          organization?: string
+          payment_month: number
+          payment_year: number
+          total_cbn_amount?: number
+          total_records?: number
+          unmatched_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          matched_amount?: number
+          matched_count?: number
+          mismatch_count?: number
+          notes?: string | null
+          organization?: string
+          payment_month?: number
+          payment_year?: number
+          total_cbn_amount?: number
+          total_records?: number
+          unmatched_count?: number
+        }
+        Relationships: []
+      }
       role_change_logs: {
         Row: {
           action: string
