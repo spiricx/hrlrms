@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -823,8 +823,8 @@ export default function LoanReconciliation() {
                                 const matches = sessionMatches[s.id] || [];
                                 const isLoadingMatches = matchesLoading === s.id;
                                 return (
-                                  <>
-                                    <TableRow key={s.id}>
+                                  <React.Fragment key={s.id}>
+                                    <TableRow>
                                       <TableCell className="font-medium">
                                         <span className="flex items-center gap-1.5">
                                           <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
@@ -853,35 +853,48 @@ export default function LoanReconciliation() {
                                     </TableRow>
                                     {isExpanded && (
                                       <TableRow key={`${s.id}-detail`}>
-                                        <TableCell colSpan={11} className="p-0 bg-muted/30">
-                                          <div className="p-4">
-                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Matched Records</p>
-                                            {matches.length === 0 ? (
-                                              <p className="text-xs text-muted-foreground italic">No matched record details stored for this session.</p>
+                                        <TableCell colSpan={11} className="p-0 bg-muted/20 border-t-0">
+                                          <div className="px-4 py-3">
+                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                              Matched Records — {matches.length} entr{matches.length === 1 ? 'y' : 'ies'}
+                                            </p>
+                                            {isLoadingMatches ? (
+                                              <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                                                <Loader2 className="w-4 h-4 animate-spin" /> Loading matched records...
+                                              </div>
+                                            ) : matches.length === 0 ? (
+                                              <p className="text-xs text-muted-foreground italic py-2">No matched record details stored for this session. Only sessions saved after the latest update will have row-level details.</p>
                                             ) : (
                                               <div className="overflow-x-auto rounded border border-border">
                                                 <Table>
                                                   <TableHeader>
-                                                    <TableRow>
-                                                      <TableHead className="text-xs">RRR Number</TableHead>
-                                                      <TableHead className="text-xs">Beneficiary / Batch</TableHead>
-                                                      <TableHead className="text-xs">Source</TableHead>
-                                                      <TableHead className="text-right text-xs">System Amount</TableHead>
-                                                      <TableHead className="text-right text-xs">CBN Amount</TableHead>
+                                                    <TableRow className="bg-muted/40">
+                                                      <TableHead className="text-xs h-8 py-1">RRR Number</TableHead>
+                                                      <TableHead className="text-xs h-8 py-1">Beneficiary / Batch</TableHead>
+                                                      <TableHead className="text-xs h-8 py-1">Source</TableHead>
+                                                      <TableHead className="text-right text-xs h-8 py-1">System Amount</TableHead>
+                                                      <TableHead className="text-right text-xs h-8 py-1">CBN Amount</TableHead>
+                                                      <TableHead className="text-center text-xs h-8 py-1">Status</TableHead>
                                                     </TableRow>
                                                   </TableHeader>
                                                   <TableBody>
                                                     {matches.map(m => (
-                                                      <TableRow key={m.id}>
-                                                        <TableCell className="font-mono text-xs">{m.rrr_number || '-'}</TableCell>
-                                                        <TableCell className="text-xs">{m.beneficiary_name || m.batch_name || '-'}</TableCell>
-                                                        <TableCell className="text-xs">
-                                                          {m.source === 'individual' && <Badge variant="outline" className="text-xs">Loan Repayment</Badge>}
-                                                          {m.source === 'batch' && <Badge variant="secondary" className="text-xs">Batch</Badge>}
-                                                          {!m.source && '-'}
+                                                      <TableRow key={m.id} className="hover:bg-emerald-500/5">
+                                                        <TableCell className="font-mono text-xs py-2">{m.rrr_number || '-'}</TableCell>
+                                                        <TableCell className="text-xs py-2 font-medium">{m.beneficiary_name || m.batch_name || '-'}</TableCell>
+                                                        <TableCell className="text-xs py-2">
+                                                          {m.source === 'individual' ? <Badge variant="outline" className="text-xs">Loan Repayment</Badge>
+                                                          : m.source === 'batch' ? <Badge variant="secondary" className="text-xs">Batch</Badge>
+                                                          : <span className="text-muted-foreground">-</span>}
                                                         </TableCell>
-                                                        <TableCell className="text-right font-mono text-xs">{fmt(m.system_amount)}</TableCell>
-                                                        <TableCell className="text-right font-mono text-xs">{fmt(m.cbn_amount)}</TableCell>
+                                                        <TableCell className="text-right font-mono text-xs py-2">{fmt(m.system_amount)}</TableCell>
+                                                        <TableCell className="text-right font-mono text-xs py-2">{fmt(m.cbn_amount)}</TableCell>
+                                                        <TableCell className="text-center py-2">
+                                                          <Badge className="bg-emerald-600 text-white gap-1 text-xs">
+                                                            <CheckCircle2 className="w-3 h-3" /> Matched
+                                                          </Badge>
+                                                        </TableCell>
                                                       </TableRow>
                                                     ))}
                                                   </TableBody>
@@ -892,7 +905,7 @@ export default function LoanReconciliation() {
                                         </TableCell>
                                       </TableRow>
                                     )}
-                                  </>
+                                  </React.Fragment>
                                 );
                               })}
                           </TableBody>
