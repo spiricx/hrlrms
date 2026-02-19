@@ -38,12 +38,16 @@ interface NplAccount {
   employeeId: string;
   state: string;
   branch: string;
+  organization: string;
   loanAmount: number;
+  tenorMonths: number;
+  monthlyEmi: number;
+  totalPaid: number;
   outstandingBalance: number;
   dpd: number;
   lastPaymentDate: string | null;
   amountInArrears: number;
-  monthlyEmi: number;
+  monthsInArrears: number;
 }
 
 /**
@@ -201,19 +205,28 @@ export default function NplStatus() {
   // Build NPL account data
   const nplAccounts: NplAccount[] = useMemo(() => {
     const activeLoans = beneficiaries.filter(b => b.status === 'active' || b.status === 'defaulted');
-    return activeLoans.map(b => ({
-      id: b.id,
-      name: b.name,
-      employeeId: b.employee_id,
-      state: b.state,
-      branch: b.bank_branch,
-      loanAmount: Number(b.loan_amount),
-      outstandingBalance: Number(b.outstanding_balance),
-      dpd: calculateDPD(b),
-      lastPaymentDate: getLastPaymentDate(b, transactions),
-      amountInArrears: getAmountInArrears(b),
-      monthlyEmi: Number(b.monthly_emi),
-    }));
+    return activeLoans.map(b => {
+      const emi = Number(b.monthly_emi);
+      const arrears = getAmountInArrears(b);
+      const monthsInArrears = emi > 0 ? Math.ceil(arrears / emi) : 0;
+      return {
+        id: b.id,
+        name: b.name,
+        employeeId: b.employee_id,
+        state: b.state,
+        branch: b.bank_branch,
+        organization: b.department || '',
+        loanAmount: Number(b.loan_amount),
+        tenorMonths: b.tenor_months,
+        monthlyEmi: emi,
+        totalPaid: Number(b.total_paid),
+        outstandingBalance: Number(b.outstanding_balance),
+        dpd: calculateDPD(b),
+        lastPaymentDate: getLastPaymentDate(b, transactions),
+        amountInArrears: arrears,
+        monthsInArrears,
+      };
+    });
   }, [beneficiaries, transactions]);
 
   const parDays = PAR_OPTIONS.find(p => p.value === parFilter)?.days ?? 90;
@@ -687,36 +700,55 @@ export default function NplStatus() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-secondary/50">
-                      <TableHead>Employee ID</TableHead>
-                      <TableHead>Beneficiary Name</TableHead>
-                      <TableHead>Branch / State</TableHead>
-                      <TableHead className="text-right">Principal</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
+                      <TableHead className="text-center">S/N</TableHead>
+                      <TableHead>Beneficiary Names</TableHead>
+                      <TableHead>Organizations</TableHead>
+                      <TableHead>Branch/State</TableHead>
+                      <TableHead className="text-right">No. of Beneficiaries</TableHead>
+                      <TableHead className="text-right">Total Disbursed</TableHead>
+                      <TableHead className="text-right">Loan Tenor</TableHead>
+                      <TableHead className="text-right">Expected Monthly Repayment</TableHead>
+                      <TableHead className="text-right">Actual Amount Paid</TableHead>
+                      <TableHead className="text-right">Closing Balance</TableHead>
+                      <TableHead className="text-right">Arrears in Amount</TableHead>
+                      <TableHead className="text-right">Months in Arrears</TableHead>
+                      <TableHead>Last Payment Date</TableHead>
                       <TableHead className="text-right">DPD</TableHead>
-                      <TableHead>Last Payment</TableHead>
-                      <TableHead className="text-right">Amount in Arrears</TableHead>
+                      <TableHead className="text-right">NPL Ratio</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {accountsList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
                           No NPL accounts found for the selected criteria
                         </TableCell>
                       </TableRow>
                     )}
-                    {accountsList.map(a => (
-                      <TableRow key={a.id} className={riskRowBg(a.dpd)}>
-                        <TableCell className="font-mono text-xs">{a.employeeId}</TableCell>
-                        <TableCell className="font-medium">{a.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{a.branch} / {a.state}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(a.loanAmount)}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
-                        <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
-                        <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
-                        <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {accountsList.map((a, idx) => {
+                      const individualNplRatio = totalActiveAmount > 0 ? ((a.outstandingBalance / totalActiveAmount) * 100) : 0;
+                      return (
+                        <TableRow key={a.id} className={riskRowBg(a.dpd)}>
+                          <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
+                          <TableCell className="font-medium">{a.name}</TableCell>
+                          <TableCell>{a.organization || '—'}</TableCell>
+                          <TableCell className="text-muted-foreground">{a.branch} / {a.state}</TableCell>
+                          <TableCell className="text-right">1</TableCell>
+                          <TableCell className="text-right">{formatCurrency(a.loanAmount)}</TableCell>
+                          <TableCell className="text-right">{a.tenorMonths} months</TableCell>
+                          <TableCell className="text-right">{formatCurrency(a.monthlyEmi)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
+                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
+                          <TableCell className="text-right">{a.monthsInArrears}</TableCell>
+                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge variant={nplRatioColor(individualNplRatio)}>{individualNplRatio.toFixed(2)}%</Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
