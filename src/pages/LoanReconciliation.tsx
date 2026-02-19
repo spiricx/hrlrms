@@ -327,8 +327,9 @@ export default function LoanReconciliation() {
       setSaveOpen(false);
       setSaveOrg('');
       setSaveNotes('');
-      // Refresh history if on that tab
       fetchHistory();
+      // Switch to history tab so user can see the saved record
+      setActiveTab('history');
     } catch (err: any) {
       toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
     } finally {
@@ -498,6 +499,22 @@ export default function LoanReconciliation() {
                 </div>
               )}
 
+              {reconciled && isFullyMatched && (
+                <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">All {stats.matched} records fully matched!</p>
+                    <p className="text-xs text-emerald-600 dark:text-emerald-500">Click <strong>Save to History</strong> to record this reconciliation.</p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                    onClick={() => setSaveOpen(true)}
+                  >
+                    <Save className="w-4 h-4 mr-1.5" /> Save to History
+                  </Button>
+                </div>
+              )}
               {reconciled && !isFullyMatched && stats.matched > 0 && (
                 <p className="text-xs text-muted-foreground italic">
                   💡 Only <strong>fully matched</strong> reconciliations (no mismatches or unmatched records) can be saved to History.
