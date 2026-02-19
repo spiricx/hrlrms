@@ -376,6 +376,7 @@ export type Database = {
           created_at: string
           id: string
           rrr_number: string
+          serial_number: number
           session_id: string
           source: string
           system_amount: number
@@ -387,6 +388,7 @@ export type Database = {
           created_at?: string
           id?: string
           rrr_number?: string
+          serial_number?: number
           session_id: string
           source?: string
           system_amount?: number
@@ -398,6 +400,7 @@ export type Database = {
           created_at?: string
           id?: string
           rrr_number?: string
+          serial_number?: number
           session_id?: string
           source?: string
           system_amount?: number

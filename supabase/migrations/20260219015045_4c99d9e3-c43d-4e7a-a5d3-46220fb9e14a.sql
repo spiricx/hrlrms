@@ -1,0 +1,1 @@
+ALTER TABLE public.reconciliation_matches ADD COLUMN IF NOT EXISTS serial_number integer NOT NULL DEFAULT 0;

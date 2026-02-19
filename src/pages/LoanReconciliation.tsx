@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +31,7 @@ import {
   TrendingUp,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -78,6 +81,7 @@ interface ReconciliationMatch {
   source: string;
   system_amount: number;
   cbn_amount: number;
+  serial_number: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -144,6 +148,19 @@ export default function LoanReconciliation() {
   const [expandedSession, setExpandedSession] = useState<string | null>(null);
   const [sessionMatches, setSessionMatches] = useState<Record<string, ReconciliationMatch[]>>({});
   const [matchesLoading, setMatchesLoading] = useState<string | null>(null);
+
+  // ── Multi-delete state ──
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set());
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // ── Edit session state ──
+  const [editSession, setEditSession] = useState<ReconciliationSession | null>(null);
+  const [editOrg, setEditOrg] = useState('');
+  const [editMonth, setEditMonth] = useState('');
+  const [editYear, setEditYear] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   // ─── Parse Excel ──────────────────────────────────────────────────────────
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -355,6 +372,7 @@ export default function LoanReconciliation() {
           source: r.source || '',
           system_amount: r.dbAmount ?? 0,
           cbn_amount: r.cbnRow.amount,
+          serial_number: r.cbnRow.rowIndex,
         }));
         await supabase.from('reconciliation_matches').insert(matchInserts);
       }
@@ -446,6 +464,61 @@ export default function LoanReconciliation() {
   }, [filteredHistory]);
 
   const orgNames = useMemo(() => [...new Set(history.map(s => s.organization))].sort(), [history]);
+
+  // ─── Delete Sessions ──────────────────────────────────────────────────────
+  const handleDeleteSelected = async () => {
+    if (selectedSessions.size === 0) return;
+    setDeleting(true);
+    try {
+      const ids = [...selectedSessions];
+      // Delete matches first (child records)
+      await supabase.from('reconciliation_matches').delete().in('session_id', ids);
+      const { error } = await supabase.from('reconciliation_sessions').delete().in('id', ids);
+      if (error) throw error;
+      toast({ title: 'Deleted', description: `${ids.length} session${ids.length > 1 ? 's' : ''} deleted successfully.` });
+      setSelectedSessions(new Set());
+      setDeleteOpen(false);
+      fetchHistory();
+    } catch (err: any) {
+      toast({ title: 'Delete failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // ─── Open Edit Dialog ──────────────────────────────────────────────────────
+  const openEdit = (s: ReconciliationSession) => {
+    setEditSession(s);
+    setEditOrg(s.organization);
+    setEditMonth(String(s.payment_month));
+    setEditYear(String(s.payment_year));
+    setEditNotes(s.notes || '');
+  };
+
+  // ─── Save Edit ─────────────────────────────────────────────────────────────
+  const handleEditSave = async () => {
+    if (!editSession || !editOrg.trim()) return;
+    setEditSaving(true);
+    try {
+      const { error } = await supabase
+        .from('reconciliation_sessions')
+        .update({
+          organization: editOrg.trim(),
+          payment_month: parseInt(editMonth),
+          payment_year: parseInt(editYear),
+          notes: editNotes.trim() || null,
+        })
+        .eq('id', editSession.id);
+      if (error) throw error;
+      toast({ title: 'Updated', description: 'Reconciliation session updated successfully.' });
+      setEditSession(null);
+      fetchHistory();
+    } catch (err: any) {
+      toast({ title: 'Update failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   // ─── Export History ───────────────────────────────────────────────────────
   const exportHistory = () => {
@@ -712,7 +785,7 @@ export default function LoanReconciliation() {
 
         {/* ── History Tab ── */}
         <TabsContent value="history" className="space-y-6">
-          {/* Filters */}
+          {/* Filters + Delete Selected */}
           <Card>
             <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -720,6 +793,11 @@ export default function LoanReconciliation() {
                   <History className="w-4 h-4" /> Reconciliation History
                 </CardTitle>
                 <div className="flex flex-wrap gap-2">
+                  {selectedSessions.size > 0 && (
+                    <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                      <Trash2 className="w-4 h-4 mr-2" /> Delete Selected ({selectedSessions.size})
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" onClick={fetchHistory} disabled={historyLoading}>
                     {historyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
                   </Button>
@@ -736,9 +814,7 @@ export default function LoanReconciliation() {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Filter by Organization</label>
                   <Select value={filterOrg || '__all__'} onValueChange={v => setFilterOrg(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="All Organizations" />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Organizations" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All Organizations</SelectItem>
                       {orgNames.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -748,9 +824,7 @@ export default function LoanReconciliation() {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Filter by Year</label>
                   <Select value={filterYear || '__all__'} onValueChange={v => setFilterYear(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="All Years" />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Years" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All Years</SelectItem>
                       {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
@@ -760,9 +834,7 @@ export default function LoanReconciliation() {
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Filter by Month</label>
                   <Select value={filterMonth || '__all__'} onValueChange={v => setFilterMonth(v === '__all__' ? '' : v)}>
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="All Months" />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="All Months" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__all__">All Months</SelectItem>
                       {MONTHS.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
@@ -791,6 +863,7 @@ export default function LoanReconciliation() {
                 const totalMatched = sessions.reduce((s, r) => s + r.matched_count, 0);
                 const totalRecords = sessions.reduce((s, r) => s + r.total_records, 0);
                 const totalAmount = sessions.reduce((s, r) => s + r.matched_amount, 0);
+                const allOrgSelected = sessions.every(s => selectedSessions.has(s.id));
                 return (
                   <Card key={org}>
                     <CardHeader className="pb-3">
@@ -811,6 +884,18 @@ export default function LoanReconciliation() {
                         <Table>
                           <TableHeader>
                             <TableRow>
+                              <TableHead className="w-10">
+                                <Checkbox
+                                  checked={allOrgSelected}
+                                  onCheckedChange={checked => {
+                                    setSelectedSessions(prev => {
+                                      const next = new Set(prev);
+                                      sessions.forEach(s => checked ? next.add(s.id) : next.delete(s.id));
+                                      return next;
+                                    });
+                                  }}
+                                />
+                              </TableHead>
                               <TableHead className="w-32">Period</TableHead>
                               <TableHead className="text-right">Records</TableHead>
                               <TableHead className="text-right">Matched</TableHead>
@@ -821,7 +906,7 @@ export default function LoanReconciliation() {
                               <TableHead>File</TableHead>
                               <TableHead>Recorded</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead className="w-10"></TableHead>
+                              <TableHead className="w-24 text-center">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -832,9 +917,22 @@ export default function LoanReconciliation() {
                                 const isExpanded = expandedSession === s.id;
                                 const matches = sessionMatches[s.id] || [];
                                 const isLoadingMatches = matchesLoading === s.id;
+                                const isChecked = selectedSessions.has(s.id);
                                 return (
                                   <React.Fragment key={s.id}>
-                                    <TableRow>
+                                    <TableRow className={isChecked ? 'bg-primary/5' : ''}>
+                                      <TableCell>
+                                        <Checkbox
+                                          checked={isChecked}
+                                          onCheckedChange={checked => {
+                                            setSelectedSessions(prev => {
+                                              const next = new Set(prev);
+                                              checked ? next.add(s.id) : next.delete(s.id);
+                                              return next;
+                                            });
+                                          }}
+                                        />
+                                      </TableCell>
                                       <TableCell className="font-medium">
                                         <span className="flex items-center gap-1.5">
                                           <CalendarDays className="w-3.5 h-3.5 text-muted-foreground" />
@@ -847,7 +945,7 @@ export default function LoanReconciliation() {
                                       <TableCell className="text-right text-destructive">{s.unmatched_count}</TableCell>
                                       <TableCell className="text-right font-mono text-sm">{fmt(s.matched_amount)}</TableCell>
                                       <TableCell className="text-right font-mono text-sm text-muted-foreground">{fmt(s.total_cbn_amount)}</TableCell>
-                                      <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate" title={s.file_name}>{s.file_name || '-'}</TableCell>
+                                      <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={s.file_name}>{s.file_name || '-'}</TableCell>
                                       <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
                                       <TableCell>
                                         {isFullMatch
@@ -856,14 +954,19 @@ export default function LoanReconciliation() {
                                         }
                                       </TableCell>
                                       <TableCell>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => fetchSessionMatches(s.id)} disabled={isLoadingMatches}>
-                                          {isLoadingMatches ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                        </Button>
+                                        <div className="flex items-center justify-center gap-1">
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit session" onClick={() => openEdit(s)}>
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7" title={isExpanded ? 'Collapse' : 'View matched records'} onClick={() => fetchSessionMatches(s.id)} disabled={isLoadingMatches}>
+                                            {isLoadingMatches ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                          </Button>
+                                        </div>
                                       </TableCell>
                                     </TableRow>
                                     {isExpanded && (
                                       <TableRow key={`${s.id}-detail`}>
-                                        <TableCell colSpan={11} className="p-0 bg-muted/20 border-t-0">
+                                        <TableCell colSpan={12} className="p-0 bg-muted/20 border-t-0">
                                           <div className="px-4 py-3">
                                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
                                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
@@ -874,13 +977,13 @@ export default function LoanReconciliation() {
                                                 <Loader2 className="w-4 h-4 animate-spin" /> Loading matched records...
                                               </div>
                                             ) : matches.length === 0 ? (
-                                              <p className="text-xs text-muted-foreground italic py-2">No matched record details stored for this session. Only sessions saved after the latest update will have row-level details.</p>
+                                              <p className="text-xs text-muted-foreground italic py-2">No matched record details stored for this session.</p>
                                             ) : (
                                               <div className="overflow-x-auto rounded border border-border">
                                                 <Table>
-                                                   <TableHeader>
+                                                  <TableHeader>
                                                     <TableRow className="bg-muted/40">
-                                                      <TableHead className="text-xs h-8 py-1 w-10">#</TableHead>
+                                                      <TableHead className="text-xs h-8 py-1 w-12">Serial #</TableHead>
                                                       <TableHead className="text-xs h-8 py-1">RRR Number</TableHead>
                                                       <TableHead className="text-xs h-8 py-1">Beneficiary / Batch</TableHead>
                                                       <TableHead className="text-xs h-8 py-1">Source</TableHead>
@@ -891,30 +994,35 @@ export default function LoanReconciliation() {
                                                     </TableRow>
                                                   </TableHeader>
                                                   <TableBody>
-                                                    {matches.map((m, idx) => {
-                                                      const variance = m.cbn_amount - m.system_amount;
-                                                      return (
-                                                      <TableRow key={m.id} className="hover:bg-emerald-500/5">
-                                                        <TableCell className="text-xs py-2 text-muted-foreground">{idx + 1}</TableCell>
-                                                        <TableCell className="font-mono text-xs py-2">{m.rrr_number || '-'}</TableCell>
-                                                        <TableCell className="text-xs py-2 font-medium">{m.beneficiary_name || m.batch_name || '-'}</TableCell>
-                                                        <TableCell className="text-xs py-2">
-                                                          {m.source === 'individual' ? <Badge variant="outline" className="text-xs">Loan Repayment</Badge>
-                                                          : m.source === 'batch' ? <Badge variant="secondary" className="text-xs">Batch</Badge>
-                                                          : <span className="text-muted-foreground">-</span>}
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-mono text-xs py-2">{fmt(m.system_amount)}</TableCell>
-                                                        <TableCell className="text-right font-mono text-xs py-2">{fmt(m.cbn_amount)}</TableCell>
-                                                        <TableCell className={`text-right font-mono text-xs py-2 ${variance === 0 ? 'text-emerald-600' : variance > 0 ? 'text-amber-600' : 'text-destructive'}`}>
-                                                          {variance === 0 ? '—' : (variance > 0 ? '+' : '') + fmt(variance)}
-                                                        </TableCell>
-                                                        <TableCell className="text-center py-2">
-                                                          <Badge className="bg-emerald-600 text-white gap-1 text-xs">
-                                                            <CheckCircle2 className="w-3 h-3" /> Matched
-                                                          </Badge>
-                                                        </TableCell>
-                                                      </TableRow>
-                                                      );
+                                                    {matches
+                                                      .slice()
+                                                      .sort((a, b) => a.serial_number - b.serial_number)
+                                                      .map(m => {
+                                                        const variance = m.cbn_amount - m.system_amount;
+                                                        return (
+                                                          <TableRow key={m.id} className="hover:bg-emerald-500/5">
+                                                            <TableCell className="text-xs py-2 font-mono font-semibold text-muted-foreground">
+                                                              {m.serial_number > 0 ? m.serial_number : '—'}
+                                                            </TableCell>
+                                                            <TableCell className="font-mono text-xs py-2">{m.rrr_number || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-2 font-medium">{m.beneficiary_name || m.batch_name || '-'}</TableCell>
+                                                            <TableCell className="text-xs py-2">
+                                                              {m.source === 'individual' ? <Badge variant="outline" className="text-xs">Loan Repayment</Badge>
+                                                              : m.source === 'batch' ? <Badge variant="secondary" className="text-xs">Batch</Badge>
+                                                              : <span className="text-muted-foreground">-</span>}
+                                                            </TableCell>
+                                                            <TableCell className="text-right font-mono text-xs py-2">{fmt(m.system_amount)}</TableCell>
+                                                            <TableCell className="text-right font-mono text-xs py-2">{fmt(m.cbn_amount)}</TableCell>
+                                                            <TableCell className={`text-right font-mono text-xs py-2 ${variance === 0 ? 'text-emerald-600' : variance > 0 ? 'text-amber-600' : 'text-destructive'}`}>
+                                                              {variance === 0 ? '—' : (variance > 0 ? '+' : '') + fmt(variance)}
+                                                            </TableCell>
+                                                            <TableCell className="text-center py-2">
+                                                              <Badge className="bg-emerald-600 text-white gap-1 text-xs">
+                                                                <CheckCircle2 className="w-3 h-3" /> Matched
+                                                              </Badge>
+                                                            </TableCell>
+                                                          </TableRow>
+                                                        );
                                                     })}
                                                   </TableBody>
                                                 </Table>
@@ -961,9 +1069,7 @@ export default function LoanReconciliation() {
               <div className="space-y-1">
                 <Label>Payment Month *</Label>
                 <Select value={saveMonth} onValueChange={setSaveMonth}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {MONTHS.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
                   </SelectContent>
@@ -972,9 +1078,7 @@ export default function LoanReconciliation() {
               <div className="space-y-1">
                 <Label>Payment Year *</Label>
                 <Select value={saveYear} onValueChange={setSaveYear}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
                   </SelectContent>
@@ -995,6 +1099,77 @@ export default function LoanReconciliation() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── Edit Session Dialog ── */}
+      <Dialog open={!!editSession} onOpenChange={open => { if (!open) setEditSession(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" /> Edit Reconciliation Session
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1">
+              <Label>Organization / Batch Name *</Label>
+              <Input placeholder="e.g. FMBN Lagos Batch 3" value={editOrg} onChange={e => setEditOrg(e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>Payment Month *</Label>
+                <Select value={editMonth} onValueChange={setEditMonth}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m, i) => <SelectItem key={i + 1} value={String(i + 1)}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Payment Year *</Label>
+                <Select value={editYear} onValueChange={setEditYear}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Notes (optional)</Label>
+              <Textarea placeholder="Any remarks..." value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={3} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditSession(null)}>Cancel</Button>
+            <Button onClick={handleEditSave} disabled={editSaving || !editOrg.trim()}>
+              {editSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {editSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedSessions.size} Session{selectedSessions.size > 1 ? 's' : ''}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the selected reconciliation session{selectedSessions.size > 1 ? 's' : ''} and all their matched records. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteSelected}
+              disabled={deleting}
+            >
+              {deleting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
