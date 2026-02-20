@@ -10,7 +10,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime, getOverdueAndArrears } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, calculateLoan, formatTenor, stripTime } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -85,6 +86,7 @@ export default function BatchRepayment() {
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
+  const { map: arrearsMap, refresh: refreshArrears } = useArrearsLookup();
 
   const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,13 +234,10 @@ export default function BatchRepayment() {
           s.outstanding += Number(b.outstanding_balance);
           // Use max tenor for display
           if (b.tenor_months > s.tenorMonths) s.tenorMonths = b.tenor_months;
-          // Aggregate arrears
-          const arrears = getOverdueAndArrears(
-            b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-            Number(b.total_paid), Number(b.outstanding_balance), b.status
-          );
+          // Aggregate arrears from DB view (Golden Record)
+          const arrears = getArrearsFromMap(arrearsMap, b.batch_id ? b.id : '');
           s.arrearsAmount += arrears.arrearsAmount;
-          if (arrears.monthsInArrears > s.monthsInArrears) s.monthsInArrears = arrears.monthsInArrears;
+          if (arrears.arrearsMonths > s.monthsInArrears) s.monthsInArrears = arrears.arrearsMonths;
         });
         // Attach last payment info
         Object.keys(stats).forEach(batchId => {
@@ -252,7 +251,7 @@ export default function BatchRepayment() {
       }
     };
     fetchStats();
-  }, [batches]);
+  }, [batches, arrearsMap]);
 
   const filtered = useMemo(() => batches.filter(b => {
     const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -981,17 +980,11 @@ export default function BatchRepayment() {
   const batchActiveCount = detailMembers.filter(m => m.status === 'active').length;
   const batchCompletedCount = detailMembers.filter(m => m.status === 'completed').length;
 
-  // Count members in arrears
-  const today = stripTime(new Date());
+  // Count members in arrears using DB view (Golden Record)
   const membersInArrears = detailMembers.filter(m => {
     if (m.status === 'completed') return false;
-    const txs = detailTransactions[m.id] || [];
-    const paidMonths = new Set(txs.map((t: any) => t.month_for));
-    const loan = calculateLoan({ principal: Number(m.loan_amount), annualRate: Number(m.interest_rate), tenorMonths: m.tenor_months, moratoriumMonths: m.moratorium_months, disbursementDate: new Date(m.disbursement_date) });
-    return loan.schedule.some(entry => {
-      const dueDay = stripTime(entry.dueDate);
-      return dueDay < today && !paidMonths.has(entry.month);
-    });
+    const a = getArrearsFromMap(arrearsMap, m.id);
+    return a.arrearsMonths > 0;
   }).length;
 
   // Detail view
@@ -1098,7 +1091,7 @@ export default function BatchRepayment() {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {detailMembers.map(m => {
-                          const mArrears = getOverdueAndArrears(m.commencement_date, m.tenor_months, Number(m.monthly_emi), Number(m.total_paid), Number(m.outstanding_balance), m.status);
+                          const mArrears = getArrearsFromMap(arrearsMap, m.id);
                           const mTxs = (detailTransactions[m.id] || []).sort((a: any, b: any) => new Date(b.date_paid).getTime() - new Date(a.date_paid).getTime());
                           const mLastTx = mTxs[0] || null;
                           return (
@@ -1112,7 +1105,7 @@ export default function BatchRepayment() {
                             <td className="px-4 py-3 text-right">{formatCurrency(Number(m.total_paid))}</td>
                             <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(m.outstanding_balance))}</td>
                             <td className={`px-4 py-3 text-right font-medium ${mArrears.arrearsAmount > 0 ? 'text-destructive' : ''}`}>{mArrears.arrearsAmount > 0 ? formatCurrency(mArrears.arrearsAmount) : '—'}</td>
-                            <td className={`px-4 py-3 text-right font-medium ${mArrears.monthsInArrears > 0 ? 'text-destructive' : ''}`}>{mArrears.monthsInArrears > 0 ? mArrears.monthsInArrears : '—'}</td>
+                            <td className={`px-4 py-3 text-right font-medium ${mArrears.arrearsMonths > 0 ? 'text-destructive' : ''}`}>{mArrears.arrearsMonths > 0 ? mArrears.arrearsMonths : '—'}</td>
                             <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{mLastTx ? formatDate(new Date(mLastTx.date_paid)) : '—'}</td>
                             <td className="px-4 py-3 text-right">{mLastTx ? formatCurrency(Number(mLastTx.amount)) : '—'}</td>
                             <td className="px-4 py-3"><StatusBadge status={m.status} /></td>

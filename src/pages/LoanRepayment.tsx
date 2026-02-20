@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Search, ExternalLink, Banknote, Pencil, Trash2, MessageSquare, CalendarIcon } from 'lucide-react';
-import { formatCurrency, formatDate, formatTenor, getOverdueAndArrears } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ export default function LoanRepayment() {
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
+  const { map: arrearsMap } = useArrearsLookup();
 
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithTxnInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -406,17 +408,14 @@ export default function LoanRepayment() {
     openHistory(historyBen);
   };
 
-  // Compute arrears info
+  // Compute arrears info from DB view (Golden Record)
   const getArrearsInfo = (b: Beneficiary) => {
-    const oa = getOverdueAndArrears(
-      b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-      Number(b.total_paid), Number(b.outstanding_balance), b.status
-    );
+    const a = getArrearsFromMap(arrearsMap, b.id);
     return {
-      overdueAmount: oa.overdueAmount,
-      overdueMonths: oa.overdueMonths,
-      arrearsAmount: oa.arrearsAmount,
-      monthsInArrears: oa.monthsInArrears,
+      overdueAmount: a.overdueAmount,
+      overdueMonths: a.overdueMonths,
+      arrearsAmount: a.arrearsAmount,
+      monthsInArrears: a.arrearsMonths,
     };
   };
 

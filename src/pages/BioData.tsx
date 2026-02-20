@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Download, FileText, Printer, Eye, Pencil } from 'lucide-react';
 import { formatCurrency, formatTenor, getOverdueAndArrears } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';

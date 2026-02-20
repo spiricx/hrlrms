@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue, stripTime } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 import { Input } from '@/components/ui/input';

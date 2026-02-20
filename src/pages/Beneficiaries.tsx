@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle } from 'lucide-react';
-import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue, stripTime } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor, getMonthsDue, stripTime } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -31,35 +32,23 @@ function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
   return Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
 }
 
-function getStatusInfo(b: Beneficiary): StatusInfo {
-  const oa = getOverdueAndArrears(
-    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-    Number(b.total_paid), Number(b.outstanding_balance), b.status
-  );
-
-  if (Number(b.outstanding_balance) <= 0 || b.status === 'completed') {
+function getStatusInfoFromArrears(a: ReturnType<typeof getArrearsFromMap>): StatusInfo {
+  if (a.loanHealth === 'completed') {
     return { label: 'Fully Repaid', className: 'bg-primary/10 text-primary border-primary/20' };
   }
-
-  const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
-  if (monthsDue === 0) {
+  if (a.monthsDue === 0) {
     return { label: 'Active', className: 'bg-muted text-muted-foreground border-border' };
   }
-
-  if (oa.overdueMonths === 0) {
+  if (a.overdueMonths === 0) {
     return { label: 'Current', className: 'bg-success/10 text-success border-success/20' };
   }
-
-  if (oa.monthsInArrears === 0 && oa.overdueMonths > 0) {
+  if (a.arrearsMonths === 0 && a.overdueMonths > 0) {
     return { label: 'Overdue', className: 'bg-warning/10 text-warning border-warning/20' };
   }
-
-  // Use actual DPD (days since first unpaid instalment's due date)
-  const dpd = computeActualDpd(b, oa.overdueMonths);
-  if (dpd >= 90) {
-    return { label: `NPL / ${dpd} DPD`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
+  if (a.daysOverdue >= 90) {
+    return { label: `NPL / ${a.daysOverdue} DPD`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
   }
-  return { label: `${dpd} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
+  return { label: `${a.daysOverdue} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
 }
 
 function formatPaymentDate(date: string): string {
@@ -77,6 +66,7 @@ export default function Beneficiaries() {
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const isAdmin = hasRole('admin');
+  const { map: arrearsMap } = useArrearsLookup();
 
   const fetchData = useCallback(async () => {
     const { data: bens, error } = await supabase.
@@ -189,11 +179,8 @@ export default function Beneficiaries() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((b, idx) => {
-                const statusInfo = getStatusInfo(b);
-                const oa = getOverdueAndArrears(
-                  b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-                  Number(b.total_paid), Number(b.outstanding_balance), b.status
-                );
+                const statusInfo = getStatusInfoFromArrears(getArrearsFromMap(arrearsMap, b.id));
+                const a = getArrearsFromMap(arrearsMap, b.id);
                 const lastPayment = b.lastTransaction ?
                 formatPaymentDate(b.lastTransaction.date_paid) :
                 'No payment recorded';
