@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Clock, TrendingDown, TrendingUp, CheckCircle2, AlertTriangle, Filter } from 'lucide-react';
-import { formatCurrency, formatDate, getOverdueAndArrears, stripTime, getMonthsDue } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, stripTime, getMonthsDue } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import StatusBadge from '@/components/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -28,6 +29,7 @@ export default function LoanHistory() {
   const navigate = useNavigate();
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const { map: arrearsMap } = useArrearsLookup();
 
   const [beneficiaries, setBeneficiaries] = useState<EnrichedBeneficiary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,8 +87,8 @@ export default function LoanHistory() {
   // Health classification
   const classifyHealth = (b: Beneficiary): 'current' | 'arrears' | 'liquidated' => {
     if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return 'liquidated';
-    const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status);
-    if (oa.monthsInArrears > 0) return 'arrears';
+    const a = getArrearsFromMap(arrearsMap, b.id);
+    if (a.arrearsMonths > 0) return 'arrears';
     return 'current';
   };
 
@@ -312,29 +314,11 @@ export default function LoanHistory() {
               )}
               {filtered.map((b, idx) => {
                 const health = classifyHealth(b);
-                const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status);
+                const a = getArrearsFromMap(arrearsMap, b.id);
                 const createdDate = new Date(b.created_at);
 
-                // Calculate days overdue from actual due date
-                let daysOverdue = 0;
-                if (health !== 'liquidated' && b.status !== 'completed') {
-                  const today = stripTime(new Date());
-                  const comm = stripTime(new Date(b.commencement_date));
-                  // Find the earliest unpaid month's due date
-                  const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
-                  const monthsPaid = Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi));
-                  if (monthsDue > monthsPaid && Number(b.monthly_emi) > 0) {
-                    // The earliest unpaid month's due date
-                    const unpaidMonthIndex = monthsPaid; // 0-based: month (monthsPaid+1) due date
-                    const dueDate = new Date(comm);
-                    dueDate.setMonth(dueDate.getMonth() + unpaidMonthIndex);
-                    const dueDateStripped = stripTime(dueDate);
-                    if (today >= dueDateStripped) {
-                      // Inclusive: on the due date = 1 day overdue
-                      daysOverdue = Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-                    }
-                  }
-                }
+                // Use authoritative DPD from DB view
+                const daysOverdue = a.daysOverdue;
 
                 return (
                   <tr
