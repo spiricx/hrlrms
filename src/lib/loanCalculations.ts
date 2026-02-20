@@ -6,6 +6,8 @@ export interface LoanParams {
   disbursementDate: Date;
 }
 
+export type TransactionType = 'Disbursement' | 'Interest Capitalization' | 'Repayment';
+
 export interface ScheduleEntry {
   month: number;
   dueDate: Date;
@@ -14,6 +16,12 @@ export interface ScheduleEntry {
   interest: number;
   emi: number;
   closingBalance: number;
+  /** Actual/365 fields */
+  transactionType: TransactionType;
+  daysInPeriod: number;
+  beginningBalance: number;
+  totalPayment: number;
+  endingBalance: number;
 }
 
 export interface LoanSummary {
@@ -22,67 +30,145 @@ export interface LoanSummary {
   totalPayment: number;
   terminationDate: Date;
   commencementDate: Date;
+  /** Repayment entries only (month 1..N) — backward compatible */
   schedule: ScheduleEntry[];
+  /** All entries: Disbursement + Capitalization + Repayments */
+  fullSchedule: ScheduleEntry[];
+  /** Balance after moratorium interest capitalization */
+  capitalizedBalance: number;
 }
 
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function daysBetween(from: Date, to: Date): number {
+  const msPerDay = 24 * 60 * 60 * 1000;
+  return Math.round((to.getTime() - from.getTime()) / msPerDay);
+}
+
+function getLastDayOfMonth(year: number, month: number): Date {
+  return new Date(year, month + 1, 0);
+}
+
+/**
+ * Calculate loan schedule using Actual/365 interest with moratorium capitalization.
+ *
+ * Method: Level-principal amortization after moratorium.
+ * - During moratorium: interest accrues daily (Actual/365) and is capitalized.
+ * - After moratorium: fixed principal portion = capitalizedBalance / tenorMonths,
+ *   with interest varying each period based on actual days.
+ */
 export function calculateLoan(params: LoanParams): LoanSummary {
   const { principal, annualRate, tenorMonths, moratoriumMonths, disbursementDate } = params;
-  const monthlyRate = annualRate / 100 / 12;
+  const rate = annualRate / 100;
 
-  // EMI formula: P * r * (1+r)^n / ((1+r)^n - 1)
-  const n = tenorMonths;
-  const rawEmi =
-    monthlyRate === 0
-      ? principal / n
-      : (principal * monthlyRate * Math.pow(1 + monthlyRate, n)) /
-        (Math.pow(1 + monthlyRate, n) - 1);
+  const fullSchedule: ScheduleEntry[] = [];
 
-  // Round EMI to 2 decimal places FIRST, then use everywhere for consistency
-  const emi = Math.round(rawEmi * 100) / 100;
+  // === ROW 0: DISBURSEMENT ===
+  fullSchedule.push({
+    month: 0,
+    dueDate: new Date(disbursementDate),
+    openingBalance: 0,
+    principal: principal,
+    interest: 0,
+    emi: 0,
+    closingBalance: principal,
+    transactionType: 'Disbursement',
+    daysInPeriod: 0,
+    beginningBalance: 0,
+    totalPayment: 0,
+    endingBalance: principal,
+  });
 
-  const commencementDate = new Date(disbursementDate);
-  commencementDate.setMonth(commencementDate.getMonth() + moratoriumMonths);
-
-  const schedule: ScheduleEntry[] = [];
+  // === MORATORIUM: INTEREST ACCRUAL & CAPITALIZATION ===
   let balance = principal;
+  let periodStart = new Date(disbursementDate);
 
-  for (let i = 1; i <= n; i++) {
-    const dueDate = new Date(commencementDate);
-    dueDate.setMonth(dueDate.getMonth() + (i - 1));
+  for (let m = 0; m < moratoriumMonths; m++) {
+    const monthEnd = getLastDayOfMonth(periodStart.getFullYear(), periodStart.getMonth());
+    const days = daysBetween(periodStart, monthEnd);
+    const interest = round2(balance * rate * (days / 365));
+    const capDate = new Date(periodStart.getFullYear(), periodStart.getMonth() + 1, 1);
+    const newBalance = round2(balance + interest);
 
-    const interest = Math.round(balance * monthlyRate * 100) / 100;
-
-    // For the last month, absorb any rounding remainder so closing balance is exactly 0
-    const isLastMonth = i === n;
-    const principalPart = isLastMonth
-      ? Math.round(balance * 100) / 100
-      : Math.round((emi - interest) * 100) / 100;
-    const lastEmi = isLastMonth ? Math.round((principalPart + interest) * 100) / 100 : emi;
-    const closingBalance = isLastMonth ? 0 : Math.round((balance - principalPart) * 100) / 100;
-
-    schedule.push({
-      month: i,
-      dueDate,
-      openingBalance: Math.round(balance * 100) / 100,
-      principal: principalPart,
-      interest,
-      emi: lastEmi,
-      closingBalance,
+    fullSchedule.push({
+      month: 0,
+      dueDate: capDate,
+      openingBalance: balance,
+      principal: interest,
+      interest: interest,
+      emi: 0,
+      closingBalance: newBalance,
+      transactionType: 'Interest Capitalization',
+      daysInPeriod: days,
+      beginningBalance: balance,
+      totalPayment: 0,
+      endingBalance: newBalance,
     });
 
-    balance = closingBalance;
+    balance = newBalance;
+    periodStart = capDate;
   }
 
-  const terminationDate = schedule[schedule.length - 1]?.dueDate ?? commencementDate;
-  const totalPayment = Math.round(emi * n * 100) / 100;
+  const capitalizedBalance = balance;
+  const commencementDate = new Date(periodStart);
+
+  // === REPAYMENT SCHEDULE (Level Principal + Actual/365 Interest) ===
+  const levelPrincipal = round2(capitalizedBalance / tenorMonths);
+  const repaymentSchedule: ScheduleEntry[] = [];
+  let prevDate = new Date(commencementDate);
+
+  for (let i = 1; i <= tenorMonths; i++) {
+    // Payment date = last day of the month offset from commencement
+    const refDate = new Date(commencementDate);
+    refDate.setMonth(refDate.getMonth() + (i - 1));
+    const payDate = getLastDayOfMonth(refDate.getFullYear(), refDate.getMonth());
+
+    const days = daysBetween(prevDate, payDate);
+    const interest = round2(balance * rate * (days / 365));
+
+    const isLast = i === tenorMonths;
+    const principalPortion = isLast ? round2(balance) : levelPrincipal;
+    const payment = round2(principalPortion + interest);
+    const newBalance = isLast ? 0 : round2(balance - principalPortion);
+
+    const entry: ScheduleEntry = {
+      month: i,
+      dueDate: payDate,
+      openingBalance: round2(balance),
+      principal: principalPortion,
+      interest,
+      emi: payment,
+      closingBalance: newBalance,
+      transactionType: 'Repayment',
+      daysInPeriod: days,
+      beginningBalance: round2(balance),
+      totalPayment: payment,
+      endingBalance: newBalance,
+    };
+
+    repaymentSchedule.push(entry);
+    fullSchedule.push(entry);
+
+    balance = newBalance;
+    prevDate = payDate;
+  }
+
+  const terminationDate = repaymentSchedule[repaymentSchedule.length - 1]?.dueDate ?? commencementDate;
+  const totalRepayment = round2(repaymentSchedule.reduce((sum, e) => sum + e.totalPayment, 0));
+  const totalInterest = round2(totalRepayment - principal);
+  const referenceEMI = round2(totalRepayment / tenorMonths);
 
   return {
-    monthlyEMI: emi,
-    totalInterest: Math.round((totalPayment - principal) * 100) / 100,
-    totalPayment,
+    monthlyEMI: referenceEMI,
+    totalInterest,
+    totalPayment: totalRepayment,
     terminationDate,
     commencementDate,
-    schedule,
+    schedule: repaymentSchedule,
+    fullSchedule,
+    capitalizedBalance,
   };
 }
 

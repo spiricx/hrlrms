@@ -20,6 +20,7 @@ interface CreatorProfile {
 interface LoanStatementExportProps {
   beneficiary: Beneficiary;
   schedule: ScheduleEntry[];
+  fullSchedule: ScheduleEntry[];
   transactions: Transaction[];
   totalExpected: number;
   monthlyEMI: number;
@@ -27,6 +28,7 @@ interface LoanStatementExportProps {
   commencementDate: Date;
   terminationDate: Date;
   creatorProfile?: CreatorProfile | null;
+  capitalizedBalance: number;
 }
 
 function formatDateTime(d: Date): string {
@@ -35,7 +37,7 @@ function formatDateTime(d: Date): string {
 
 function buildStatementData(
   beneficiary: Beneficiary,
-  schedule: ScheduleEntry[],
+  fullSchedule: ScheduleEntry[],
   transactions: Transaction[]
 ) {
   const txnsByMonth = new Map<number, Transaction[]>();
@@ -45,23 +47,31 @@ function buildStatementData(
     txnsByMonth.set(t.month_for, arr);
   });
 
-  return schedule.map((entry) => {
-    const monthTxns = txnsByMonth.get(entry.month) || [];
+  return fullSchedule.map((entry) => {
+    const isRepayment = entry.transactionType === 'Repayment';
+    const monthTxns = isRepayment ? (txnsByMonth.get(entry.month) || []) : [];
     const paidAmount = monthTxns.reduce((sum, t) => sum + Number(t.amount), 0);
     const latestTxn = monthTxns.length > 0 ? monthTxns[monthTxns.length - 1] : null;
 
     return {
-      month: entry.month,
+      month: entry.transactionType === 'Repayment' ? entry.month : 0,
+      transactionType: entry.transactionType,
+      daysInPeriod: entry.daysInPeriod,
       dueDate: formatDate(entry.dueDate),
-      openingBalance: entry.openingBalance,
-      expectedEMI: entry.emi,
+      beginningBalance: entry.beginningBalance,
       principal: entry.principal,
       interest: entry.interest,
-      amountPaid: paidAmount,
+      totalPayment: entry.totalPayment,
+      endingBalance: entry.endingBalance,
+      // Legacy compat
+      openingBalance: entry.openingBalance,
+      expectedEMI: entry.emi,
       closingBalance: entry.closingBalance,
+      amountPaid: paidAmount,
       paymentDate: latestTxn ? formatDate(new Date(latestTxn.date_paid)) : '—',
       rrr: latestTxn?.rrr_number || '—',
-      status: paidAmount >= entry.emi ? 'Paid' : paidAmount > 0 ? 'Partial' : entry.dueDate < new Date() ? 'Overdue' : 'Upcoming',
+      status: !isRepayment ? entry.transactionType :
+        paidAmount >= entry.emi ? 'Paid' : paidAmount > 0 ? 'Partial' : entry.dueDate < new Date() ? 'Overdue' : 'Upcoming',
     };
   });
 }
@@ -87,12 +97,12 @@ async function getLogoBase64(): Promise<string> {
 
 export function exportToExcel(
   beneficiary: Beneficiary,
-  schedule: ScheduleEntry[],
+  fullSchedule: ScheduleEntry[],
   transactions: Transaction[],
-  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile'>
+  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile' | 'capitalizedBalance'>
 ) {
   const wb = XLSX.utils.book_new();
-  const data = buildStatementData(beneficiary, schedule, transactions);
+  const data = buildStatementData(beneficiary, fullSchedule, transactions);
   const now = new Date();
 
   const summaryData = [
@@ -107,9 +117,10 @@ export function exportToExcel(
     ['Branch', beneficiary.bank_branch || '—'],
     [],
     ['Loan Amount', Number(beneficiary.loan_amount)],
-    ['Interest Rate', `${beneficiary.interest_rate}% Annuity`],
+    ['Interest Rate', `${beneficiary.interest_rate}% Actual/365`],
+    ['Capitalized Balance', props.capitalizedBalance],
     ['Tenor', formatTenor(beneficiary.tenor_months)],
-    ['Monthly Repayment', props.monthlyEMI],
+    ['Avg. Monthly Repayment', props.monthlyEMI],
     ['Total Interest', props.totalInterest],
     ['Total Expected Payment', props.totalExpected],
     ['Total Paid', Number(beneficiary.total_paid)],
@@ -129,9 +140,11 @@ export function exportToExcel(
   summaryWs['!cols'] = [{ wch: 25 }, { wch: 40 }];
   XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
 
-  const scheduleHeader = ['Month', 'Due Date', 'Opening Bal.', 'Principal', 'Interest', 'EMI', 'Amount Paid', 'Closing Bal.', 'Payment Date', 'RRR', 'Status'];
+  const scheduleHeader = ['#', 'Date', 'Transaction', 'Days', 'Beginning Bal.', 'Principal', 'Interest', 'Total Payment', 'Ending Bal.', 'Amount Paid', 'Pay Date', 'RRR', 'Status'];
   const scheduleRows = data.map((r) => [
-    r.month, r.dueDate, r.openingBalance, r.principal, r.interest, r.expectedEMI, r.amountPaid, r.closingBalance, r.paymentDate, r.rrr, r.status,
+    r.month || '—', r.dueDate, r.transactionType, r.daysInPeriod || '—',
+    r.beginningBalance, r.principal, r.interest, r.totalPayment,
+    r.endingBalance, r.amountPaid || '', r.paymentDate, r.rrr, r.status,
   ]);
   const scheduleWs = XLSX.utils.aoa_to_sheet([scheduleHeader, ...scheduleRows]);
   scheduleWs['!cols'] = scheduleHeader.map(() => ({ wch: 16 }));
@@ -145,26 +158,24 @@ export function exportToExcel(
 
 export async function exportToPDF(
   beneficiary: Beneficiary,
-  schedule: ScheduleEntry[],
+  fullSchedule: ScheduleEntry[],
   transactions: Transaction[],
-  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile'>
+  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile' | 'capitalizedBalance'>
 ) {
   const { default: jsPDF } = await import('jspdf');
   const autoTable = (await import('jspdf-autotable')).default;
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-  const data = buildStatementData(beneficiary, schedule, transactions);
+  const data = buildStatementData(beneficiary, fullSchedule, transactions);
   const now = new Date();
   const pageWidth = doc.internal.pageSize.getWidth();
   const centerX = pageWidth / 2;
 
-  // Logo centered at top
   const logoBase64 = await getLogoBase64();
   if (logoBase64) {
     doc.addImage(logoBase64, 'PNG', centerX - 8, 4, 16, 16);
   }
 
-  // Bold Title
   const titleY = logoBase64 ? 24 : 14;
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
@@ -173,7 +184,6 @@ export async function exportToPDF(
   doc.setFont('helvetica', 'bold');
   doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, titleY + 7, { align: 'center' });
 
-  // Left column info
   const infoY = titleY + 15;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
@@ -182,14 +192,12 @@ export async function exportToPDF(
   doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 10);
   doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
 
-  // Right column info
   doc.setFont('helvetica', 'normal');
   doc.text(`Organization: ${beneficiary.department}`, 150, infoY);
   doc.text(`Loan Amount: ${formatCurrency(Number(beneficiary.loan_amount))}`, 150, infoY + 5);
-  doc.text(`Monthly Repayment: ${formatCurrency(props.monthlyEMI)}`, 150, infoY + 10);
+  doc.text(`Capitalized Balance: ${formatCurrency(props.capitalizedBalance)}`, 150, infoY + 10);
   doc.text(`Outstanding: ${formatCurrency(Number(beneficiary.outstanding_balance))}`, 150, infoY + 15);
 
-  // Creator / Origin info line
   const originY = infoY + 22;
   doc.setFont('helvetica', 'bold');
   doc.text(`Loan Created By: ${getCreatorLine(props.creatorProfile)}`, 14, originY);
@@ -198,21 +206,20 @@ export async function exportToPDF(
   doc.text(`Originating State & Branch: ${props.creatorProfile?.state || beneficiary.state || '—'}, ${props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—'}`, 150, originY);
   doc.text(`Date & Time Printed: ${formatDateTime(now)}`, 150, originY + 5);
 
-  // Table
   autoTable(doc, {
     startY: originY + 10,
-    head: [['#', 'Due Date', 'Opening', 'Principal', 'Interest', 'EMI', 'Paid', 'Closing', 'Pay Date', 'RRR', 'Status']],
+    head: [['#', 'Date', 'Transaction', 'Days', 'Begin Bal.', 'Principal', 'Interest', 'Payment', 'End Bal.', 'Paid', 'Status']],
     body: data.map((r) => [
-      r.month,
+      r.month || '—',
       r.dueDate,
-      formatCurrency(r.openingBalance),
+      r.transactionType,
+      r.daysInPeriod || '—',
+      formatCurrency(r.beginningBalance),
       formatCurrency(r.principal),
       formatCurrency(r.interest),
-      formatCurrency(r.expectedEMI),
+      r.totalPayment > 0 ? formatCurrency(r.totalPayment) : '—',
+      formatCurrency(r.endingBalance),
       r.amountPaid > 0 ? formatCurrency(r.amountPaid) : '—',
-      formatCurrency(r.closingBalance),
-      r.paymentDate,
-      r.rrr,
       r.status,
     ]),
     styles: { fontSize: 7, cellPadding: 1.5 },
@@ -221,7 +228,6 @@ export async function exportToPDF(
     margin: { left: 10, right: 10 },
   });
 
-  // Footer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -236,18 +242,16 @@ export async function exportToPDF(
 
 export function printStatement(
   beneficiary: Beneficiary,
-  schedule: ScheduleEntry[],
+  fullSchedule: ScheduleEntry[],
   transactions: Transaction[],
-  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile'>
+  props: Pick<LoanStatementExportProps, 'totalExpected' | 'monthlyEMI' | 'totalInterest' | 'commencementDate' | 'terminationDate' | 'creatorProfile' | 'capitalizedBalance'>
 ) {
-  const data = buildStatementData(beneficiary, schedule, transactions);
+  const data = buildStatementData(beneficiary, fullSchedule, transactions);
   const creatorLine = getCreatorLine(props.creatorProfile);
   const originState = props.creatorProfile?.state || beneficiary.state || '—';
   const originBranch = props.creatorProfile?.bank_branch || beneficiary.bank_branch || '—';
   const now = new Date();
   const dateTimePrinted = formatDateTime(now);
-
-  // Resolve logo URL for print
   const logoUrl = new URL(fmbnLogo, window.location.origin).href;
 
   const html = `
@@ -266,12 +270,14 @@ export function printStatement(
         .label { font-weight: bold; }
         .origin-section { border-top: 1px solid #ccc; padding-top: 8px; margin: 12px 0; display: flex; justify-content: space-between; }
         table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-        th { background: #006040; color: white; padding: 6px 4px; text-align: left; font-size: 10px; }
-        td { padding: 4px; border-bottom: 1px solid #ddd; font-size: 10px; }
+        th { background: #006040; color: white; padding: 6px 4px; text-align: left; font-size: 9px; }
+        td { padding: 4px; border-bottom: 1px solid #ddd; font-size: 9px; }
         tr:nth-child(even) { background: #f9f9f9; }
         .text-right { text-align: right; }
         .overdue { color: #dc2626; font-weight: bold; }
         .paid { color: #16a34a; }
+        .cap-row { background: #fef3c7 !important; }
+        .disb-row { background: #dbeafe !important; }
         .footer { text-align: center; margin-top: 20px; font-size: 9px; color: #999; }
         @media print { body { margin: 10mm; } }
       </style>
@@ -291,7 +297,7 @@ export function printStatement(
         </div>
         <div class="info-col">
           <div class="info-row"><span class="label">Loan Amount:</span> ${formatCurrency(Number(beneficiary.loan_amount))}</div>
-          <div class="info-row"><span class="label">Monthly Repayment:</span> ${formatCurrency(props.monthlyEMI)}</div>
+          <div class="info-row"><span class="label">Capitalized Balance:</span> ${formatCurrency(props.capitalizedBalance)}</div>
           <div class="info-row"><span class="label">Total Paid:</span> ${formatCurrency(Number(beneficiary.total_paid))}</div>
           <div class="info-row"><span class="label">Outstanding:</span> ${formatCurrency(Number(beneficiary.outstanding_balance))}</div>
         </div>
@@ -309,24 +315,25 @@ export function printStatement(
       <table>
         <thead>
           <tr>
-            <th>#</th><th>Due Date</th><th class="text-right">Opening</th><th class="text-right">Principal</th>
-            <th class="text-right">Interest</th><th class="text-right">EMI</th><th class="text-right">Paid</th>
-            <th class="text-right">Closing</th><th>Pay Date</th><th>RRR</th><th>Status</th>
+            <th>#</th><th>Date</th><th>Transaction</th><th>Days</th>
+            <th class="text-right">Begin Bal.</th><th class="text-right">Principal</th>
+            <th class="text-right">Interest</th><th class="text-right">Payment</th>
+            <th class="text-right">End Bal.</th><th class="text-right">Paid</th><th>Status</th>
           </tr>
         </thead>
         <tbody>
           ${data.map((r) => `
-            <tr>
-              <td>${r.month}</td>
+            <tr class="${r.transactionType === 'Disbursement' ? 'disb-row' : r.transactionType === 'Interest Capitalization' ? 'cap-row' : ''}">
+              <td>${r.month || '—'}</td>
               <td>${r.dueDate}</td>
-              <td class="text-right">${formatCurrency(r.openingBalance)}</td>
+              <td>${r.transactionType}</td>
+              <td>${r.daysInPeriod || '—'}</td>
+              <td class="text-right">${formatCurrency(r.beginningBalance)}</td>
               <td class="text-right">${formatCurrency(r.principal)}</td>
               <td class="text-right">${formatCurrency(r.interest)}</td>
-              <td class="text-right">${formatCurrency(r.expectedEMI)}</td>
+              <td class="text-right">${r.totalPayment > 0 ? formatCurrency(r.totalPayment) : '—'}</td>
+              <td class="text-right">${formatCurrency(r.endingBalance)}</td>
               <td class="text-right ${r.status === 'Paid' ? 'paid' : r.status === 'Overdue' ? 'overdue' : ''}">${r.amountPaid > 0 ? formatCurrency(r.amountPaid) : '—'}</td>
-              <td class="text-right">${formatCurrency(r.closingBalance)}</td>
-              <td>${r.paymentDate}</td>
-              <td>${r.rrr}</td>
               <td class="${r.status === 'Overdue' ? 'overdue' : r.status === 'Paid' ? 'paid' : ''}">${r.status}</td>
             </tr>
           `).join('')}
@@ -351,6 +358,7 @@ interface ExportButtonsProps extends LoanStatementExportProps {}
 export default function LoanStatementExportButtons({
   beneficiary,
   schedule,
+  fullSchedule,
   transactions,
   totalExpected,
   monthlyEMI,
@@ -358,22 +366,23 @@ export default function LoanStatementExportButtons({
   commencementDate,
   terminationDate,
   creatorProfile,
+  capitalizedBalance,
 }: ExportButtonsProps) {
-  const exportProps = { totalExpected, monthlyEMI, totalInterest, commencementDate, terminationDate, creatorProfile };
+  const exportProps = { totalExpected, monthlyEMI, totalInterest, commencementDate, terminationDate, creatorProfile, capitalizedBalance };
 
   return (
     <div className="bg-card rounded-xl shadow-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-sm font-bold">Loan Statement of Account</h3>
-          <p className="text-xs text-muted-foreground">Download or print the complete loan statement</p>
+          <p className="text-xs text-muted-foreground">Download or print the complete loan statement (Actual/365)</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={() => exportToPDF(beneficiary, schedule, transactions, exportProps)}
+            onClick={() => exportToPDF(beneficiary, fullSchedule, transactions, exportProps)}
           >
             <FileText className="w-4 h-4" />
             PDF
@@ -382,7 +391,7 @@ export default function LoanStatementExportButtons({
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={() => exportToExcel(beneficiary, schedule, transactions, exportProps)}
+            onClick={() => exportToExcel(beneficiary, fullSchedule, transactions, exportProps)}
           >
             <FileSpreadsheet className="w-4 h-4" />
             Excel
@@ -391,7 +400,7 @@ export default function LoanStatementExportButtons({
             variant="outline"
             size="sm"
             className="gap-2"
-            onClick={() => printStatement(beneficiary, schedule, transactions, exportProps)}
+            onClick={() => printStatement(beneficiary, fullSchedule, transactions, exportProps)}
           >
             <Printer className="w-4 h-4" />
             Print
