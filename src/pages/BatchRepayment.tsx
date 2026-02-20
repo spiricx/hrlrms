@@ -127,6 +127,19 @@ export default function BatchRepayment() {
   const [selectedHistoryIds, setSelectedHistoryIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
+  // Select & delete batches state
+  const [selectedBatchIds, setSelectedBatchIds] = useState<Set<string>>(new Set());
+  const [bulkDeletingBatches, setBulkDeletingBatches] = useState(false);
+  const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
+
+  // Edit batch state
+  const [editBatchOpen, setEditBatchOpen] = useState(false);
+  const [editBatchData, setEditBatchData] = useState<LoanBatch | null>(null);
+  const [editBatchName, setEditBatchName] = useState('');
+  const [editBatchState, setEditBatchState] = useState('');
+  const [editBatchBranch, setEditBatchBranch] = useState('');
+  const [editBatchSaving, setEditBatchSaving] = useState(false);
+
   // Batch detail view
   const [detailBatch, setDetailBatch] = useState<LoanBatch | null>(null);
   const [detailMembers, setDetailMembers] = useState<BatchBeneficiary[]>([]);
@@ -853,6 +866,108 @@ export default function BatchRepayment() {
     toast({ title: 'Exported', description: 'Excel report downloaded.' });
   };
 
+  const toggleBatchSelect = (id: string) => {
+    setSelectedBatchIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const toggleAllBatchSelect = () => {
+    if (selectedBatchIds.size === filtered.length) {
+      setSelectedBatchIds(new Set());
+    } else {
+      setSelectedBatchIds(new Set(filtered.map(b => b.id)));
+    }
+  };
+
+  const handleDeleteBatch = async (batch: LoanBatch) => {
+    setDeletingBatchId(batch.id);
+    try {
+      // 1. Get all members in this batch
+      const { data: members } = await supabase
+        .from('beneficiaries')
+        .select('id')
+        .eq('batch_id', batch.id);
+      const memberIds = (members || []).map((m: any) => m.id);
+
+      // 2. Delete all batch_repayments for this batch
+      await supabase.from('batch_repayments').delete().eq('batch_id', batch.id);
+
+      // 3. Unassign members from the batch
+      if (memberIds.length > 0) {
+        await supabase.from('beneficiaries').update({ batch_id: null } as any).in('id', memberIds);
+      }
+
+      // 4. Delete the batch itself
+      const { error } = await supabase.from('loan_batches').delete().eq('id', batch.id);
+      if (error) throw error;
+
+      toast({ title: 'Batch Deleted', description: `${batch.name} (${batch.batch_code}) has been deleted. Members unassigned.` });
+      setSelectedBatchIds(prev => { const n = new Set(prev); n.delete(batch.id); return n; });
+      fetchBatches();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to delete batch.', variant: 'destructive' });
+    } finally {
+      setDeletingBatchId(null);
+    }
+  };
+
+  const handleBulkDeleteBatches = async () => {
+    if (selectedBatchIds.size === 0) return;
+    setBulkDeletingBatches(true);
+    try {
+      const toDelete = filtered.filter(b => selectedBatchIds.has(b.id));
+      for (const batch of toDelete) {
+        await handleDeleteBatch(batch);
+      }
+      setSelectedBatchIds(new Set());
+      toast({ title: 'Bulk Delete Complete', description: `${toDelete.length} batch(es) deleted.` });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Bulk delete failed.', variant: 'destructive' });
+    } finally {
+      setBulkDeletingBatches(false);
+    }
+  };
+
+  const openEditBatch = (batch: LoanBatch) => {
+    setEditBatchData(batch);
+    setEditBatchName(batch.name);
+    setEditBatchState(batch.state);
+    setEditBatchBranch(batch.bank_branch);
+    setEditBatchOpen(true);
+  };
+
+  const handleEditBatchSave = async () => {
+    if (!editBatchData) return;
+    if (!editBatchName.trim()) {
+      toast({ title: 'Validation Error', description: 'Batch name is required.', variant: 'destructive' });
+      return;
+    }
+    if (!editBatchState) {
+      toast({ title: 'Validation Error', description: 'State is required.', variant: 'destructive' });
+      return;
+    }
+    setEditBatchSaving(true);
+    try {
+      const { error } = await supabase.from('loan_batches').update({
+        name: editBatchName.trim(),
+        state: editBatchState,
+        bank_branch: editBatchBranch.trim(),
+      }).eq('id', editBatchData.id);
+      if (error) throw error;
+      toast({ title: 'Updated', description: `Batch "${editBatchName.trim()}" updated successfully.` });
+      setEditBatchOpen(false);
+      setEditBatchData(null);
+      fetchBatches();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to update batch.', variant: 'destructive' });
+    } finally {
+      setEditBatchSaving(false);
+    }
+  };
+
   // Detail view computed stats
   const batchTotalDisbursed = detailMembers.reduce((s, m) => s + Number(m.loan_amount), 0);
   const batchTotalPaid = detailMembers.reduce((s, m) => s + Number(m.total_paid), 0);
@@ -1389,12 +1504,49 @@ export default function BatchRepayment() {
         )}
       </div>
 
+      {/* Bulk Delete Bar */}
+      {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && selectedBatchIds.size > 0 && (
+        <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/20">
+          <span className="text-sm text-muted-foreground">{selectedBatchIds.size} batch(es) selected</span>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="destructive" disabled={bulkDeletingBatches}>
+                {bulkDeletingBatches ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Trash2 className="w-3.5 h-3.5 mr-1" />}
+                Delete Selected ({selectedBatchIds.size})
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete {selectedBatchIds.size} Batch(es)?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will delete the selected batches, remove all associated batch repayment records, and unassign all members. This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleBulkDeleteBatches} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Delete All Selected
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      )}
+
       {/* Batch Dashboard Table */}
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
+                  <th className="px-3 py-3 text-center">
+                    <Checkbox
+                      checked={selectedBatchIds.size === filtered.length && filtered.length > 0}
+                      onCheckedChange={toggleAllBatchSelect}
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
@@ -1416,6 +1568,14 @@ export default function BatchRepayment() {
                 const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
                 return (
                   <tr key={batch.id} className="table-row-highlight">
+                    {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
+                      <td className="px-3 py-3 text-center">
+                        <Checkbox
+                          checked={selectedBatchIds.has(batch.id)}
+                          onCheckedChange={() => toggleBatchSelect(batch.id)}
+                        />
+                      </td>
+                    )}
                     <td className="px-4 py-3 font-mono text-xs">{batch.batch_code}</td>
                     <td className="px-4 py-3 font-medium">
                       <button onClick={() => openDetail(batch)} className="text-left hover:underline text-primary">
@@ -1438,19 +1598,47 @@ export default function BatchRepayment() {
                         <Button size="sm" onClick={() => openRecordPayment(batch)} className="gap-1 text-xs">
                           <Banknote className="w-3 h-3" /> Pay
                         </Button>
+                        {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
+                          <Button size="sm" variant="ghost" onClick={() => openEditBatch(batch)} className="text-xs" title="Edit Batch">
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                        )}
                         <Button size="sm" variant="outline" onClick={() => openAssign(batch)} className="text-xs">
                           <Plus className="w-3 h-3" />
                         </Button>
                         <Button size="sm" variant="ghost" onClick={() => openHistory(batch)} className="text-xs">
                           <History className="w-3 h-3" />
                         </Button>
+                        {isAdmin && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="ghost" className="text-xs text-destructive hover:text-destructive hover:bg-destructive/10" disabled={deletingBatchId === batch.id}>
+                                {deletingBatchId === batch.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Batch "{batch.name}"?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will delete the batch, remove all batch repayment records, and unassign all members. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBatch(batch)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                  Delete Batch
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </td>
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
-                <tr><td colSpan={14} className="px-4 py-12 text-center text-muted-foreground">No batches found. Create your first batch to get started.</td></tr>
+                <tr><td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">No batches found. Create your first batch to get started.</td></tr>
               )}
             </tbody>
           </table>
@@ -1829,6 +2017,43 @@ export default function BatchRepayment() {
             </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Batch Dialog */}
+      <Dialog open={editBatchOpen} onOpenChange={setEditBatchOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Batch</DialogTitle>
+            <DialogDescription>Update batch details for {editBatchData?.batch_code}.</DialogDescription>
+          </DialogHeader>
+          {editBatchData && (
+            <div className="space-y-4">
+              <div>
+                <Label>Batch Name *</Label>
+                <Input value={editBatchName} onChange={e => setEditBatchName(e.target.value)} placeholder="e.g. Lagos Civil Servants Q3 2025" />
+              </div>
+              <div>
+                <Label>State *</Label>
+                <Select value={editBatchState} onValueChange={setEditBatchState}>
+                  <SelectTrigger><SelectValue placeholder="Select state" /></SelectTrigger>
+                  <SelectContent>
+                    {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Bank Branch (Optional)</Label>
+                <Input value={editBatchBranch} onChange={e => setEditBatchBranch(e.target.value)} placeholder="e.g. Ikeja Branch" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditBatchOpen(false)} disabled={editBatchSaving}>Cancel</Button>
+            <Button onClick={handleEditBatchSave} disabled={editBatchSaving}>
+              {editBatchSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
