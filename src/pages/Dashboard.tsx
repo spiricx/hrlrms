@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote, Filter } from 'lucide-react';
+import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote, Filter, ShieldAlert } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import StatCard from '@/components/StatCard';
 import { formatCurrency, getOverdueAndArrears, stripTime } from '@/lib/loanCalculations';
@@ -8,32 +8,33 @@ import type { Tables } from '@/integrations/supabase/types';
 import RecentBeneficiariesWidget from '@/components/dashboard/RecentBeneficiariesWidget';
 
 type Beneficiary = Tables<'beneficiaries'>;
+type LoanArrears = Tables<'v_loan_arrears'>;
 export type LoanHealthFilter = 'all' | 'active' | 'defaulted';
 
 export default function Dashboard() {
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [loanArrears, setLoanArrears] = useState<LoanArrears[]>([]);
   const [loading, setLoading] = useState(true);
   const [healthFilter, setHealthFilter] = useState<LoanHealthFilter>('all');
 
   useEffect(() => {
-    const fetchBeneficiaries = async () => {
-      const { data, error } = await supabase.
-      from('beneficiaries').
-      select('*').
-      order('created_at', { ascending: false });
-      if (!error && data) {
-        setBeneficiaries(data);
-      }
+    const fetchData = async () => {
+      const [benResult, arrearsResult] = await Promise.all([
+        supabase.from('beneficiaries').select('*').order('created_at', { ascending: false }),
+        supabase.from('v_loan_arrears').select('*'),
+      ]);
+      if (!benResult.error && benResult.data) setBeneficiaries(benResult.data);
+      if (!arrearsResult.error && arrearsResult.data) setLoanArrears(arrearsResult.data);
       setLoading(false);
     };
-    fetchBeneficiaries();
+    fetchData();
 
     const channel = supabase.
     channel('dashboard-beneficiaries').
     on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'beneficiaries' },
-      () => {fetchBeneficiaries();}
+      () => {fetchData();}
     ).
     subscribe();
 
@@ -95,6 +96,16 @@ export default function Dashboard() {
   const defaultedCount = loanMetrics.defaulted;
   const completedCount = loanMetrics.completed;
   const activeCount = loanMetrics.active;
+
+  // NPL metrics from v_loan_arrears (single source of truth)
+  const nplMetrics = useMemo(() => {
+    const activeLoans = loanArrears.filter(a => a.status !== 'completed' && Number(a.outstanding_balance) > 0);
+    const nplLoans = activeLoans.filter(a => a.is_npl === true);
+    const totalActiveOutstanding = activeLoans.reduce((s, a) => s + Number(a.outstanding_balance || 0), 0);
+    const nplOutstanding = nplLoans.reduce((s, a) => s + Number(a.outstanding_balance || 0), 0);
+    const nplRatio = totalActiveOutstanding > 0 ? (nplOutstanding / totalActiveOutstanding) * 100 : 0;
+    return { nplAmount: nplOutstanding, nplRatio, nplCount: nplLoans.length };
+  }, [loanArrears]);
 
 
   if (loading) {
@@ -158,6 +169,26 @@ export default function Dashboard() {
           variant="destructive"
           trend={`of ${beneficiaries.length} total`} />
 
+        <StatCard
+          label="NPL Amount"
+          value={formatCurrency(nplMetrics.nplAmount)}
+          icon={<ShieldAlert className="w-5 h-5" />}
+          variant="destructive"
+          trend={`${nplMetrics.nplCount} NPL accounts`} />
+
+      </div>
+
+      {/* NPL Ratio card */}
+      <div className="grid gap-4 sm:grid-cols-4">
+        <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
+          <div className="p-3 rounded-lg bg-destructive/10">
+            <ShieldAlert className="w-6 h-6 text-destructive" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold font-display">{nplMetrics.nplRatio.toFixed(2)}%</p>
+            <p className="text-xs text-muted-foreground">NPL Ratio</p>
+          </div>
+        </div>
       </div>
 
       {/* Summary cards */}

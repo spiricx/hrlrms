@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, lazy, Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -23,6 +23,7 @@ import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
+const HelpChatbot = lazy(() => import('@/components/HelpChatbot'));
 
 function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -175,6 +176,10 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
 
         <main className="flex-1 p-4 lg:p-8">{children}</main>
       </div>
+
+      <Suspense fallback={null}>
+        <HelpChatbot />
+      </Suspense>
     </div>);
 
 }
