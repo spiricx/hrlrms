@@ -125,7 +125,8 @@ export default function BeneficiaryDetail() {
     { label: 'State', value: beneficiary.state || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Branch', value: beneficiary.bank_branch || '—', icon: <Banknote className="w-4 h-4" /> },
     { label: 'Loan Amount', value: formatCurrency(Number(beneficiary.loan_amount)), icon: <Banknote className="w-4 h-4" /> },
-    { label: 'Monthly Repayment', value: formatCurrency(loan.monthlyEMI), icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Capitalized Balance', value: formatCurrency(loan.capitalizedBalance), icon: <Banknote className="w-4 h-4" /> },
+    { label: 'Avg. Monthly Repayment', value: formatCurrency(loan.monthlyEMI), icon: <Banknote className="w-4 h-4" /> },
     { label: 'Disbursed On', value: formatDate(new Date(beneficiary.disbursement_date)), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Commencement', value: formatDate(loan.commencementDate), icon: <Calendar className="w-4 h-4" /> },
     { label: 'Termination Date', value: formatDate(loan.terminationDate), icon: <Calendar className="w-4 h-4" /> },
@@ -202,6 +203,7 @@ export default function BeneficiaryDetail() {
       <LoanStatementExportButtons
         beneficiary={beneficiary}
         schedule={loan.schedule}
+        fullSchedule={loan.fullSchedule}
         transactions={transactions}
         totalExpected={loan.totalPayment}
         monthlyEMI={loan.monthlyEMI}
@@ -209,6 +211,7 @@ export default function BeneficiaryDetail() {
         commencementDate={loan.commencementDate}
         terminationDate={loan.terminationDate}
         creatorProfile={creatorProfile}
+        capitalizedBalance={loan.capitalizedBalance}
       />
 
       {/* Tabs */}
@@ -242,25 +245,47 @@ export default function BeneficiaryDetail() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-secondary/50">
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Due Date</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Opening Bal.</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Principal</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Interest</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">EMI</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Closing Bal.</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Period</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Transaction</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Days</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beginning Bal.</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Principal</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Interest</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total Payment</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ending Bal.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {loan.schedule.map((entry) => (
-                    <tr key={entry.month} className="table-row-highlight">
-                      <td className="px-4 py-3 text-muted-foreground">{entry.month}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">{formatDate(entry.dueDate)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(entry.openingBalance)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(entry.principal)}</td>
-                      <td className="px-4 py-3 text-right text-muted-foreground">{formatCurrency(entry.interest)}</td>
-                      <td className="px-4 py-3 text-right font-medium">{formatCurrency(entry.emi)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(entry.closingBalance)}</td>
+                  {loan.fullSchedule.map((entry, idx) => (
+                    <tr
+                      key={idx}
+                      className={`table-row-highlight ${
+                        entry.transactionType === 'Disbursement' ? 'bg-primary/5' :
+                        entry.transactionType === 'Interest Capitalization' ? 'bg-warning/5' : ''
+                      }`}
+                    >
+                      <td className="px-3 py-3 text-muted-foreground">
+                        {entry.transactionType === 'Repayment' ? entry.month : '—'}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">{formatDate(entry.dueDate)}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          entry.transactionType === 'Disbursement' ? 'bg-primary/10 text-primary' :
+                          entry.transactionType === 'Interest Capitalization' ? 'bg-warning/10 text-warning' :
+                          'bg-secondary text-foreground'
+                        }`}>
+                          {entry.transactionType}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-center text-muted-foreground">{entry.daysInPeriod || '—'}</td>
+                      <td className="px-3 py-3 text-right">{formatCurrency(entry.beginningBalance)}</td>
+                      <td className="px-3 py-3 text-right">{formatCurrency(entry.principal)}</td>
+                      <td className="px-3 py-3 text-right text-muted-foreground">{formatCurrency(entry.interest)}</td>
+                      <td className="px-3 py-3 text-right font-medium">
+                        {entry.totalPayment > 0 ? formatCurrency(entry.totalPayment) : '—'}
+                      </td>
+                      <td className="px-3 py-3 text-right">{formatCurrency(entry.endingBalance)}</td>
                     </tr>
                   ))}
                 </tbody>
