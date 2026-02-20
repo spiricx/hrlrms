@@ -211,26 +211,26 @@ export default function Beneficiaries() {
                     </td>
                     {/* Overdue Amount */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {oa.overdueAmount > 0 ?
-                      <span className="text-warning font-medium">{formatCurrency(oa.overdueAmount)}</span> :
+                    {a.overdueAmount > 0 ?
+                      <span className="text-warning font-medium">{formatCurrency(a.overdueAmount)}</span> :
                       <span className="text-muted-foreground">₦0</span>}
                     </td>
                     {/* Months Overdue */}
                     <td className="px-4 py-3 text-center">
-                      {oa.overdueMonths > 0 ?
-                      <span className="text-warning font-semibold">{oa.overdueMonths}</span> :
+                      {a.overdueMonths > 0 ?
+                      <span className="text-warning font-semibold">{a.overdueMonths}</span> :
                       <span className="text-success font-semibold">0</span>}
                     </td>
                     {/* Arrears Amount */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {oa.arrearsAmount > 0 ?
-                      <span className="text-destructive font-medium animate-pulse">{formatCurrency(oa.arrearsAmount)}</span> :
+                      {a.arrearsAmount > 0 ?
+                      <span className="text-destructive font-medium animate-pulse">{formatCurrency(a.arrearsAmount)}</span> :
                       <span className="text-muted-foreground">₦0</span>}
                     </td>
                     {/* Months in Arrears */}
                     <td className="px-4 py-3 text-center">
-                      {oa.monthsInArrears > 0 ?
-                      <span className="text-destructive font-semibold animate-pulse">{oa.monthsInArrears}</span> :
+                      {a.arrearsMonths > 0 ?
+                      <span className="text-destructive font-semibold animate-pulse">{a.arrearsMonths}</span> :
                       <span className="text-success font-semibold">0</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">{lastPayment}</td>
