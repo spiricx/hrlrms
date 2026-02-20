@@ -127,7 +127,7 @@ export default function HelpChatbot() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-5 left-5 z-50 p-3.5 rounded-full gradient-primary text-primary-foreground shadow-elevated hover:scale-105 transition-transform"
+          className="fixed bottom-5 right-5 z-50 p-3.5 rounded-full gradient-primary text-primary-foreground shadow-elevated hover:scale-105 transition-transform"
           title="Help Assistant"
         >
           <MessageSquareMore className="w-5 h-5" />
@@ -136,7 +136,7 @@ export default function HelpChatbot() {
 
       {/* Chat Window */}
       {open && (
-        <div className="fixed bottom-5 left-5 z-50 w-[360px] max-h-[520px] flex flex-col rounded-xl border border-border bg-card shadow-elevated overflow-hidden">
+        <div className="fixed bottom-5 right-5 z-50 w-[360px] max-h-[520px] flex flex-col rounded-xl border border-border bg-card shadow-elevated overflow-hidden">
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 gradient-primary text-primary-foreground">
             <Bot className="w-5 h-5" />
