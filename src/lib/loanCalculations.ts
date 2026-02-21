@@ -54,10 +54,11 @@ function getLastDayOfMonth(year: number, month: number): Date {
 /**
  * Calculate loan schedule using Actual/365 interest with moratorium capitalization.
  *
- * Method: Level-principal amortization after moratorium.
+ * Method: Re-amortizing annuity after moratorium.
  * - During moratorium: interest accrues daily (Actual/365) and is capitalized.
- * - After moratorium: fixed principal portion = capitalizedBalance / tenorMonths,
- *   with interest varying each period based on actual days.
+ * - After moratorium: each period's payment is recalculated as an annuity
+ *   using that period's Actual/365 rate and the remaining number of periods,
+ *   producing variable EMI with increasing principal and decreasing interest.
  */
 export function calculateLoan(params: LoanParams): LoanSummary {
   const { principal, annualRate, tenorMonths, moratoriumMonths, disbursementDate } = params;
@@ -114,10 +115,8 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const capitalizedBalance = balance;
   const commencementDate = new Date(periodStart);
 
-  // === REPAYMENT SCHEDULE (Level Principal + Actual/365 Interest) ===
-  const levelPrincipal = round2(capitalizedBalance / tenorMonths);
+  // === REPAYMENT SCHEDULE (Re-amortizing Annuity + Actual/365 Interest) ===
   const repaymentSchedule: ScheduleEntry[] = [];
-  let prevDate = new Date(commencementDate);
 
   for (let i = 1; i <= tenorMonths; i++) {
     // Payment date = last day of the month offset from commencement
@@ -125,12 +124,28 @@ export function calculateLoan(params: LoanParams): LoanSummary {
     refDate.setMonth(refDate.getMonth() + (i - 1));
     const payDate = getLastDayOfMonth(refDate.getFullYear(), refDate.getMonth());
 
-    const days = daysBetween(prevDate, payDate);
-    const interest = round2(balance * rate * (days / 365));
+    // Days in period = calendar days in the payment month
+    const days = payDate.getDate();
+    const periodicRate = rate * days / 365;
+    const interest = round2(balance * periodicRate);
 
     const isLast = i === tenorMonths;
-    const principalPortion = isLast ? round2(balance) : levelPrincipal;
-    const payment = round2(principalPortion + interest);
+    const remaining = tenorMonths - i + 1;
+
+    let payment: number;
+    let principalPortion: number;
+
+    if (isLast) {
+      // Final month: clear the entire remaining balance
+      principalPortion = round2(balance);
+      payment = round2(principalPortion + interest);
+    } else {
+      // Re-amortizing annuity: recalculate payment each period using
+      // this period's Actual/365 rate and remaining number of periods
+      payment = round2(balance * periodicRate / (1 - Math.pow(1 + periodicRate, -remaining)));
+      principalPortion = round2(payment - interest);
+    }
+
     const newBalance = isLast ? 0 : round2(balance - principalPortion);
 
     const entry: ScheduleEntry = {
@@ -152,7 +167,6 @@ export function calculateLoan(params: LoanParams): LoanSummary {
     fullSchedule.push(entry);
 
     balance = newBalance;
-    prevDate = payDate;
   }
 
   const terminationDate = repaymentSchedule[repaymentSchedule.length - 1]?.dueDate ?? commencementDate;
