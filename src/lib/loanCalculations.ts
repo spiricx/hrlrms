@@ -175,7 +175,7 @@ export function calculateLoan(params: LoanParams): LoanSummary {
 
   // Reference EMI: standard PMT annuity formula with monthly compounding (r = annualRate / 12)
   const monthlyRate = rate / 12;
-  const referenceEMI = round2(capitalizedBalance * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths)));
+  const referenceEMI = round2(principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths)));
 
   return {
     monthlyEMI: referenceEMI,
