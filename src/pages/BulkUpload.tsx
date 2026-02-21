@@ -120,12 +120,15 @@ function validateRow(row: any): ParsedRow {
   let monthlyEMI = 0, commencementDate = '', terminationDate = '', totalPayment = 0;
 
   if (errors.length === 0 && disbDateStr && tenorMonths > 0) {
+    // Parse as LOCAL date to avoid UTC shift (Nigerian time WAT UTC+1)
+    const [dy, dm, dd] = disbDateStr.split('-').map(Number);
+    const localDisbDate = new Date(dy, dm - 1, dd);
     const loan = calculateLoan({
       principal: loanAmountRaw,
       annualRate: interestRate,
       tenorMonths,
       moratoriumMonths: 1,
-      disbursementDate: new Date(disbDateStr),
+      disbursementDate: localDisbDate,
     });
     monthlyEMI = loan.monthlyEMI;
     commencementDate = formatLocalDate(loan.commencementDate);
