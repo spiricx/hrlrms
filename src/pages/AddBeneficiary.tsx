@@ -280,7 +280,17 @@ export default function AddBeneficiary() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount">Loan Amount (₦) *</Label>
-              <Input id="amount" type="number" min={0} value={form.loanAmount} onChange={e => handleChange('loanAmount', e.target.value)} placeholder="e.g. 2500000" />
+              <Input
+                id="amount"
+                type="text"
+                inputMode="numeric"
+                value={form.loanAmount ? parseFloat(form.loanAmount).toLocaleString('en-NG', { minimumFractionDigits: form.loanAmount.includes('.') ? 2 : 0, maximumFractionDigits: 2 }) : ''}
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9.]/g, '');
+                  handleChange('loanAmount', raw);
+                }}
+                placeholder="e.g. 2,500,000.00"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="tenor">Tenor (years, max 5) *</Label>
