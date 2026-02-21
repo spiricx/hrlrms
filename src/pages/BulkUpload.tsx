@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { calculateLoan, formatCurrency } from '@/lib/loanCalculations';
+import { calculateLoan, formatCurrency, formatLocalDate } from '@/lib/loanCalculations';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import * as XLSX from 'xlsx';
 
@@ -56,19 +56,24 @@ const EXPECTED_HEADERS = [
 function parseExcelDate(value: any): string | null {
   if (!value) return null;
   if (typeof value === 'number') {
-    // Excel serial date
+    // Excel serial date – use XLSX parser to get y/m/d components directly
     const date = XLSX.SSF.parse_date_code(value);
     if (date) {
       const d = new Date(date.y, date.m - 1, date.d);
-      return d.toISOString().split('T')[0];
+      return formatLocalDate(d);
     }
   }
   if (typeof value === 'string') {
+    // Parse as local date to avoid UTC shift
+    const parts = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (parts) {
+      return formatLocalDate(new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])));
+    }
     const d = new Date(value);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    if (!isNaN(d.getTime())) return formatLocalDate(d);
   }
   if (value instanceof Date && !isNaN(value.getTime())) {
-    return value.toISOString().split('T')[0];
+    return formatLocalDate(value);
   }
   return null;
 }
@@ -123,8 +128,8 @@ function validateRow(row: any): ParsedRow {
       disbursementDate: new Date(disbDateStr),
     });
     monthlyEMI = loan.monthlyEMI;
-    commencementDate = loan.commencementDate.toISOString().split('T')[0];
-    terminationDate = loan.terminationDate.toISOString().split('T')[0];
+    commencementDate = formatLocalDate(loan.commencementDate);
+    terminationDate = formatLocalDate(loan.terminationDate);
     totalPayment = loan.totalPayment;
   }
 
