@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { calculateLoan, formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { calculateLoan, formatCurrency, formatDate, formatLocalDate } from '@/lib/loanCalculations';
 import { toast } from '@/hooks/use-toast';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,7 +43,7 @@ export default function AddBeneficiary() {
   });
   const amount = parseFloat(form.loanAmount) || 0;
   const tenor = (parseInt(form.tenorYears) || 3) * 12;
-  const disbDate = form.disbursementDate ? new Date(form.disbursementDate) : null;
+  const disbDate = form.disbursementDate ? (() => { const [y, m, d] = form.disbursementDate.split('-').map(Number); return new Date(y, m - 1, d); })() : null;
   const preview = amount > 0 && tenor > 0 && disbDate ? calculateLoan({
     principal: amount,
     annualRate: 6,
@@ -98,8 +98,8 @@ export default function AddBeneficiary() {
       interest_rate: 6,
       moratorium_months: 1,
       disbursement_date: form.disbursementDate,
-      commencement_date: preview.commencementDate.toISOString().split('T')[0],
-      termination_date: preview.terminationDate.toISOString().split('T')[0],
+      commencement_date: formatLocalDate(preview.commencementDate),
+      termination_date: formatLocalDate(preview.terminationDate),
       monthly_emi: preview.monthlyEMI,
       outstanding_balance: preview.totalPayment,
       bank_branch: form.bankBranch,

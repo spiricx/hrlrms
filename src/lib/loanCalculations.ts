@@ -205,6 +205,17 @@ export function formatDate(date: Date): string {
   }).format(date);
 }
 
+/**
+ * Format a Date to YYYY-MM-DD using LOCAL date components.
+ * Avoids the UTC shift caused by toISOString().
+ */
+export function formatLocalDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function formatTenor(months: number): string {
   const years = Math.floor(months / 12);
   const rem = months % 12;

@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import { formatLocalDate } from '@/lib/loanCalculations';
 import * as XLSX from 'xlsx';
 
 interface ParsedStaffRow {
@@ -52,7 +53,7 @@ function parseExcelDate(value: any): string | null {
     const date = XLSX.SSF.parse_date_code(value);
     if (date) {
       const d = new Date(date.y, date.m - 1, date.d);
-      return d.toISOString().split('T')[0];
+      return formatLocalDate(d);
     }
   }
   if (typeof value === 'string') {
@@ -60,13 +61,18 @@ function parseExcelDate(value: any): string | null {
     const dmy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
     if (dmy) {
       const d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-      if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+      if (!isNaN(d.getTime())) return formatLocalDate(d);
+    }
+    // Try YYYY-MM-DD
+    const parts = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (parts) {
+      return formatLocalDate(new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])));
     }
     const d = new Date(value);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+    if (!isNaN(d.getTime())) return formatLocalDate(d);
   }
   if (value instanceof Date && !isNaN(value.getTime())) {
-    return value.toISOString().split('T')[0];
+    return formatLocalDate(value);
   }
   return null;
 }
