@@ -172,7 +172,10 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const terminationDate = repaymentSchedule[repaymentSchedule.length - 1]?.dueDate ?? commencementDate;
   const totalRepayment = round2(repaymentSchedule.reduce((sum, e) => sum + e.totalPayment, 0));
   const totalInterest = round2(totalRepayment - principal);
-  const referenceEMI = round2(totalRepayment / tenorMonths);
+
+  // Reference EMI: standard PMT annuity formula with monthly compounding (r = annualRate / 12)
+  const monthlyRate = rate / 12;
+  const referenceEMI = round2(capitalizedBalance * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths)));
 
   return {
     monthlyEMI: referenceEMI,
