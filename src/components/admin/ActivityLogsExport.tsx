@@ -161,7 +161,7 @@ export async function exportActivityLogsToPDF(data: ExportData) {
     startY: y,
     head: [['Date & Time', 'Action', 'Staff Name', 'Email', 'State', 'Branch', 'Browser']],
     body: data.logs.map(log => [
-      format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss'),
+      format(new Date(log.created_at), NG_DATETIME),
       log.action.toUpperCase(),
       log.full_name || '—',
       log.email,
