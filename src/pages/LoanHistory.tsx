@@ -198,8 +198,8 @@ export default function LoanHistory() {
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-semibold">Filters</span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
-          <div className="relative">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search name, NHF, Ref..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
