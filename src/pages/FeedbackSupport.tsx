@@ -292,7 +292,7 @@ export default function FeedbackSupport() {
                             <Badge variant="outline" className={STATUS_COLORS[s.status]}>{s.status.replace('_', ' ')}</Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                            {format(new Date(s.created_at), 'dd MMM yyyy')}
+                            {format(new Date(s.created_at), 'dd MMMM yyyy')}
                           </TableCell>
                           <TableCell className="text-right">
                             <Dialog>
