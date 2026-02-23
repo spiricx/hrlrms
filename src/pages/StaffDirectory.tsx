@@ -114,7 +114,7 @@ function buildProfileSections(s: StaffMember) {
       { label: 'Other Names', value: s.other_names },
       { label: 'Gender', value: s.gender },
       { label: 'Marital Status', value: s.marital_status },
-      { label: 'Date of Birth', value: s.date_of_birth ? format(new Date(s.date_of_birth), 'dd-MMM-yyyy') : '' },
+      { label: 'Date of Birth', value: s.date_of_birth ? format(new Date(s.date_of_birth), NG_DATE) : '' },
       { label: 'Phone Number', value: s.phone },
       { label: 'Email', value: s.email },
     ]},
