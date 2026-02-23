@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { format } from 'date-fns';
+import { NG_DATETIME } from '@/lib/dateFormat';
 
 interface ActivityLog {
   id: string;
@@ -78,7 +79,7 @@ export function exportActivityLogsToExcel(data: ExportData) {
   const detailRows = [
     ['Date & Time', 'Action', 'Staff Name', 'Email', 'State', 'Branch', 'Browser'],
     ...data.logs.map(log => [
-      format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss'),
+      format(new Date(log.created_at), NG_DATETIME),
       log.action.toUpperCase(),
       log.full_name || '—',
       log.email,
@@ -160,7 +161,7 @@ export async function exportActivityLogsToPDF(data: ExportData) {
     startY: y,
     head: [['Date & Time', 'Action', 'Staff Name', 'Email', 'State', 'Branch', 'Browser']],
     body: data.logs.map(log => [
-      format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss'),
+      format(new Date(log.created_at), NG_DATETIME),
       log.action.toUpperCase(),
       log.full_name || '—',
       log.email,
@@ -243,7 +244,7 @@ export function printActivityLogs(data: ExportData) {
         <tbody>
           ${data.logs.map(log => `
             <tr>
-              <td>${format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')}</td>
+              <td>${format(new Date(log.created_at), NG_DATETIME)}</td>
               <td class="${log.action === 'login' ? 'login' : 'logout'}">${log.action.toUpperCase()}</td>
               <td>${log.full_name || '—'}</td>
               <td>${log.email}</td>

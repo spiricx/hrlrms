@@ -122,7 +122,7 @@ export default function ActivityLogsTab() {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className={cn("gap-2 min-w-[140px] justify-start", !fromDate && "text-muted-foreground")}>
               <CalendarIcon className="w-4 h-4" />
-              {fromDate ? format(fromDate, 'dd MMM yyyy') : 'From date'}
+              {fromDate ? format(fromDate, 'dd MMMM yyyy') : 'From date'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -134,7 +134,7 @@ export default function ActivityLogsTab() {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className={cn("gap-2 min-w-[140px] justify-start", !toDate && "text-muted-foreground")}>
               <CalendarIcon className="w-4 h-4" />
-              {toDate ? format(toDate, 'dd MMM yyyy') : 'To date'}
+              {toDate ? format(toDate, 'dd MMMM yyyy') : 'To date'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
@@ -176,7 +176,7 @@ export default function ActivityLogsTab() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No activity logs found</TableCell></TableRow>
                 ) : filtered.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(log.created_at), 'dd MMMM yyyy HH:mm:ss')}</TableCell>
                     <TableCell>
                       <Badge variant={log.action === 'login' ? 'default' : 'destructive'} className="text-xs capitalize gap-1">
                         {log.action === 'login' ? <LogIn className="w-3 h-3" /> : <LogOut className="w-3 h-3" />}

@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { format, differenceInMonths, differenceInDays, addYears, isBefore, isAfter, startOfDay } from 'date-fns';
+import { NG_DATE, NG_DATETIME_SHORT, NG_DATE_SHORT } from '@/lib/dateFormat';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -113,7 +114,7 @@ function buildProfileSections(s: StaffMember) {
       { label: 'Other Names', value: s.other_names },
       { label: 'Gender', value: s.gender },
       { label: 'Marital Status', value: s.marital_status },
-      { label: 'Date of Birth', value: s.date_of_birth ? format(new Date(s.date_of_birth), 'dd-MMM-yyyy') : '' },
+      { label: 'Date of Birth', value: s.date_of_birth ? format(new Date(s.date_of_birth), NG_DATE) : '' },
       { label: 'Phone Number', value: s.phone },
       { label: 'Email', value: s.email },
     ]},
@@ -130,15 +131,15 @@ function buildProfileSections(s: StaffMember) {
       { label: 'Group', value: s.group_name },
       { label: 'Designation', value: s.designation },
       { label: 'Cadre/Grade Level', value: s.cadre },
-      { label: 'Date Employed', value: s.date_employed ? format(new Date(s.date_employed), 'dd-MMM-yyyy') : '' },
+      { label: 'Date Employed', value: s.date_employed ? format(new Date(s.date_employed), NG_DATE) : '' },
       { label: 'Status', value: s.status },
-      { label: 'Status Date', value: s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '' },
+      { label: 'Status Date', value: s.status_date ? format(new Date(s.status_date), NG_DATE) : '' },
       { label: 'Status Reason', value: s.status_reason },
     ]},
     { section: 'Service Tenure', fields: [
       { label: 'Time in Service', value: tenure ? `${tenure.years}y ${tenure.months}m` : '—' },
       { label: 'Time to Retirement', value: retirement ? (retirement.isPast ? 'Past retirement age' : `${retirement.years}y ${retirement.months}m`) : '—' },
-      { label: 'Retirement Date', value: retirement ? format(retirement.date, 'dd-MMM-yyyy') : '—' },
+      { label: 'Retirement Date', value: retirement ? format(retirement.date, NG_DATE) : '—' },
     ]},
   ];
 }
@@ -675,7 +676,7 @@ export default function StaffDirectory() {
                   return (
                     <span key={s.id} className="mr-3">
                       {bd ? '🎉' : '🔔'} {s.title} {s.surname} {s.first_name}
-                      {s.date_of_birth ? ` — ${format(new Date(new Date(s.date_of_birth).getFullYear() === new Date().getFullYear() ? s.date_of_birth : new Date(new Date().getFullYear(), new Date(s.date_of_birth).getMonth(), new Date(s.date_of_birth).getDate())), 'dd MMM')}` : ''}
+                      {s.date_of_birth ? ` — ${format(new Date(new Date(s.date_of_birth).getFullYear() === new Date().getFullYear() ? s.date_of_birth : new Date(new Date().getFullYear(), new Date(s.date_of_birth).getMonth(), new Date(s.date_of_birth).getDate())), NG_DATE_SHORT)}` : ''}
                       {bd ? ' (TODAY!)' : ''}
                     </span>
                   );
@@ -779,7 +780,7 @@ export default function StaffDirectory() {
                         ) : '—'}
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
-                        {s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '—'}
+                        {s.status_date ? format(new Date(s.status_date), NG_DATE) : '—'}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex gap-0.5">
@@ -866,7 +867,7 @@ export default function StaffDirectory() {
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${l.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{l.status}</span>
                             </div>
                             <div className="text-muted-foreground mt-1">
-                              {format(new Date(l.start_date), 'dd-MMM-yyyy')} → {format(new Date(l.end_date), 'dd-MMM-yyyy')}
+                              {format(new Date(l.start_date), NG_DATE)} → {format(new Date(l.end_date), NG_DATE)}
                             </div>
                             <div className="flex gap-4 mt-1 text-xs">
                               <span>Entitled: {l.days_entitled} days</span>
@@ -891,7 +892,7 @@ export default function StaffDirectory() {
                         {transfers.map(t => (
                           <div key={t.id} className="border rounded-lg p-3 text-sm">
                             <div className="flex justify-between">
-                              <span className="font-medium">{format(new Date(t.transfer_date), 'dd-MMM-yyyy')}</span>
+                              <span className="font-medium">{format(new Date(t.transfer_date), NG_DATE)}</span>
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${t.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{t.status}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
@@ -923,7 +924,7 @@ export default function StaffDirectory() {
                           <div key={log.id} className="border rounded-lg p-2.5 text-xs">
                             <div className="flex justify-between">
                               <span className="font-medium capitalize">{log.action}: <span className="text-primary">{log.field_changed}</span></span>
-                              <span className="text-muted-foreground">{format(new Date(log.modified_at), 'dd-MMM-yyyy HH:mm')}</span>
+                              <span className="text-muted-foreground">{format(new Date(log.modified_at), NG_DATETIME_SHORT)}</span>
                             </div>
                             {log.old_value && log.new_value && log.action === 'update' && (
                               <div className="flex gap-2 mt-1">

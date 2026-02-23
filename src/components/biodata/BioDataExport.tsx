@@ -65,7 +65,7 @@ function toRow(b: Beneficiary, i: number): (string | number)[] {
     b.other_name || '',
     b.gender || '',
     b.marital_status || '',
-    b.date_of_birth ? format(new Date(b.date_of_birth), 'dd/MM/yyyy') : '',
+    b.date_of_birth ? format(new Date(b.date_of_birth), 'dd MMMM yyyy') : '',
     b.address || '',
     b.phone_number || '',
     b.email || '',
@@ -75,14 +75,14 @@ function toRow(b: Beneficiary, i: number): (string | number)[] {
     b.department || '',
     b.employer_number || '',
     b.employee_id || '',
-    b.date_of_employment ? format(new Date(b.date_of_employment), 'dd/MM/yyyy') : '',
+    b.date_of_employment ? format(new Date(b.date_of_employment), 'dd MMMM yyyy') : '',
     b.state || '',
     b.bank_branch || '',
     b.loan_reference_number || '',
     Number(b.loan_amount).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
     formatTenor(b.tenor_months),
     Number(b.monthly_emi).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
-    b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : '',
+    b.disbursement_date ? format(new Date(b.disbursement_date), 'dd MMMM yyyy') : '',
   ];
 }
 

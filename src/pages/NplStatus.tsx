@@ -442,7 +442,7 @@ export default function NplStatus() {
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateFrom ? format(dateFrom, 'dd MMM yyyy') : 'From Date'}
+                {dateFrom ? format(dateFrom, 'dd MMMM yyyy') : 'From Date'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -470,7 +470,7 @@ export default function NplStatus() {
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateTo ? format(dateTo, 'dd MMM yyyy') : 'To Date'}
+                {dateTo ? format(dateTo, 'dd MMMM yyyy') : 'To Date'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
@@ -741,7 +741,7 @@ export default function NplStatus() {
                           <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
                           <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell className="text-right">{a.monthsInArrears}</TableCell>
-                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
                           <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={nplRatioColor(individualNplRatio)}>{individualNplRatio.toFixed(2)}%</Badge>

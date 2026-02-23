@@ -273,7 +273,7 @@ export default function StaffLoanTracker() {
           'EMI (₦)': l.monthly_emi,
           'Tenor': l.tenor_months,
           'Status': l.status,
-          'Created': new Date(l.created_at).toLocaleDateString(),
+          'Created': new Date(l.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }),
         });
       });
     });
@@ -592,7 +592,7 @@ export default function StaffLoanTracker() {
                                         {loan.status}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-xs">{new Date(loan.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-xs">{new Date(loan.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' })}</TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>
