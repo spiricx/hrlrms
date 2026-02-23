@@ -946,7 +946,7 @@ export default function LoanReconciliation() {
                                       <TableCell className="text-right font-mono text-sm">{fmt(s.matched_amount)}</TableCell>
                                       <TableCell className="text-right font-mono text-sm text-muted-foreground">{fmt(s.total_cbn_amount)}</TableCell>
                                       <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate" title={s.file_name}>{s.file_name || '-'}</TableCell>
-                                      <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</TableCell>
+                                      <TableCell className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' })}</TableCell>
                                       <TableCell>
                                         {isFullMatch
                                           ? <Badge className="bg-emerald-600 text-white gap-1 text-xs"><CheckCircle2 className="w-3 h-3" /> Full Match</Badge>

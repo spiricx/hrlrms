@@ -741,7 +741,7 @@ export default function NplStatus() {
                           <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
                           <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell className="text-right">{a.monthsInArrears}</TableCell>
-                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}</TableCell>
+                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
                           <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={nplRatioColor(individualNplRatio)}>{individualNplRatio.toFixed(2)}%</Badge>

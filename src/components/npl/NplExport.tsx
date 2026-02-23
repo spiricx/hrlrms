@@ -120,7 +120,7 @@ export function exportNplToExcel(data: NplReportData) {
       ['Employee ID', 'Name', 'State', 'Branch', 'Principal (₦)', 'Outstanding (₦)', 'DPD', 'Classification', 'Last Payment', 'Arrears (₦)', 'Monthly Repayment (₦)'],
       ...data.accountsList.map(a => {
         const cls = a.dpd >= 180 ? 'PAR 180+' : a.dpd >= 120 ? 'PAR 120+' : a.dpd >= 90 ? 'NPL (PAR 90+)' : a.dpd >= 60 ? 'PAR 60+' : a.dpd >= 30 ? 'PAR 30+' : 'Performing';
-        return [a.employeeId, a.name, a.state, a.branch, a.loanAmount, a.outstandingBalance, a.dpd, cls, a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-GB') : 'N/A', a.amountInArrears, a.monthlyEmi];
+        return [a.employeeId, a.name, a.state, a.branch, a.loanAmount, a.outstandingBalance, a.dpd, cls, a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : 'N/A', a.amountInArrears, a.monthlyEmi];
       }),
     ];
     const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);

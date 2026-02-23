@@ -924,7 +924,7 @@ export default function StaffDirectory() {
                           <div key={log.id} className="border rounded-lg p-2.5 text-xs">
                             <div className="flex justify-between">
                               <span className="font-medium capitalize">{log.action}: <span className="text-primary">{log.field_changed}</span></span>
-                              <span className="text-muted-foreground">{format(new Date(log.modified_at), 'dd-MMM-yyyy HH:mm')}</span>
+                              <span className="text-muted-foreground">{format(new Date(log.modified_at), NG_DATETIME_SHORT)}</span>
                             </div>
                             {log.old_value && log.new_value && log.action === 'update' && (
                               <div className="flex gap-2 mt-1">

@@ -123,7 +123,7 @@ export default function LoanHistory() {
         label = formatDate(d);
       } else if (groupBy === 'month') {
         key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        label = d.toLocaleDateString('en-NG', { month: 'short', year: 'numeric' });
+        label = d.toLocaleDateString('en-NG', { month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' });
       } else {
         key = String(d.getFullYear());
         label = key;

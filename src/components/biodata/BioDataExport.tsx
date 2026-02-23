@@ -82,7 +82,7 @@ function toRow(b: Beneficiary, i: number): (string | number)[] {
     Number(b.loan_amount).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
     formatTenor(b.tenor_months),
     Number(b.monthly_emi).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
-    b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : '',
+    b.disbursement_date ? format(new Date(b.disbursement_date), 'dd MMMM yyyy') : '',
   ];
 }
 

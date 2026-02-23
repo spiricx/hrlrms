@@ -343,7 +343,7 @@ export default function FeedbackSupport() {
                                         <Label className="text-xs text-muted-foreground">Admin Response</Label>
                                         <p className="text-sm whitespace-pre-wrap bg-primary/5 p-3 rounded-lg border border-primary/10">{s.admin_response}</p>
                                         {s.responded_at && (
-                                          <p className="text-xs text-muted-foreground mt-1">Responded: {format(new Date(s.responded_at), 'dd MMM yyyy, h:mm a')}</p>
+                                          <p className="text-xs text-muted-foreground mt-1">Responded: {format(new Date(s.responded_at), 'dd MMMM yyyy, h:mm a')}</p>
                                         )}
                                       </div>
                                     )}

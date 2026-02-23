@@ -592,7 +592,7 @@ export default function StaffLoanTracker() {
                                         {loan.status}
                                       </Badge>
                                     </TableCell>
-                                    <TableCell className="text-xs">{new Date(loan.created_at).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-xs">{new Date(loan.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' })}</TableCell>
                                   </TableRow>
                                 ))}
                               </TableBody>

@@ -244,7 +244,7 @@ export function printActivityLogs(data: ExportData) {
         <tbody>
           ${data.logs.map(log => `
             <tr>
-              <td>${format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')}</td>
+              <td>${format(new Date(log.created_at), NG_DATETIME)}</td>
               <td class="${log.action === 'login' ? 'login' : 'logout'}">${log.action.toUpperCase()}</td>
               <td>${log.full_name || '—'}</td>
               <td>${log.email}</td>
