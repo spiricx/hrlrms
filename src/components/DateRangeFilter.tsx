@@ -1,4 +1,10 @@
-import { DateInput } from '@/components/ui/date-input';
+import * as React from 'react';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface DateRangeFilterProps {
   fromDate: Date | undefined;
@@ -19,24 +25,65 @@ export default function DateRangeFilter({
     <div className={className || 'flex items-end gap-2'}>
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground">From Date</label>
-        <DateInput
-          value={fromDate}
-          onChange={onFromDateChange}
-          max={toDate || new Date()}
-          placeholder="Start date"
-          className="w-40"
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                'w-40 justify-start text-left font-normal',
+                !fromDate && 'text-muted-foreground',
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {fromDate ? format(fromDate, 'dd MMM yyyy') : <span>Start date</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={fromDate}
+              onSelect={onFromDateChange}
+              disabled={(date) => {
+                if (toDate && date > toDate) return true;
+                if (date > new Date()) return true;
+                return false;
+              }}
+              initialFocus
+              className={cn('p-3 pointer-events-auto')}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
       <div className="space-y-1">
         <label className="text-xs font-medium text-muted-foreground">To Date</label>
-        <DateInput
-          value={toDate}
-          onChange={onToDateChange}
-          min={fromDate}
-          max={new Date()}
-          placeholder="End date"
-          className="w-40"
-        />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                'w-40 justify-start text-left font-normal',
+                !toDate && 'text-muted-foreground',
+              )}
+            >
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {toDate ? format(toDate, 'dd MMM yyyy') : <span>End date</span>}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={toDate}
+              onSelect={onToDateChange}
+              disabled={(date) => {
+                if (fromDate && date < fromDate) return true;
+                if (date > new Date()) return true;
+                return false;
+              }}
+              initialFocus
+              className={cn('p-3 pointer-events-auto')}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
