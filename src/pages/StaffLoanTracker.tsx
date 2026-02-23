@@ -103,15 +103,6 @@ export default function StaffLoanTracker() {
     return [...set].sort();
   }, [beneficiaries, profiles, filterState]);
 
-  // Available years
-  const years = useMemo(() => {
-    const set = new Set<number>();
-    beneficiaries.forEach(b => {
-      const y = new Date(b.created_at).getFullYear();
-      if (!isNaN(y)) set.add(y);
-    });
-    return [...set].sort((a, b) => b - a);
-  }, [beneficiaries]);
 
   // Build staff → loans map with filters
   const staffLoanData = useMemo(() => {
