@@ -104,8 +104,19 @@ export default function LoanHistory() {
     const matchesOrg = orgFilter === 'all' || b.department === orgFilter;
     const health = classifyHealth(b);
     const matchesHealth = healthFilter === 'all' || healthFilter === health;
-    return matchesSearch && matchesState && matchesBranch && matchesOfficer && matchesOrg && matchesHealth;
-  }), [beneficiaries, search, stateFilter, branchFilter, officerFilter, orgFilter, healthFilter]);
+    // Date range filter on created_at
+    let matchesDate = true;
+    if (fromDate || toDate) {
+      const d = new Date(b.created_at);
+      if (fromDate && d < fromDate) matchesDate = false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (d > endOfDay) matchesDate = false;
+      }
+    }
+    return matchesSearch && matchesState && matchesBranch && matchesOfficer && matchesOrg && matchesHealth && matchesDate;
+  }), [beneficiaries, search, stateFilter, branchFilter, officerFilter, orgFilter, healthFilter, fromDate, toDate]);
 
   // Stats
   const totalActive = filtered.filter(b => b.status === 'active' || b.status === 'defaulted').length;
