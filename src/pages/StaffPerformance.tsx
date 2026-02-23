@@ -123,9 +123,23 @@ export default function StaffPerformance() {
       // --- LOAN PORTFOLIO (created_by attribution) ---
       // Loans CREATED by this staff member specifically (via created_by = userId)
       // Fall back to state+branch match if no userId found
-      const myBeneficiaries = userId
+      const myBeneficiariesAll = userId
         ? beneficiaries.filter(b => b.created_by === userId)
         : beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
+      // Apply date range filter
+      const myBeneficiaries = myBeneficiariesAll.filter(b => {
+        if (fromDate) {
+          const d = new Date(b.commencement_date);
+          if (d < fromDate) return false;
+        }
+        if (toDate) {
+          const d = new Date(b.commencement_date);
+          const endOfDay = new Date(toDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (d > endOfDay) return false;
+        }
+        return true;
+      });
 
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
 
