@@ -185,7 +185,7 @@ export default function StaffLoanTracker() {
       : result;
 
     return filtered.sort((a, b) => b.totalLoans - a.totalLoans);
-  }, [beneficiaries, profiles, filterState, filterBranch, searchQuery, fromMonth, fromYear, toMonth, toYear]);
+  }, [beneficiaries, profiles, filterState, filterBranch, searchQuery, fromDate, toDate]);
 
   // Summary totals
   const totals = useMemo(() => {
