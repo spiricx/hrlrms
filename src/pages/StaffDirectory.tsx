@@ -131,9 +131,9 @@ function buildProfileSections(s: StaffMember) {
       { label: 'Group', value: s.group_name },
       { label: 'Designation', value: s.designation },
       { label: 'Cadre/Grade Level', value: s.cadre },
-      { label: 'Date Employed', value: s.date_employed ? format(new Date(s.date_employed), 'dd-MMM-yyyy') : '' },
+      { label: 'Date Employed', value: s.date_employed ? format(new Date(s.date_employed), NG_DATE) : '' },
       { label: 'Status', value: s.status },
-      { label: 'Status Date', value: s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '' },
+      { label: 'Status Date', value: s.status_date ? format(new Date(s.status_date), NG_DATE) : '' },
       { label: 'Status Reason', value: s.status_reason },
     ]},
     { section: 'Service Tenure', fields: [
