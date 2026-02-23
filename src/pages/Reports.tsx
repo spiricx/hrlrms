@@ -195,7 +195,8 @@ export default function Reports() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-end">
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Month" />
