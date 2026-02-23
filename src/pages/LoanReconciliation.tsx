@@ -534,7 +534,7 @@ export default function LoanReconciliation() {
       'Total CBN Amount': s.total_cbn_amount,
       'Matched Amount': s.matched_amount,
       Notes: s.notes || '',
-      'Recorded At': new Date(s.created_at).toLocaleDateString('en-NG'),
+      'Recorded At': new Date(s.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }),
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
