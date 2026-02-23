@@ -97,8 +97,8 @@ describe('Loan Calculation - ₦1M Document Validation (March 4, 2021)', () => {
     expect(loan.terminationDate.getDate()).toBe(31);
   });
 
-  it('fixed EMI ≈ ₦19,418.55 (PMT on capitalized balance)', () => {
-    expect(loan.monthlyEMI).toBeCloseTo(19418.55, 0);
+  it('fixed EMI = ₦19,332.80 (PMT on original ₦1M principal)', () => {
+    expect(loan.monthlyEMI).toBe(19332.80);
   });
 
   it('62-row full schedule (1 disbursement + 1 capitalization + 60 repayments)', () => {
