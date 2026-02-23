@@ -1079,6 +1079,7 @@ export default function BatchRepayment() {
                 <TabsTrigger value="members">Loan Register</TabsTrigger>
                 <TabsTrigger value="history">Repayment History</TabsTrigger>
                 <TabsTrigger value="schedule">Batch Amortization</TabsTrigger>
+                <TabsTrigger value="excel-upload">Excel Upload</TabsTrigger>
               </TabsList>
 
               {/* Members / Loan Register Tab */}
