@@ -41,6 +41,8 @@ export default function StaffPerformance() {
   const [filterState, setFilterState] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   useEffect(() => {
     (async () => {
