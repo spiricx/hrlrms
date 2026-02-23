@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { format } from 'date-fns';
+import { NG_DATETIME } from '@/lib/dateFormat';
 
 interface ActivityLog {
   id: string;
