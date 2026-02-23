@@ -31,6 +31,7 @@ import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import BatchRepaymentUpload from '@/components/batch/BatchRepaymentUpload';
 
 interface LoanBatch {
   id: string;
@@ -1078,6 +1079,7 @@ export default function BatchRepayment() {
                 <TabsTrigger value="members">Loan Register</TabsTrigger>
                 <TabsTrigger value="history">Repayment History</TabsTrigger>
                 <TabsTrigger value="schedule">Batch Amortization</TabsTrigger>
+                <TabsTrigger value="excel-upload">Excel Upload</TabsTrigger>
               </TabsList>
 
               {/* Members / Loan Register Tab */}
@@ -1340,6 +1342,32 @@ export default function BatchRepayment() {
                     </table>
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* Excel Upload Tab */}
+              <TabsContent value="excel-upload">
+                {detailBatch && (
+                  <BatchRepaymentUpload
+                    batchId={detailBatch.id}
+                    batchCode={detailBatch.batch_code}
+                    onComplete={() => {
+                      fetchBatches();
+                      refreshArrears();
+                      // Reload detail members & history
+                      if (detailBatch) {
+                        supabase.from('beneficiaries')
+                          .select('id, name, employee_id, loan_amount, monthly_emi, outstanding_balance, total_paid, status, state, bank_branch, batch_id, tenor_months, interest_rate, moratorium_months, disbursement_date, commencement_date, termination_date, nhf_number, loan_reference_number, department, default_count')
+                          .eq('batch_id', detailBatch.id)
+                          .then(({ data }) => { if (data) setDetailMembers(data as BatchBeneficiary[]); });
+                        supabase.from('batch_repayments')
+                          .select('*')
+                          .eq('batch_id', detailBatch.id)
+                          .order('month_for', { ascending: true })
+                          .then(({ data }) => { if (data) setDetailHistory(data as BatchRepaymentRecord[]); });
+                      }
+                    }}
+                  />
+                )}
               </TabsContent>
             </Tabs>
           </>
