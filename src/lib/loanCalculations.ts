@@ -115,7 +115,16 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const capitalizedBalance = balance;
   const commencementDate = new Date(periodStart);
 
-  // === REPAYMENT SCHEDULE (Re-amortizing Annuity + Actual/365 Interest) ===
+  // === FIXED MONTHLY PAYMENT (PMT on capitalized balance, r/12) ===
+  // Per specification: payment is computed once using the standard annuity formula
+  // on the capitalized balance, then held constant for periods 1–(N-1).
+  // The final period is adjusted to clear the balance to exactly ₦0.00.
+  const monthlyRate = rate / 12;
+  const fixedPMT = round2(
+    capitalizedBalance * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths))
+  );
+
+  // === REPAYMENT SCHEDULE (Fixed PMT + Actual/365 Interest) ===
   const repaymentSchedule: ScheduleEntry[] = [];
 
   for (let i = 1; i <= tenorMonths; i++) {
@@ -126,11 +135,9 @@ export function calculateLoan(params: LoanParams): LoanSummary {
 
     // Days in period = calendar days in the payment month
     const days = payDate.getDate();
-    const periodicRate = rate * days / 365;
-    const interest = round2(balance * periodicRate);
+    const interest = round2(balance * rate * days / 365);
 
     const isLast = i === tenorMonths;
-    const remaining = tenorMonths - i + 1;
 
     let payment: number;
     let principalPortion: number;
@@ -140,9 +147,8 @@ export function calculateLoan(params: LoanParams): LoanSummary {
       principalPortion = round2(balance);
       payment = round2(principalPortion + interest);
     } else {
-      // Re-amortizing annuity: recalculate payment each period using
-      // this period's Actual/365 rate and remaining number of periods
-      payment = round2(balance * periodicRate / (1 - Math.pow(1 + periodicRate, -remaining)));
+      // Fixed payment for periods 1 through N-1
+      payment = fixedPMT;
       principalPortion = round2(payment - interest);
     }
 
@@ -173,12 +179,8 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const totalRepayment = round2(repaymentSchedule.reduce((sum, e) => sum + e.totalPayment, 0));
   const totalInterest = round2(totalRepayment - principal);
 
-  // Reference EMI: standard PMT annuity formula with monthly compounding (r = annualRate / 12)
-  const monthlyRate = rate / 12;
-  const referenceEMI = round2(principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths)));
-
   return {
-    monthlyEMI: referenceEMI,
+    monthlyEMI: fixedPMT,
     totalInterest,
     totalPayment: totalRepayment,
     terminationDate,
