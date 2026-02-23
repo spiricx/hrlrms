@@ -40,6 +40,8 @@ export default function LoanHistory() {
   const [officerFilter, setOfficerFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
   const [healthFilter, setHealthFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   const [groupBy, setGroupBy] = useState<'day' | 'month' | 'year'>('month');
 
   useEffect(() => {
