@@ -473,11 +473,12 @@ export default function LoanRepayment() {
         <p className="mt-1 text-sm text-muted-foreground">Record and track monthly repayments via Remita</p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end flex-wrap">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name, NHF or Loan Ref..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         {isAdmin &&
           <Select value={stateFilter} onValueChange={setStateFilter}>
             <SelectTrigger className="w-48">
