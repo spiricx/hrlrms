@@ -241,7 +241,7 @@ export default function StaffPerformance() {
         reportYear,
       };
     }).sort((a, b) => b.rankingValue - a.rankingValue);
-  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery]);
+  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery, fromDate, toDate]);
 
   // Deduplicated portfolio totals (from beneficiaries directly, not staff metrics which double-count)
   const portfolioTotals = useMemo(() => {
