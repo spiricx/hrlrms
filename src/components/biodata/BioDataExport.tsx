@@ -65,7 +65,7 @@ function toRow(b: Beneficiary, i: number): (string | number)[] {
     b.other_name || '',
     b.gender || '',
     b.marital_status || '',
-    b.date_of_birth ? format(new Date(b.date_of_birth), 'dd/MM/yyyy') : '',
+    b.date_of_birth ? format(new Date(b.date_of_birth), 'dd MMMM yyyy') : '',
     b.address || '',
     b.phone_number || '',
     b.email || '',
