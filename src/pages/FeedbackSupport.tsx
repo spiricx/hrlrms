@@ -332,7 +332,7 @@ export default function FeedbackSupport() {
                                   )}
                                   <div>
                                     <Label className="text-xs text-muted-foreground">Submitted on</Label>
-                                    <p className="text-sm">{format(new Date(s.created_at), 'dd MMM yyyy, h:mm a')}</p>
+                                    <p className="text-sm">{format(new Date(s.created_at), 'dd MMMM yyyy, h:mm a')}</p>
                                   </div>
                                   <div>
                                     <Label className="text-xs text-muted-foreground">Message</Label>
