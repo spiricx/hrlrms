@@ -780,7 +780,7 @@ export default function StaffDirectory() {
                         ) : '—'}
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap text-xs text-muted-foreground">
-                        {s.status_date ? format(new Date(s.status_date), 'dd-MMM-yyyy') : '—'}
+                        {s.status_date ? format(new Date(s.status_date), NG_DATE) : '—'}
                       </td>
                       <td className="px-3 py-2.5">
                         <div className="flex gap-0.5">
