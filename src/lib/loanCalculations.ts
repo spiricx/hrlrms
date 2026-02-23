@@ -180,7 +180,7 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const totalInterest = round2(totalRepayment - principal);
 
   return {
-    monthlyEMI: referenceEMI,
+    monthlyEMI: fixedPMT,
     totalInterest,
     totalPayment: totalRepayment,
     terminationDate,
