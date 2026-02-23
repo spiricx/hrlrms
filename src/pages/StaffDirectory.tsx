@@ -676,7 +676,7 @@ export default function StaffDirectory() {
                   return (
                     <span key={s.id} className="mr-3">
                       {bd ? '🎉' : '🔔'} {s.title} {s.surname} {s.first_name}
-                      {s.date_of_birth ? ` — ${format(new Date(new Date(s.date_of_birth).getFullYear() === new Date().getFullYear() ? s.date_of_birth : new Date(new Date().getFullYear(), new Date(s.date_of_birth).getMonth(), new Date(s.date_of_birth).getDate())), 'dd MMM')}` : ''}
+                      {s.date_of_birth ? ` — ${format(new Date(new Date(s.date_of_birth).getFullYear() === new Date().getFullYear() ? s.date_of_birth : new Date(new Date().getFullYear(), new Date(s.date_of_birth).getMonth(), new Date(s.date_of_birth).getDate())), NG_DATE_SHORT)}` : ''}
                       {bd ? ' (TODAY!)' : ''}
                     </span>
                   );
