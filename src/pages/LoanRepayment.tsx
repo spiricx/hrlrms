@@ -124,8 +124,19 @@ export default function LoanRepayment() {
       b.employee_id.toLowerCase().includes(q) ||
       (b.nhf_number && b.nhf_number.toLowerCase().includes(q));
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
-    return matchesSearch && matchesState;
-  }), [beneficiaries, search, stateFilter]);
+    // Date range filter on commencement_date
+    let matchesDate = true;
+    if (fromDate || toDate) {
+      const d = new Date(b.commencement_date);
+      if (fromDate && d < fromDate) matchesDate = false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (d > endOfDay) matchesDate = false;
+      }
+    }
+    return matchesSearch && matchesState && matchesDate;
+  }), [beneficiaries, search, stateFilter, fromDate, toDate]);
 
   const resetForm = () => {
     setRepaymentMonth('');
