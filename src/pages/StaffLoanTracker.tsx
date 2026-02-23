@@ -73,10 +73,8 @@ export default function StaffLoanTracker() {
   const [filterState, setFilterState] = useState('all');
   const [filterBranch, setFilterBranch] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [fromMonth, setFromMonth] = useState('all');
-  const [fromYear, setFromYear] = useState('all');
-  const [toMonth, setToMonth] = useState('all');
-  const [toYear, setToYear] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Expanded staff
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set());
