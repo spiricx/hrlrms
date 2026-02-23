@@ -122,7 +122,7 @@ export default function ActivityLogsTab() {
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className={cn("gap-2 min-w-[140px] justify-start", !fromDate && "text-muted-foreground")}>
               <CalendarIcon className="w-4 h-4" />
-              {fromDate ? format(fromDate, 'dd MMM yyyy') : 'From date'}
+              {fromDate ? format(fromDate, 'dd MMMM yyyy') : 'From date'}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
