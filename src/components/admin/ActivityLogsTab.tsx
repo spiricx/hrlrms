@@ -176,7 +176,7 @@ export default function ActivityLogsTab() {
                   <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No activity logs found</TableCell></TableRow>
                 ) : filtered.map((log) => (
                   <TableRow key={log.id}>
-                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(log.created_at), 'dd MMM yyyy HH:mm:ss')}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{format(new Date(log.created_at), 'dd MMMM yyyy HH:mm:ss')}</TableCell>
                     <TableCell>
                       <Badge variant={log.action === 'login' ? 'default' : 'destructive'} className="text-xs capitalize gap-1">
                         {log.action === 'login' ? <LogIn className="w-3 h-3" /> : <LogOut className="w-3 h-3" />}
