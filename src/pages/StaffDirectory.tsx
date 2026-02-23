@@ -892,7 +892,7 @@ export default function StaffDirectory() {
                         {transfers.map(t => (
                           <div key={t.id} className="border rounded-lg p-3 text-sm">
                             <div className="flex justify-between">
-                              <span className="font-medium">{format(new Date(t.transfer_date), 'dd-MMM-yyyy')}</span>
+                              <span className="font-medium">{format(new Date(t.transfer_date), NG_DATE)}</span>
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${t.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{t.status}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-2 text-xs">
