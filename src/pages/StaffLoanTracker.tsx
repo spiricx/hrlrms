@@ -58,10 +58,6 @@ function formatNairaShort(n: number) {
   return `₦${n.toLocaleString()}`;
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 export default function StaffLoanTracker() {
   const { toast } = useToast();
