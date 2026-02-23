@@ -867,7 +867,7 @@ export default function StaffDirectory() {
                               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${l.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{l.status}</span>
                             </div>
                             <div className="text-muted-foreground mt-1">
-                              {format(new Date(l.start_date), 'dd-MMM-yyyy')} → {format(new Date(l.end_date), 'dd-MMM-yyyy')}
+                              {format(new Date(l.start_date), NG_DATE)} → {format(new Date(l.end_date), NG_DATE)}
                             </div>
                             <div className="flex gap-4 mt-1 text-xs">
                               <span>Entitled: {l.days_entitled} days</span>
