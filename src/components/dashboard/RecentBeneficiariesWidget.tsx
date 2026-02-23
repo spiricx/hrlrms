@@ -29,10 +29,11 @@ interface BeneficiaryWithPayment extends Beneficiary {
 
 
 function formatPaymentDate(date: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric'
+  return new Intl.DateTimeFormat('en-NG', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Africa/Lagos',
   }).format(new Date(date));
 }
 

@@ -200,8 +200,9 @@ export function formatCurrency(amount: number): string {
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-NG', {
     year: 'numeric',
-    month: 'short',
+    month: 'long',
     day: 'numeric',
+    timeZone: 'Africa/Lagos',
   }).format(date);
 }
 
