@@ -75,7 +75,7 @@ function toRow(b: Beneficiary, i: number): (string | number)[] {
     b.department || '',
     b.employer_number || '',
     b.employee_id || '',
-    b.date_of_employment ? format(new Date(b.date_of_employment), 'dd/MM/yyyy') : '',
+    b.date_of_employment ? format(new Date(b.date_of_employment), 'dd MMMM yyyy') : '',
     b.state || '',
     b.bank_branch || '',
     b.loan_reference_number || '',
