@@ -122,25 +122,17 @@ export default function StaffLoanTracker() {
     const q = searchQuery.toLowerCase().trim();
 
     // Date range filter
-    let fromDate: Date | null = null;
-    let toDate: Date | null = null;
-    if (fromYear !== 'all') {
-      const m = fromMonth !== 'all' ? parseInt(fromMonth) : 0;
-      fromDate = new Date(parseInt(fromYear), m, 1);
-    }
-    if (toYear !== 'all') {
-      const m = toMonth !== 'all' ? parseInt(toMonth) : 11;
-      toDate = new Date(parseInt(toYear), m + 1, 0, 23, 59, 59);
-    }
-
-    // Filter beneficiaries by state, branch, and date
     const filteredBens = beneficiaries.filter(b => {
       if (filterState !== 'all' && b.state !== filterState) return false;
       if (filterBranch !== 'all' && b.bank_branch !== filterBranch) return false;
       if (!b.created_by) return false;
       const createdAt = new Date(b.created_at);
       if (fromDate && createdAt < fromDate) return false;
-      if (toDate && createdAt > toDate) return false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (createdAt > endOfDay) return false;
+      }
       return true;
     });
 
