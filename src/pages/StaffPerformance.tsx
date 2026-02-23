@@ -13,6 +13,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 type StaffMember = { id: string; title: string; surname: string; first_name: string; staff_id: string; state: string; branch: string; designation: string; email: string; status: string; nhf_number: string | null; };
 type Beneficiary = { id: string; state: string; bank_branch: string; status: string; loan_amount: number; outstanding_balance: number; total_paid: number; monthly_emi: number; created_by: string | null; name: string; employee_id: string; tenor_months: number; interest_rate: number; commencement_date: string; termination_date: string; loan_reference_number: string | null; };
@@ -40,6 +41,8 @@ export default function StaffPerformance() {
   const [filterState, setFilterState] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   useEffect(() => {
     (async () => {
@@ -120,9 +123,23 @@ export default function StaffPerformance() {
       // --- LOAN PORTFOLIO (created_by attribution) ---
       // Loans CREATED by this staff member specifically (via created_by = userId)
       // Fall back to state+branch match if no userId found
-      const myBeneficiaries = userId
+      const myBeneficiariesAll = userId
         ? beneficiaries.filter(b => b.created_by === userId)
         : beneficiaries.filter(b => b.state === s.state && b.bank_branch === s.branch);
+      // Apply date range filter
+      const myBeneficiaries = myBeneficiariesAll.filter(b => {
+        if (fromDate) {
+          const d = new Date(b.commencement_date);
+          if (d < fromDate) return false;
+        }
+        if (toDate) {
+          const d = new Date(b.commencement_date);
+          const endOfDay = new Date(toDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (d > endOfDay) return false;
+        }
+        return true;
+      });
 
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
 
@@ -224,7 +241,7 @@ export default function StaffPerformance() {
         reportYear,
       };
     }).sort((a, b) => b.rankingValue - a.rankingValue);
-  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery]);
+  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery, fromDate, toDate]);
 
   // Deduplicated portfolio totals (from beneficiaries directly, not staff metrics which double-count)
   const portfolioTotals = useMemo(() => {
@@ -665,6 +682,7 @@ export default function StaffPerformance() {
               {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
+          <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
           <Button size="sm" variant="outline" onClick={exportExcel}><Download className="w-4 h-4 mr-1" />Excel</Button>
           <Button size="sm" variant="outline" onClick={exportPDF}><Download className="w-4 h-4 mr-1" />PDF</Button>
           <Button size="sm" variant="outline" onClick={handlePrint}><Printer className="w-4 h-4 mr-1" />Print</Button>

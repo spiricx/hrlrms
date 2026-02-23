@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
+import DateRangeFilter from '@/components/DateRangeFilter';
 import LoanRepaymentReportExportButtons, {
   type RepaymentRecord,
   type RepaymentReportData,
@@ -31,6 +32,8 @@ export default function LoanRepaymentReport() {
   // Filters
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [fromDateObj, setFromDateObj] = useState<Date | undefined>();
+  const [toDateObj, setToDateObj] = useState<Date | undefined>();
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
@@ -240,14 +243,12 @@ export default function LoanRepaymentReport() {
       <div className="bg-card rounded-xl shadow-card p-5">
         <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Filters</h3>
         <div className="flex flex-wrap gap-3 items-end">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">From Date</label>
-            <Input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="w-40" />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">To Date</label>
-            <Input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="w-40" />
-          </div>
+          <DateRangeFilter
+            fromDate={fromDateObj}
+            toDate={toDateObj}
+            onFromDateChange={(d) => { setFromDateObj(d); setFromDate(d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : ''); }}
+            onToDateChange={(d) => { setToDateObj(d); setToDate(d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : ''); }}
+          />
           {isAdmin && (
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">State</label>

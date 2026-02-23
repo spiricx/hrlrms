@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 type Profile = {
   user_id: string;
@@ -57,10 +58,6 @@ function formatNairaShort(n: number) {
   return `₦${n.toLocaleString()}`;
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
 
 export default function StaffLoanTracker() {
   const { toast } = useToast();
@@ -72,10 +69,8 @@ export default function StaffLoanTracker() {
   const [filterState, setFilterState] = useState('all');
   const [filterBranch, setFilterBranch] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [fromMonth, setFromMonth] = useState('all');
-  const [fromYear, setFromYear] = useState('all');
-  const [toMonth, setToMonth] = useState('all');
-  const [toYear, setToYear] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Expanded staff
   const [expandedStaff, setExpandedStaff] = useState<Set<string>>(new Set());
@@ -108,40 +103,23 @@ export default function StaffLoanTracker() {
     return [...set].sort();
   }, [beneficiaries, profiles, filterState]);
 
-  // Available years
-  const years = useMemo(() => {
-    const set = new Set<number>();
-    beneficiaries.forEach(b => {
-      const y = new Date(b.created_at).getFullYear();
-      if (!isNaN(y)) set.add(y);
-    });
-    return [...set].sort((a, b) => b - a);
-  }, [beneficiaries]);
 
   // Build staff → loans map with filters
   const staffLoanData = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
 
     // Date range filter
-    let fromDate: Date | null = null;
-    let toDate: Date | null = null;
-    if (fromYear !== 'all') {
-      const m = fromMonth !== 'all' ? parseInt(fromMonth) : 0;
-      fromDate = new Date(parseInt(fromYear), m, 1);
-    }
-    if (toYear !== 'all') {
-      const m = toMonth !== 'all' ? parseInt(toMonth) : 11;
-      toDate = new Date(parseInt(toYear), m + 1, 0, 23, 59, 59);
-    }
-
-    // Filter beneficiaries by state, branch, and date
     const filteredBens = beneficiaries.filter(b => {
       if (filterState !== 'all' && b.state !== filterState) return false;
       if (filterBranch !== 'all' && b.bank_branch !== filterBranch) return false;
       if (!b.created_by) return false;
       const createdAt = new Date(b.created_at);
       if (fromDate && createdAt < fromDate) return false;
-      if (toDate && createdAt > toDate) return false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (createdAt > endOfDay) return false;
+      }
       return true;
     });
 
@@ -194,7 +172,7 @@ export default function StaffLoanTracker() {
       : result;
 
     return filtered.sort((a, b) => b.totalLoans - a.totalLoans);
-  }, [beneficiaries, profiles, filterState, filterBranch, searchQuery, fromMonth, fromYear, toMonth, toYear]);
+  }, [beneficiaries, profiles, filterState, filterBranch, searchQuery, fromDate, toDate]);
 
   // Summary totals
   const totals = useMemo(() => {
@@ -344,7 +322,7 @@ export default function StaffLoanTracker() {
       {/* Filters */}
       <Card className="print:hidden">
         <CardContent className="pt-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {/* State */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">State</label>
@@ -383,47 +361,8 @@ export default function StaffLoanTracker() {
               </div>
             </div>
 
-            {/* From period */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">From</label>
-              <div className="flex gap-1">
-                <Select value={fromMonth} onValueChange={setFromMonth}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m.slice(0, 3)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={fromYear} onValueChange={setFromYear}>
-                  <SelectTrigger className="w-20"><SelectValue placeholder="Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* To period */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">To</label>
-              <div className="flex gap-1">
-                <Select value={toMonth} onValueChange={setToMonth}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m.slice(0, 3)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={toYear} onValueChange={setToYear}>
-                  <SelectTrigger className="w-20"><SelectValue placeholder="Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            {/* Date range */}
+            <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
 
             {/* Reset */}
             <div className="space-y-1 flex items-end">
@@ -435,10 +374,8 @@ export default function StaffLoanTracker() {
                   setFilterState('all');
                   setFilterBranch('all');
                   setSearchQuery('');
-                  setFromMonth('all');
-                  setFromYear('all');
-                  setToMonth('all');
-                  setToYear('all');
+                  setFromDate(undefined);
+                  setToDate(undefined);
                 }}
               >
                 Reset Filters

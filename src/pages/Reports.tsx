@@ -4,6 +4,7 @@ import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import DateRangeFilter from '@/components/DateRangeFilter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
@@ -20,6 +21,8 @@ export default function Reports() {
   const [orgFilter, setOrgFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffName, setStaffName] = useState('');
@@ -69,9 +72,20 @@ export default function Reports() {
         if (yearFilter !== 'all' && d.getFullYear() !== Number(yearFilter)) return false;
         if (monthFilter !== 'all' && d.getMonth() !== Number(monthFilter)) return false;
       }
+      // Date range filter on disbursement_date
+      if (fromDate || toDate) {
+        const d = b.disbursement_date ? new Date(b.disbursement_date) : null;
+        if (!d) return false;
+        if (fromDate && d < fromDate) return false;
+        if (toDate) {
+          const endOfDay = new Date(toDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          if (d > endOfDay) return false;
+        }
+      }
       return true;
     });
-  }, [beneficiaries, stateFilter, branchFilter, orgFilter, monthFilter, yearFilter]);
+  }, [beneficiaries, stateFilter, branchFilter, orgFilter, monthFilter, yearFilter, fromDate, toDate]);
 
   const totalDisbursed = filtered.reduce((s, b) => s + Number(b.loan_amount), 0);
   const totalCollected = filtered.reduce((s, b) => s + Number(b.total_paid), 0);
@@ -181,7 +195,8 @@ export default function Reports() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-end">
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Month" />

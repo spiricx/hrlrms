@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 interface LoanBatch {
   id: string;
@@ -92,6 +93,8 @@ export default function BatchRepayment() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Create batch state
   const [createOpen, setCreateOpen] = useState(false);
@@ -257,8 +260,19 @@ export default function BatchRepayment() {
     const matchSearch = b.name.toLowerCase().includes(search.toLowerCase()) ||
       b.batch_code.toLowerCase().includes(search.toLowerCase());
     const matchState = stateFilter === 'all' || b.state === stateFilter;
-    return matchSearch && matchState;
-  }), [batches, search, stateFilter]);
+    // Date range filter on created_at
+    let matchesDate = true;
+    if (fromDate || toDate) {
+      const d = new Date(b.created_at);
+      if (fromDate && d < fromDate) matchesDate = false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (d > endOfDay) matchesDate = false;
+      }
+    }
+    return matchSearch && matchState && matchesDate;
+  }), [batches, search, stateFilter, fromDate, toDate]);
 
   const generateBatchCode = () => {
     const year = new Date().getFullYear();
@@ -1495,6 +1509,7 @@ export default function BatchRepayment() {
             </SelectContent>
           </Select>
         )}
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
       </div>
 
       {/* Bulk Delete Bar */}

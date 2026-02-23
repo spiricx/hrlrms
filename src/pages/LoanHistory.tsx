@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import StatCard from '@/components/StatCard';
+import DateRangeFilter from '@/components/DateRangeFilter';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -39,6 +40,8 @@ export default function LoanHistory() {
   const [officerFilter, setOfficerFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
   const [healthFilter, setHealthFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
   const [groupBy, setGroupBy] = useState<'day' | 'month' | 'year'>('month');
 
   useEffect(() => {
@@ -101,8 +104,19 @@ export default function LoanHistory() {
     const matchesOrg = orgFilter === 'all' || b.department === orgFilter;
     const health = classifyHealth(b);
     const matchesHealth = healthFilter === 'all' || healthFilter === health;
-    return matchesSearch && matchesState && matchesBranch && matchesOfficer && matchesOrg && matchesHealth;
-  }), [beneficiaries, search, stateFilter, branchFilter, officerFilter, orgFilter, healthFilter]);
+    // Date range filter on created_at
+    let matchesDate = true;
+    if (fromDate || toDate) {
+      const d = new Date(b.created_at);
+      if (fromDate && d < fromDate) matchesDate = false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (d > endOfDay) matchesDate = false;
+      }
+    }
+    return matchesSearch && matchesState && matchesBranch && matchesOfficer && matchesOrg && matchesHealth && matchesDate;
+  }), [beneficiaries, search, stateFilter, branchFilter, officerFilter, orgFilter, healthFilter, fromDate, toDate]);
 
   // Stats
   const totalActive = filtered.filter(b => b.status === 'active' || b.status === 'defaulted').length;
@@ -184,7 +198,8 @@ export default function LoanHistory() {
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-semibold">Filters</span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+          <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search name, NHF, Ref..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />

@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { Tables } from '@/integrations/supabase/types';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -41,6 +42,8 @@ export default function LoanRepayment() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Modal state
   const [selectedBen, setSelectedBen] = useState<BeneficiaryWithTxnInfo | null>(null);
@@ -121,8 +124,19 @@ export default function LoanRepayment() {
       b.employee_id.toLowerCase().includes(q) ||
       (b.nhf_number && b.nhf_number.toLowerCase().includes(q));
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
-    return matchesSearch && matchesState;
-  }), [beneficiaries, search, stateFilter]);
+    // Date range filter on commencement_date
+    let matchesDate = true;
+    if (fromDate || toDate) {
+      const d = new Date(b.commencement_date);
+      if (fromDate && d < fromDate) matchesDate = false;
+      if (toDate) {
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        if (d > endOfDay) matchesDate = false;
+      }
+    }
+    return matchesSearch && matchesState && matchesDate;
+  }), [beneficiaries, search, stateFilter, fromDate, toDate]);
 
   const resetForm = () => {
     setRepaymentMonth('');
@@ -459,11 +473,12 @@ export default function LoanRepayment() {
         <p className="mt-1 text-sm text-muted-foreground">Record and track monthly repayments via Remita</p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end flex-wrap">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by name, NHF or Loan Ref..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         {isAdmin &&
           <Select value={stateFilter} onValueChange={setStateFilter}>
             <SelectTrigger className="w-48">
