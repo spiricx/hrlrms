@@ -442,7 +442,7 @@ export default function NplStatus() {
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("w-44 justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateFrom ? format(dateFrom, 'dd MMM yyyy') : 'From Date'}
+                {dateFrom ? format(dateFrom, 'dd MMMM yyyy') : 'From Date'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
