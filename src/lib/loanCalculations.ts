@@ -115,13 +115,13 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   const capitalizedBalance = balance;
   const commencementDate = new Date(periodStart);
 
-  // === FIXED MONTHLY PAYMENT (PMT on capitalized balance, r/12) ===
-  // Per specification: payment is computed once using the standard annuity formula
-  // on the capitalized balance, then held constant for periods 1–(N-1).
+  // === FIXED MONTHLY PAYMENT (PMT on original principal, r/12) ===
+  // EMI is computed on the original principal (not capitalized balance) so that
+  // ₦1M/60mo = ₦19,332.80, ₦1M/48mo = ₦23,485.03, etc.
   // The final period is adjusted to clear the balance to exactly ₦0.00.
   const monthlyRate = rate / 12;
   const fixedPMT = round2(
-    capitalizedBalance * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths))
+    principal * monthlyRate / (1 - Math.pow(1 + monthlyRate, -tenorMonths))
   );
 
   // === REPAYMENT SCHEDULE (Fixed PMT + Actual/365 Interest) ===
