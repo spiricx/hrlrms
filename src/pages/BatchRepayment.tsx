@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 interface LoanBatch {
   id: string;

@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 type Profile = {
   user_id: string;

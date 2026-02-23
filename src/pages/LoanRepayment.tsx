@@ -42,6 +42,8 @@ export default function LoanRepayment() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Modal state
   const [selectedBen, setSelectedBen] = useState<BeneficiaryWithTxnInfo | null>(null);

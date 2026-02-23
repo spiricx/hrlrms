@@ -32,6 +32,8 @@ export default function LoanRepaymentReport() {
   // Filters
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [fromDateObj, setFromDateObj] = useState<Date | undefined>();
+  const [toDateObj, setToDateObj] = useState<Date | undefined>();
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const [orgFilter, setOrgFilter] = useState('all');
