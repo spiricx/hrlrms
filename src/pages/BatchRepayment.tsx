@@ -31,6 +31,7 @@ import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import BatchRepaymentUpload from '@/components/batch/BatchRepaymentUpload';
 
 interface LoanBatch {
   id: string;
