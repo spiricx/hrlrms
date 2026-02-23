@@ -1509,6 +1509,7 @@ export default function BatchRepayment() {
             </SelectContent>
           </Select>
         )}
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
       </div>
 
       {/* Bulk Delete Bar */}
