@@ -374,47 +374,8 @@ export default function StaffLoanTracker() {
               </div>
             </div>
 
-            {/* From period */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">From</label>
-              <div className="flex gap-1">
-                <Select value={fromMonth} onValueChange={setFromMonth}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m.slice(0, 3)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={fromYear} onValueChange={setFromYear}>
-                  <SelectTrigger className="w-20"><SelectValue placeholder="Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* To period */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">To</label>
-              <div className="flex gap-1">
-                <Select value={toMonth} onValueChange={setToMonth}>
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Month" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {MONTHS.map((m, i) => <SelectItem key={i} value={String(i)}>{m.slice(0, 3)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                <Select value={toYear} onValueChange={setToYear}>
-                  <SelectTrigger className="w-20"><SelectValue placeholder="Year" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Any</SelectItem>
-                    {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            {/* Date range */}
+            <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
 
             {/* Reset */}
             <div className="space-y-1 flex items-end">
@@ -426,10 +387,8 @@ export default function StaffLoanTracker() {
                   setFilterState('all');
                   setFilterBranch('all');
                   setSearchQuery('');
-                  setFromMonth('all');
-                  setFromYear('all');
-                  setToMonth('all');
-                  setToYear('all');
+                  setFromDate(undefined);
+                  setToDate(undefined);
                 }}
               >
                 Reset Filters
