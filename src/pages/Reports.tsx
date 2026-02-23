@@ -4,6 +4,7 @@ import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import DateRangeFilter from '@/components/DateRangeFilter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
