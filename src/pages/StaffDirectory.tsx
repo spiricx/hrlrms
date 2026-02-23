@@ -139,7 +139,7 @@ function buildProfileSections(s: StaffMember) {
     { section: 'Service Tenure', fields: [
       { label: 'Time in Service', value: tenure ? `${tenure.years}y ${tenure.months}m` : '—' },
       { label: 'Time to Retirement', value: retirement ? (retirement.isPast ? 'Past retirement age' : `${retirement.years}y ${retirement.months}m`) : '—' },
-      { label: 'Retirement Date', value: retirement ? format(retirement.date, 'dd-MMM-yyyy') : '—' },
+      { label: 'Retirement Date', value: retirement ? format(retirement.date, NG_DATE) : '—' },
     ]},
   ];
 }
