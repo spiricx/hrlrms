@@ -93,6 +93,8 @@ export default function BatchRepayment() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Create batch state
   const [createOpen, setCreateOpen] = useState(false);
