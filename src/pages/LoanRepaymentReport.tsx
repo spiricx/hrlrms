@@ -467,6 +467,12 @@ export default function LoanRepaymentReport() {
           </div>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="batch">
+          <BatchLoanRepaymentReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
