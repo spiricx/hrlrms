@@ -560,6 +560,7 @@ export default function Admin() {
         <TabsContent value="roles" className="mt-6"><RolesTab /></TabsContent>
         <TabsContent value="module-access" className="mt-6"><ModuleAccessTab /></TabsContent>
         <TabsContent value="activity-logs" className="mt-6"><ActivityLogsTab /></TabsContent>
+        <TabsContent value="data-management" className="mt-6"><DataManagementTab /></TabsContent>
         <TabsContent value="security" className="mt-6"><SecurityTab /></TabsContent>
         <TabsContent value="backend" className="mt-6"><BackendTab /></TabsContent>
       </Tabs>
