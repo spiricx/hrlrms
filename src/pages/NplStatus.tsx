@@ -116,12 +116,14 @@ export default function NplStatus() {
   const arrears = useArrearsLookup();
 
   const fetchData = useCallback(async () => {
-    const [bRes, tRes] = await Promise.all([
+    const [bRes, tRes, lbRes] = await Promise.all([
       supabase.from('beneficiaries').select('*'),
       supabase.from('transactions').select('date_paid, beneficiary_id'),
+      supabase.from('loan_batches').select('*'),
     ]);
     if (bRes.data) setBeneficiaries(bRes.data);
     if (tRes.data) setTxnDates(tRes.data);
+    if (lbRes.data) setBatches(lbRes.data);
     setLoading(false);
   }, []);
 
