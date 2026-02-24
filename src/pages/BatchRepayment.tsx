@@ -85,6 +85,7 @@ interface BatchRepaymentRecord {
 
 export default function BatchRepayment() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
