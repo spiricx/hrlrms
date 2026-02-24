@@ -63,26 +63,6 @@ function getLastPaymentDate(beneficiary: Beneficiary, txns: { date_paid: string;
   return bTxns[0]?.date_paid ?? null;
 }
 
-function getAmountInArrears(beneficiary: Beneficiary): number {
-  const today = stripTime(new Date());
-  const commDate = stripTime(new Date(beneficiary.commencement_date));
-
-  // Count how many instalments are due (due date <= today)
-  let dueMonths = 0;
-  for (let i = 1; i <= beneficiary.tenor_months; i++) {
-    const dueDate = new Date(commDate);
-    dueDate.setMonth(dueDate.getMonth() + (i - 1));
-    if (today >= stripTime(dueDate)) dueMonths = i;
-    else break;
-  }
-
-  const expectedTotal = dueMonths * Number(beneficiary.monthly_emi);
-  const totalPaid = Math.round(Number(beneficiary.total_paid) * 100) / 100;
-  // Only the portion that is in arrears (next period has passed)
-  // For NPL display purposes show total overdue deficit
-  return Math.max(0, Math.round((expectedTotal - totalPaid) * 100) / 100);
-}
-
 type ParThreshold = 'par30' | 'par60' | 'par90' | 'par120' | 'par180';
 const PAR_OPTIONS: { value: ParThreshold; label: string; days: number }[] = [
   { value: 'par30', label: 'PAR 30+', days: 30 },
