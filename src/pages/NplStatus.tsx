@@ -314,7 +314,7 @@ export default function NplStatus() {
     if (branch !== undefined) setSelectedBranch(branch);
   };
 
-  if (loading) {
+  if (loading || arrears.loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-pulse text-muted-foreground">Loading NPL data...</div>
