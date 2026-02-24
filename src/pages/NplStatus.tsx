@@ -406,17 +406,15 @@ export default function NplStatus() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* 1. State Filter */}
-          {drillLevel === 'state' && (
-            <Select value={stateFilter} onValueChange={setStateFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="All States" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All States</SelectItem>
-                {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
+          <Select value={stateFilter} onValueChange={setStateFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="All States" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All States</SelectItem>
+              {NIGERIA_STATES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
           {/* 2. Branch Filter */}
           <Select value={branchFilter} onValueChange={setBranchFilter}>
             <SelectTrigger className="w-40">
