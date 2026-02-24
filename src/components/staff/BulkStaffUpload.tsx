@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
-import { formatLocalDate } from '@/lib/loanCalculations';
+import { parseSpreadsheetDate } from '@/lib/spreadsheetDate';
 import * as XLSX from 'xlsx';
 
 interface ParsedStaffRow {
