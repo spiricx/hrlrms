@@ -699,7 +699,7 @@ export default function NplStatus() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-secondary/50">
+                     <TableRow className="bg-secondary/50">
                       <TableHead className="text-center">S/N</TableHead>
                       <TableHead>Beneficiary Names</TableHead>
                       <TableHead>Organizations</TableHead>
@@ -710,10 +710,11 @@ export default function NplStatus() {
                       <TableHead className="text-right">Expected Monthly Repayment</TableHead>
                       <TableHead className="text-right">Actual Amount Paid</TableHead>
                       <TableHead className="text-right">Closing Balance</TableHead>
-                      <TableHead className="text-right">Arrears in Amount</TableHead>
                       <TableHead className="text-right">Months in Arrears</TableHead>
-                      <TableHead>Last Payment Date</TableHead>
+                      <TableHead className="text-right">Arrears in Amount</TableHead>
                       <TableHead className="text-right">DPD</TableHead>
+                      <TableHead>Last Payment Date</TableHead>
+                      <TableHead className="text-right">Total Repayment Made so Far</TableHead>
                       <TableHead className="text-right">NPL Ratio</TableHead>
                     </TableRow>
                   </TableHeader>
