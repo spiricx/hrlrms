@@ -22,6 +22,7 @@ import {
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
 import AvatarUpload from '@/components/AvatarUpload';
 const HelpChatbot = lazy(() => import('@/components/HelpChatbot'));
