@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Shield, Users, Lock, Database, UserCog, Search, Plus, Trash2, RefreshCw, Eye, EyeOff, KeyRound, Activity } from 'lucide-react';
+import { Shield, Users, Lock, Database, UserCog, Search, Plus, Trash2, RefreshCw, Eye, EyeOff, KeyRound, Activity, Settings2 } from 'lucide-react';
 import ModuleAccessTab from '@/components/admin/ModuleAccessTab';
 import ActivityLogsTab from '@/components/admin/ActivityLogsTab';
 import { format } from 'date-fns';
