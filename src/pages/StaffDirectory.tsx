@@ -754,7 +754,7 @@ export default function StaffDirectory() {
                     <tr key={s.id} className={`border-b table-row-highlight ${nearRetire ? 'retire-blink' : ''} ${bdaySoon ? 'rgb-blink' : ''} ${isPinned ? 'bg-primary/5' : ''}`}>
                       <td className="px-3 py-2.5 text-muted-foreground">
                         <div className="flex items-center gap-1">
-                          {isPinned && <Pin className="w-3.5 h-3.5 text-primary rotate-45" title="Admin — Pinned to top" />}
+                          {isPinned && <Pin className="w-3.5 h-3.5 text-primary rotate-45" />}
                           {i + 1}
                         </div>
                       </td>
