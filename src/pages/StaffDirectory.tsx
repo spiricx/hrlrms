@@ -749,16 +749,25 @@ export default function StaffDirectory() {
                   const retirement = calcRetirement(s.date_of_birth);
                   const nearRetire = isNearRetirement(s.date_of_birth);
                   const bdaySoon = isUpcomingBirthday(s.date_of_birth);
-                  return (
-                    <tr key={s.id} className={`border-b table-row-highlight ${nearRetire ? 'retire-blink' : ''} ${bdaySoon ? 'rgb-blink' : ''}`}>
-                      <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
+                    const isPinned = adminEmails.has((s.email || '').toLowerCase());
+                    return (
+                    <tr key={s.id} className={`border-b table-row-highlight ${nearRetire ? 'retire-blink' : ''} ${bdaySoon ? 'rgb-blink' : ''} ${isPinned ? 'bg-primary/5' : ''}`}>
+                      <td className="px-3 py-2.5 text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          {isPinned && <Pin className="w-3.5 h-3.5 text-primary rotate-45" title="Admin — Pinned to top" />}
+                          {i + 1}
+                        </div>
+                      </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
-                        <div className="font-medium">{s.title} {s.surname} {s.first_name}</div>
+                        <div className="font-medium flex items-center gap-1.5">
+                          {s.title} {s.surname} {s.first_name}
+                          {isPinned && <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">ADMIN</span>}
+                        </div>
                         <div className="text-xs text-muted-foreground">{s.email}</div>
                       </td>
                       <td className="px-3 py-2.5 font-mono text-xs">{s.staff_id}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{s.state}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{s.branch}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{isPinned ? '—' : s.state}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{isPinned ? '—' : s.branch}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">{s.department}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">{s.designation}</td>
                       <td className="px-3 py-2.5">
