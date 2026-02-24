@@ -277,7 +277,7 @@ export async function exportNplToPDF(data: NplReportData) {
           row[0], row[1], row[2], row[3], row[4],
           formatCurrency(row[5] as number), row[6], formatCurrency(row[7] as number),
           formatCurrency(row[8] as number), formatCurrency(row[9] as number),
-          row[10], formatCurrency(row[11] as number), row[12],
+          row[10], row[11], formatCurrency(row[12] as number),
           row[13], formatCurrency(row[14] as number), row[15],
         ];
       }),
