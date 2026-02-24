@@ -332,6 +332,10 @@ export default function NplStatus() {
   // Individual accounts for drill-down
   const accountsList = useMemo(() => {
     let accts = filteredAccounts.filter(a => a.dpd >= parDays);
+    if (selectedBatchId) {
+      const batchBenIds = new Set(beneficiaries.filter(b => b.batch_id === selectedBatchId).map(b => b.id));
+      accts = accts.filter(a => batchBenIds.has(a.id));
+    }
     if (drillLevel === 'branch' && selectedState) accts = accts.filter(a => a.state === selectedState);
     if (drillLevel === 'accounts' && selectedBranch) accts = accts.filter(a => a.branch === selectedBranch);
     if (searchQuery) {
@@ -339,7 +343,7 @@ export default function NplStatus() {
       accts = accts.filter(a => a.name.toLowerCase().includes(q) || a.employeeId.toLowerCase().includes(q));
     }
     return accts.sort((a, b) => b.dpd - a.dpd);
-  }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery]);
+  }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery, selectedBatchId, beneficiaries]);
 
   // Simple trend data (mock last 6 months based on current ratio)
   const trendData = useMemo(() => {
