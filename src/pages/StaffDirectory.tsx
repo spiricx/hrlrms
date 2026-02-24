@@ -766,8 +766,8 @@ export default function StaffDirectory() {
                         <div className="text-xs text-muted-foreground">{s.email}</div>
                       </td>
                       <td className="px-3 py-2.5 font-mono text-xs">{s.staff_id}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{s.state || '—'}</td>
-                      <td className="px-3 py-2.5 whitespace-nowrap">{s.branch || '—'}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{isPinned ? '—' : s.state}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{isPinned ? '—' : s.branch}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">{s.department}</td>
                       <td className="px-3 py-2.5 whitespace-nowrap">{s.designation}</td>
                       <td className="px-3 py-2.5">
