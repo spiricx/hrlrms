@@ -111,6 +111,7 @@ export default function NplStatus() {
   const [drillLevel, setDrillLevel] = useState<DrillLevel>('state');
   const [selectedState, setSelectedState] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
   // Golden Record: single source of truth for DPD, arrears, NPL status
   const arrears = useArrearsLookup();
@@ -264,6 +265,9 @@ export default function NplStatus() {
       batchId: string; batchName: string; state: string; branch: string;
       totalLoans: number; activeAmount: number; nplAmount: number; nplCount: number;
       par30: number; par90: number;
+      totalDisbursed: number; totalOutstanding: number; totalRepaid: number;
+      totalMonthsInArrears: number; totalArrearsAmount: number; worstDpd: number;
+      maxTenor: number; lastPaymentDate: string | null;
     }>();
     for (const a of filteredAccounts) {
       const b = beneficiaries.find(ben => ben.id === a.id);
@@ -273,16 +277,30 @@ export default function NplStatus() {
       const entry = map.get(batchId) || {
         batchId, batchName, state: batch?.state || a.state, branch: batch?.bank_branch || a.branch,
         totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, par30: 0, par90: 0,
+        totalDisbursed: 0, totalOutstanding: 0, totalRepaid: 0,
+        totalMonthsInArrears: 0, totalArrearsAmount: 0, worstDpd: 0,
+        maxTenor: 0, lastPaymentDate: null as string | null,
       };
       entry.totalLoans++;
       entry.activeAmount += a.outstandingBalance;
+      entry.totalDisbursed += a.loanAmount;
+      entry.totalOutstanding += a.outstandingBalance;
+      entry.totalRepaid += a.totalPaid;
+      entry.totalMonthsInArrears += a.monthsInArrears;
+      entry.totalArrearsAmount += a.amountInArrears;
+      if (a.dpd > entry.worstDpd) entry.worstDpd = a.dpd;
+      if (a.tenorMonths > entry.maxTenor) entry.maxTenor = a.tenorMonths;
+      if (a.lastPaymentDate) {
+        if (!entry.lastPaymentDate || new Date(a.lastPaymentDate) > new Date(entry.lastPaymentDate)) {
+          entry.lastPaymentDate = a.lastPaymentDate;
+        }
+      }
       if (a.dpd >= 90) { entry.nplAmount += a.outstandingBalance; entry.nplCount++; }
       if (a.dpd >= 30) entry.par30 += a.outstandingBalance;
       if (a.dpd >= 90) entry.par90 += a.outstandingBalance;
       map.set(batchId, entry);
     }
     const rows = Array.from(map.values());
-    // Pin the specified batch at top, rest sorted by NPL amount desc
     rows.sort((a, b) => {
       const aPin = a.batchName === PINNED_BATCH ? -1 : 0;
       const bPin = b.batchName === PINNED_BATCH ? -1 : 0;
@@ -314,6 +332,10 @@ export default function NplStatus() {
   // Individual accounts for drill-down
   const accountsList = useMemo(() => {
     let accts = filteredAccounts.filter(a => a.dpd >= parDays);
+    if (selectedBatchId) {
+      const batchBenIds = new Set(beneficiaries.filter(b => b.batch_id === selectedBatchId).map(b => b.id));
+      accts = accts.filter(a => batchBenIds.has(a.id));
+    }
     if (drillLevel === 'branch' && selectedState) accts = accts.filter(a => a.state === selectedState);
     if (drillLevel === 'accounts' && selectedBranch) accts = accts.filter(a => a.branch === selectedBranch);
     if (searchQuery) {
@@ -321,7 +343,7 @@ export default function NplStatus() {
       accts = accts.filter(a => a.name.toLowerCase().includes(q) || a.employeeId.toLowerCase().includes(q));
     }
     return accts.sort((a, b) => b.dpd - a.dpd);
-  }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery]);
+  }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery, selectedBatchId, beneficiaries]);
 
   // Simple trend data (mock last 6 months based on current ratio)
   const trendData = useMemo(() => {
@@ -370,7 +392,10 @@ export default function NplStatus() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigateTo(drillLevel === 'accounts' ? 'branch' : 'state')}
+              onClick={() => {
+                setSelectedBatchId(null);
+                navigateTo(drillLevel === 'accounts' ? 'branch' : 'state');
+              }}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -752,7 +777,15 @@ export default function NplStatus() {
                   <TableHead>State</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead className="text-right">Active Loans</TableHead>
-                  <TableHead className="text-right">Active Amount</TableHead>
+                  <TableHead className="text-right">Loan Tenor</TableHead>
+                  <TableHead className="text-right">Total Disbursed</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-right">Total Repayment Made So Far</TableHead>
+                  <TableHead className="text-right">Months in Arrears</TableHead>
+                  <TableHead className="text-right">Age in Arrears</TableHead>
+                  <TableHead className="text-right">Arrears in Amount</TableHead>
+                  <TableHead className="text-right">DPD</TableHead>
+                  <TableHead>Last Payment Date</TableHead>
                   <TableHead className="text-right">NPL Amount</TableHead>
                   <TableHead className="text-right">NPL Count</TableHead>
                   <TableHead className="text-right">NPL Ratio</TableHead>
@@ -764,17 +797,38 @@ export default function NplStatus() {
                 {batchData.map((row, idx) => {
                   const ratio = row.activeAmount > 0 ? (row.nplAmount / row.activeAmount) * 100 : 0;
                   const isPinned = row.batchName === 'GATEWAY HOLDINGS LTD /OGUN/107-110/2020';
+                  const ageInArrears = row.worstDpd > 0 ? `${Math.floor(row.worstDpd / 30)}m ${row.worstDpd % 30}d` : '—';
                   return (
                     <TableRow key={row.batchId} className={cn(
                       riskRowBg(ratio > 5 ? 90 : ratio >= 3 ? 30 : 0),
                       isPinned && 'ring-2 ring-primary/40 bg-primary/5'
                     )}>
                       <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
-                      <TableCell className={cn("font-medium", isPinned && "text-primary font-bold")}>{row.batchName}</TableCell>
+                      <TableCell className={cn("font-medium", isPinned && "text-primary font-bold")}>
+                        <button
+                          className="text-left underline decoration-dotted hover:decoration-solid hover:text-primary transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedBatchId(row.batchId);
+                            setDrillLevel('accounts');
+                            setSelectedState(row.state || '');
+                            setSelectedBranch(row.branch || '');
+                          }}
+                        >
+                          {row.batchName}
+                        </button>
+                      </TableCell>
                       <TableCell>{row.state || '—'}</TableCell>
                       <TableCell>{row.branch || '—'}</TableCell>
                       <TableCell className="text-right">{row.totalLoans}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(row.activeAmount)}</TableCell>
+                      <TableCell className="text-right">{row.maxTenor} months</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalDisbursed)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalOutstanding)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalRepaid)}</TableCell>
+                      <TableCell className="text-right">{row.totalMonthsInArrears}</TableCell>
+                      <TableCell className="text-right">{ageInArrears}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.totalArrearsAmount)}</TableCell>
+                      <TableCell className={`text-right ${riskColor(row.worstDpd)}`}>{row.worstDpd}</TableCell>
+                      <TableCell>{row.lastPaymentDate ? new Date(row.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
                       <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.nplAmount)}</TableCell>
                       <TableCell className="text-right">{row.nplCount}</TableCell>
                       <TableCell className="text-right">
