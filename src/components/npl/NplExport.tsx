@@ -22,12 +22,16 @@ interface NplAccount {
   employeeId: string;
   state: string;
   branch: string;
+  organization: string;
   loanAmount: number;
+  tenorMonths: number;
+  monthlyEmi: number;
+  totalPaid: number;
   outstandingBalance: number;
   dpd: number;
   lastPaymentDate: string | null;
   amountInArrears: number;
-  monthlyEmi: number;
+  monthsInArrears: number;
 }
 
 export interface NplReportData {
@@ -48,8 +52,23 @@ export interface NplReportData {
   };
 }
 
+const REPORT_TITLE = 'FEDERAL MORTGAGE BANK OF NIGERIA';
+const REPORT_SUBTITLE = "Report on NPL Status of Home Renovation Loan";
+
+const DETAIL_HEADERS = [
+  'S/N', 'Beneficiary Names', 'Organizations', 'Branch/State', 'No. of Beneficiaries',
+  'Total Disbursed (₦)', 'Loan Tenor', 'Expected Monthly Repayment (₦)', 'Actual Amount Paid (₦)',
+  'Closing Balance (₦)', 'Months in Arrears', 'Arrears in Amount (₦)', 'DPD',
+  'Last Payment Date', 'Total Repayment Made so Far (₦)', 'NPL Ratio'
+];
+
 function formatDateTime(d: Date): string {
   return `${formatDate(d)} at ${d.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+}
+
+function formatLastPayment(dateStr: string | null): string {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' });
 }
 
 async function getLogoBase64(): Promise<string> {
@@ -75,14 +94,36 @@ function getFilterSummary(filters: NplReportData['filters']): string {
   return parts.length > 0 ? parts.join(' | ') : 'All Records';
 }
 
+function buildAccountRow(a: NplAccount, idx: number, totalActiveAmount: number): (string | number)[] {
+  const individualNplRatio = totalActiveAmount > 0 ? ((a.outstandingBalance / totalActiveAmount) * 100) : 0;
+  return [
+    idx + 1,
+    a.name,
+    a.organization || '—',
+    `${a.branch} / ${a.state}`,
+    1,
+    a.loanAmount,
+    `${a.tenorMonths} months`,
+    a.monthlyEmi,
+    a.totalPaid,
+    a.outstandingBalance,
+    a.monthsInArrears,
+    a.amountInArrears,
+    a.dpd,
+    formatLastPayment(a.lastPaymentDate),
+    a.totalPaid,
+    `${individualNplRatio.toFixed(2)}%`,
+  ];
+}
+
 export function exportNplToExcel(data: NplReportData) {
   const wb = XLSX.utils.book_new();
   const now = new Date();
 
   // Summary sheet
   const summaryRows = [
-    ['FEDERAL MORTGAGE BANK OF NIGERIA'],
-    ["Management's Report on NPL Status of Home Renovation Loan"],
+    [REPORT_TITLE],
+    [REPORT_SUBTITLE],
     [],
     ['Date & Time of Report', formatDateTime(now)],
     ['Reported By', data.staffName],
@@ -117,15 +158,12 @@ export function exportNplToExcel(data: NplReportData) {
   // Detailed Accounts sheet
   if (data.accountsList.length > 0) {
     const detailRows = [
-      ['Employee ID', 'Name', 'State', 'Branch', 'Principal (₦)', 'Outstanding (₦)', 'DPD', 'Classification', 'Last Payment', 'Arrears (₦)', 'Monthly Repayment (₦)'],
-      ...data.accountsList.map(a => {
-        const cls = a.dpd >= 180 ? 'PAR 180+' : a.dpd >= 120 ? 'PAR 120+' : a.dpd >= 90 ? 'NPL (PAR 90+)' : a.dpd >= 60 ? 'PAR 60+' : a.dpd >= 30 ? 'PAR 30+' : 'Performing';
-        return [a.employeeId, a.name, a.state, a.branch, a.loanAmount, a.outstandingBalance, a.dpd, cls, a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : 'N/A', a.amountInArrears, a.monthlyEmi];
-      }),
+      DETAIL_HEADERS,
+      ...data.accountsList.map((a, idx) => buildAccountRow(a, idx, data.totalActiveAmount)),
     ];
     const wsDetail = XLSX.utils.aoa_to_sheet(detailRows);
-    wsDetail['!cols'] = [{ wch: 16 }, { wch: 24 }, { wch: 16 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 10 }, { wch: 16 }, { wch: 14 }, { wch: 18 }, { wch: 18 }];
-    XLSX.utils.book_append_sheet(wb, wsDetail, 'Detailed Accounts');
+    wsDetail['!cols'] = DETAIL_HEADERS.map(() => ({ wch: 20 }));
+    XLSX.utils.book_append_sheet(wb, wsDetail, 'NPL Accounts');
   }
 
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -150,10 +188,10 @@ export async function exportNplToPDF(data: NplReportData) {
 
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, y, { align: 'center' });
+  doc.text(REPORT_TITLE, centerX, y, { align: 'center' });
   y += 8;
   doc.setFontSize(12);
-  doc.text("Management's Report on NPL Status of Home Renovation Loan", centerX, y, { align: 'center' });
+  doc.text(REPORT_SUBTITLE, centerX, y, { align: 'center' });
   y += 10;
 
   doc.setFontSize(10);
@@ -211,25 +249,41 @@ export async function exportNplToPDF(data: NplReportData) {
     y = (doc as any).lastAutoTable.finalY + 8;
   }
 
-  // Detailed accounts (new page if needed)
+  // Detailed accounts (new page)
   if (data.accountsList.length > 0) {
     doc.addPage();
-    let dy = 14;
+
+    // Add logo and title on detail page too
+    if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 10, 8, 20, 20);
+    let dy = logoBase64 ? 32 : 14;
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(REPORT_TITLE, centerX, dy, { align: 'center' });
+    dy += 7;
+    doc.setFontSize(11);
+    doc.text(REPORT_SUBTITLE, centerX, dy, { align: 'center' });
+    dy += 8;
     doc.setFontSize(12);
-    doc.text('Detailed NPL Accounts', 14, dy);
+    doc.text('NPL Accounts', 14, dy);
     dy += 2;
 
     autoTable(doc, {
       startY: dy,
-      head: [['Emp ID', 'Name', 'State', 'Branch', 'Principal', 'Outstanding', 'DPD', 'Classification', 'Arrears']],
-      body: data.accountsList.map(a => {
-        const cls = a.dpd >= 180 ? 'PAR 180+' : a.dpd >= 120 ? 'PAR 120+' : a.dpd >= 90 ? 'NPL (90+)' : a.dpd >= 60 ? 'PAR 60+' : 'PAR 30+';
-        return [a.employeeId, a.name, a.state, a.branch, formatCurrency(a.loanAmount), formatCurrency(a.outstandingBalance), String(a.dpd), cls, formatCurrency(a.amountInArrears)];
+      head: [DETAIL_HEADERS],
+      body: data.accountsList.map((a, idx) => {
+        const row = buildAccountRow(a, idx, data.totalActiveAmount);
+        // Format currency columns for PDF
+        return [
+          row[0], row[1], row[2], row[3], row[4],
+          formatCurrency(row[5] as number), row[6], formatCurrency(row[7] as number),
+          formatCurrency(row[8] as number), formatCurrency(row[9] as number),
+          row[10], formatCurrency(row[11] as number), row[12],
+          row[13], formatCurrency(row[14] as number), row[15],
+        ];
       }),
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [0, 100, 60], fontStyle: 'bold' },
-      margin: { left: 14, right: 14 },
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [0, 100, 60], fontStyle: 'bold', fontSize: 7 },
+      margin: { left: 6, right: 6 },
     });
   }
 
@@ -251,6 +305,28 @@ export function printNplReport(data: NplReportData) {
   const now = new Date();
   const logoUrl = new URL(fmbnLogo, window.location.origin).href;
 
+  const accountRows = data.accountsList.map((a, idx) => {
+    const individualNplRatio = data.totalActiveAmount > 0 ? ((a.outstandingBalance / data.totalActiveAmount) * 100) : 0;
+    return `<tr>
+      <td class="center">${idx + 1}</td>
+      <td>${a.name}</td>
+      <td>${a.organization || '—'}</td>
+      <td>${a.branch} / ${a.state}</td>
+      <td class="right">1</td>
+      <td class="right">${formatCurrency(a.loanAmount)}</td>
+      <td class="right">${a.tenorMonths} months</td>
+      <td class="right">${formatCurrency(a.monthlyEmi)}</td>
+      <td class="right">${formatCurrency(a.totalPaid)}</td>
+      <td class="right">${formatCurrency(a.outstandingBalance)}</td>
+      <td class="right">${a.monthsInArrears}</td>
+      <td class="right npl-red">${formatCurrency(a.amountInArrears)}</td>
+      <td class="right ${a.dpd >= 90 ? 'npl-red' : ''}">${a.dpd}</td>
+      <td>${formatLastPayment(a.lastPaymentDate)}</td>
+      <td class="right">${formatCurrency(a.totalPaid)}</td>
+      <td class="right">${individualNplRatio.toFixed(2)}%</td>
+    </tr>`;
+  }).join('');
+
   const html = `
     <html>
     <head>
@@ -265,20 +341,22 @@ export function printNplReport(data: NplReportData) {
         .meta p { margin: 3px 0; }
         .label { font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin: 12px 0 20px; }
-        th { background: #006040; color: white; padding: 8px; text-align: left; font-size: 11px; }
-        td { padding: 6px 8px; border-bottom: 1px solid #ddd; font-size: 11px; }
+        th { background: #006040; color: white; padding: 8px; text-align: left; font-size: 10px; }
+        td { padding: 6px 8px; border-bottom: 1px solid #ddd; font-size: 10px; }
         tr:nth-child(even) { background: #f5f5f5; }
         .section-title { font-size: 14px; font-weight: bold; margin-top: 20px; margin-bottom: 4px; }
         .footer { text-align: center; margin-top: 30px; font-size: 9px; color: #999; border-top: 1px solid #ddd; padding-top: 8px; }
         .npl-red { color: #cc0000; font-weight: bold; }
-        @media print { body { margin: 15mm; } }
+        .right { text-align: right; }
+        .center { text-align: center; }
+        @media print { body { margin: 10mm; } }
       </style>
     </head>
     <body>
       <div class="header">
         <img src="${logoUrl}" alt="FMBN Logo" /><br/>
-        <h1>FEDERAL MORTGAGE BANK OF NIGERIA</h1>
-        <h2>Management's Report on NPL Status of Home Renovation Loan</h2>
+        <h1>${REPORT_TITLE}</h1>
+        <h2>${REPORT_SUBTITLE}</h2>
       </div>
       <div class="meta">
         <p><span class="label">Date & Time of Report:</span> ${formatDateTime(now)}</p>
@@ -313,12 +391,10 @@ export function printNplReport(data: NplReportData) {
       ` : ''}
 
       ${data.accountsList.length > 0 ? `
-        <div class="section-title">Detailed NPL Accounts</div>
+        <div class="section-title">NPL Accounts</div>
         <table>
-          <thead><tr><th>Emp ID</th><th>Name</th><th>State</th><th>Branch</th><th>Principal</th><th>Outstanding</th><th>DPD</th><th>Arrears</th></tr></thead>
-          <tbody>
-            ${data.accountsList.map(a => `<tr><td>${a.employeeId}</td><td>${a.name}</td><td>${a.state}</td><td>${a.branch}</td><td>${formatCurrency(a.loanAmount)}</td><td>${formatCurrency(a.outstandingBalance)}</td><td class="${a.dpd >= 90 ? 'npl-red' : ''}">${a.dpd}</td><td class="npl-red">${formatCurrency(a.amountInArrears)}</td></tr>`).join('')}
-          </tbody>
+          <thead><tr>${DETAIL_HEADERS.map(h => `<th>${h.replace(/ \(₦\)/g, '')}</th>`).join('')}</tr></thead>
+          <tbody>${accountRows}</tbody>
         </table>
       ` : ''}
 

@@ -406,7 +406,7 @@ export default function NplStatus() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* 1. State Filter */}
-          {isAdmin && drillLevel === 'state' && (
+          {drillLevel === 'state' && (
             <Select value={stateFilter} onValueChange={setStateFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All States" />
@@ -699,7 +699,7 @@ export default function NplStatus() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-secondary/50">
+                     <TableRow className="bg-secondary/50">
                       <TableHead className="text-center">S/N</TableHead>
                       <TableHead>Beneficiary Names</TableHead>
                       <TableHead>Organizations</TableHead>
@@ -710,17 +710,18 @@ export default function NplStatus() {
                       <TableHead className="text-right">Expected Monthly Repayment</TableHead>
                       <TableHead className="text-right">Actual Amount Paid</TableHead>
                       <TableHead className="text-right">Closing Balance</TableHead>
-                      <TableHead className="text-right">Arrears in Amount</TableHead>
                       <TableHead className="text-right">Months in Arrears</TableHead>
-                      <TableHead>Last Payment Date</TableHead>
+                      <TableHead className="text-right">Arrears in Amount</TableHead>
                       <TableHead className="text-right">DPD</TableHead>
+                      <TableHead>Last Payment Date</TableHead>
+                      <TableHead className="text-right">Total Repayment Made so Far</TableHead>
                       <TableHead className="text-right">NPL Ratio</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {accountsList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={16} className="text-center py-12 text-muted-foreground">
                           No NPL accounts found for the selected criteria
                         </TableCell>
                       </TableRow>
@@ -739,10 +740,11 @@ export default function NplStatus() {
                           <TableCell className="text-right">{formatCurrency(a.monthlyEmi)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
-                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell className="text-right">{a.monthsInArrears}</TableCell>
-                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
+                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
+                          <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={nplRatioColor(individualNplRatio)}>{individualNplRatio.toFixed(2)}%</Badge>
                           </TableCell>
