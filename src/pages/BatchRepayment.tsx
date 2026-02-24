@@ -187,6 +187,20 @@ export default function BatchRepayment() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Auto-open batch detail from URL query param
+  useEffect(() => {
+    const batchId = searchParams.get('batchId');
+    if (batchId && batches.length > 0 && !detailBatch) {
+      const found = batches.find(b => b.id === batchId);
+      if (found) {
+        openDetail(found);
+        // Clean up the query param
+        searchParams.delete('batchId');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [batches, searchParams]);
+
   // Compute batch stats
   interface BatchStat {
     count: number;
