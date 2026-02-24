@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { calculateLoan, formatCurrency, formatLocalDate } from '@/lib/loanCalculations';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import { parseSpreadsheetDate } from '@/lib/spreadsheetDate';
 import * as XLSX from 'xlsx';
 
 interface ParsedRow {
