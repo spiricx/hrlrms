@@ -550,6 +550,7 @@ export default function Admin() {
           <TabsTrigger value="roles" className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Privileges & Roles</TabsTrigger>
           <TabsTrigger value="module-access" className="flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Module Access</TabsTrigger>
           <TabsTrigger value="activity-logs" className="flex items-center gap-1.5"><Activity className="w-4 h-4" /> Activity Logs</TabsTrigger>
+          <TabsTrigger value="data-management" className="flex items-center gap-1.5"><Settings2 className="w-4 h-4" /> Data Management</TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-1.5"><Lock className="w-4 h-4" /> Security</TabsTrigger>
           <TabsTrigger value="backend" className="flex items-center gap-1.5"><Database className="w-4 h-4" /> Backend</TabsTrigger>
         </TabsList>
