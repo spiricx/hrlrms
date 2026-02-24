@@ -10,7 +10,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/help-chat`;
 export default function HelpChatbot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([
-    { role: 'assistant', content: "👋 Hi! I'm the HRLMS Help Assistant. Ask me anything about using the portal — recording repayments, creating loans, reconciliation, and more!" },
+    { role: 'assistant', content: "👋 Hi! I'm the HRL RMS Help Assistant. Ask me anything about using the portal — recording repayments, creating loans, reconciliation, and more!" },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -140,7 +140,7 @@ export default function HelpChatbot() {
           {/* Header */}
           <div className="flex items-center gap-2 px-4 py-3 gradient-primary text-primary-foreground">
             <Bot className="w-5 h-5" />
-            <span className="text-sm font-semibold flex-1">HRLMS Help Assistant</span>
+            <span className="text-sm font-semibold flex-1">HRL RMS Help Assistant</span>
             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded">
               <X className="w-4 h-4" />
             </button>
