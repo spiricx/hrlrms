@@ -29,6 +29,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 
 type Beneficiary = Tables<'beneficiaries'>;
+type LoanBatch = Tables<'loan_batches'>;
 
 type DrillLevel = 'state' | 'branch' | 'accounts';
 
