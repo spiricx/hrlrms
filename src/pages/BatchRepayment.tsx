@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
   FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye, Trash2,
@@ -85,6 +85,7 @@ interface BatchRepaymentRecord {
 
 export default function BatchRepayment() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, hasRole } = useAuth();
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
@@ -185,6 +186,20 @@ export default function BatchRepayment() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
+
+  // Auto-open batch detail from URL query param
+  useEffect(() => {
+    const batchId = searchParams.get('batchId');
+    if (batchId && batches.length > 0 && !detailBatch) {
+      const found = batches.find(b => b.id === batchId);
+      if (found) {
+        openDetail(found);
+        // Clean up the query param
+        searchParams.delete('batchId');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [batches, searchParams]);
 
   // Compute batch stats
   interface BatchStat {
