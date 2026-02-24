@@ -46,26 +46,7 @@ const EXPECTED_HEADERS = [
   'Month of Payment',
 ];
 
-function parseExcelDate(value: any): string | null {
-  if (!value) return null;
-  if (typeof value === 'number') {
-    const date = XLSX.SSF.parse_date_code(value);
-    if (date) {
-      const d = new Date(date.y, date.m - 1, date.d);
-      return format(d, 'yyyy-MM-dd');
-    }
-  }
-  if (typeof value === 'string') {
-    const parts = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (parts) return `${parts[1]}-${parts[2].padStart(2, '0')}-${parts[3].padStart(2, '0')}`;
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return format(d, 'yyyy-MM-dd');
-  }
-  if (value instanceof Date && !isNaN(value.getTime())) {
-    return format(value, 'yyyy-MM-dd');
-  }
-  return null;
-}
+const parseExcelDate = parseSpreadsheetDate;
 
 function generateTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([

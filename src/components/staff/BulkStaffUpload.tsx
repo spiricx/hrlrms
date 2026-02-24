@@ -47,35 +47,7 @@ const EXPECTED_HEADERS = [
   'NIN',
 ];
 
-function parseExcelDate(value: any): string | null {
-  if (!value) return null;
-  if (typeof value === 'number') {
-    const date = XLSX.SSF.parse_date_code(value);
-    if (date) {
-      const d = new Date(date.y, date.m - 1, date.d);
-      return formatLocalDate(d);
-    }
-  }
-  if (typeof value === 'string') {
-    // Try D/M/Y format first
-    const dmy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (dmy) {
-      const d = new Date(parseInt(dmy[3]), parseInt(dmy[2]) - 1, parseInt(dmy[1]));
-      if (!isNaN(d.getTime())) return formatLocalDate(d);
-    }
-    // Try YYYY-MM-DD
-    const parts = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (parts) {
-      return formatLocalDate(new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])));
-    }
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return formatLocalDate(d);
-  }
-  if (value instanceof Date && !isNaN(value.getTime())) {
-    return formatLocalDate(value);
-  }
-  return null;
-}
+const parseExcelDate = parseSpreadsheetDate;
 
 function validateRow(row: any): ParsedStaffRow {
   const errors: string[] = [];

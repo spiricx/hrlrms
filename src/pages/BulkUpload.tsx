@@ -54,44 +54,7 @@ const EXPECTED_HEADERS = [
   'Interest',
 ];
 
-function parseExcelDate(value: any): string | null {
-  if (!value) return null;
-  if (typeof value === 'number') {
-    // Excel serial date – use XLSX parser to get y/m/d components directly
-    const date = XLSX.SSF.parse_date_code(value);
-    if (date) {
-      const d = new Date(date.y, date.m - 1, date.d);
-      return formatLocalDate(d);
-    }
-  }
-  if (typeof value === 'string') {
-    // Try YYYY-MM-DD or YYYY-M-D
-    const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (iso) {
-      return formatLocalDate(new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
-    }
-    // Try DD/MM/YYYY or D/M/YYYY
-    const dmy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-    if (dmy) {
-      return formatLocalDate(new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1])));
-    }
-    // Try MM/DD/YYYY
-    const mdy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-    if (mdy) {
-      return formatLocalDate(new Date(Number(mdy[3]), Number(mdy[1]) - 1, Number(mdy[2])));
-    }
-    // Last resort: parse component-by-component to avoid UTC shift
-    const fallback = new Date(value);
-    if (!isNaN(fallback.getTime())) {
-      // Re-construct from UTC components to local to prevent day shift
-      return formatLocalDate(new Date(fallback.getUTCFullYear(), fallback.getUTCMonth(), fallback.getUTCDate()));
-    }
-  }
-  if (value instanceof Date && !isNaN(value.getTime())) {
-    return formatLocalDate(value);
-  }
-  return null;
-}
+const parseExcelDate = parseSpreadsheetDate;
 
 function validateRow(row: any): ParsedRow {
   const errors: string[] = [];
