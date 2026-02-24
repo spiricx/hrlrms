@@ -264,6 +264,9 @@ export default function NplStatus() {
       batchId: string; batchName: string; state: string; branch: string;
       totalLoans: number; activeAmount: number; nplAmount: number; nplCount: number;
       par30: number; par90: number;
+      totalDisbursed: number; totalOutstanding: number; totalRepaid: number;
+      totalMonthsInArrears: number; totalArrearsAmount: number; worstDpd: number;
+      maxTenor: number; lastPaymentDate: string | null;
     }>();
     for (const a of filteredAccounts) {
       const b = beneficiaries.find(ben => ben.id === a.id);
@@ -273,16 +276,30 @@ export default function NplStatus() {
       const entry = map.get(batchId) || {
         batchId, batchName, state: batch?.state || a.state, branch: batch?.bank_branch || a.branch,
         totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, par30: 0, par90: 0,
+        totalDisbursed: 0, totalOutstanding: 0, totalRepaid: 0,
+        totalMonthsInArrears: 0, totalArrearsAmount: 0, worstDpd: 0,
+        maxTenor: 0, lastPaymentDate: null as string | null,
       };
       entry.totalLoans++;
       entry.activeAmount += a.outstandingBalance;
+      entry.totalDisbursed += a.loanAmount;
+      entry.totalOutstanding += a.outstandingBalance;
+      entry.totalRepaid += a.totalPaid;
+      entry.totalMonthsInArrears += a.monthsInArrears;
+      entry.totalArrearsAmount += a.amountInArrears;
+      if (a.dpd > entry.worstDpd) entry.worstDpd = a.dpd;
+      if (a.tenorMonths > entry.maxTenor) entry.maxTenor = a.tenorMonths;
+      if (a.lastPaymentDate) {
+        if (!entry.lastPaymentDate || new Date(a.lastPaymentDate) > new Date(entry.lastPaymentDate)) {
+          entry.lastPaymentDate = a.lastPaymentDate;
+        }
+      }
       if (a.dpd >= 90) { entry.nplAmount += a.outstandingBalance; entry.nplCount++; }
       if (a.dpd >= 30) entry.par30 += a.outstandingBalance;
       if (a.dpd >= 90) entry.par90 += a.outstandingBalance;
       map.set(batchId, entry);
     }
     const rows = Array.from(map.values());
-    // Pin the specified batch at top, rest sorted by NPL amount desc
     rows.sort((a, b) => {
       const aPin = a.batchName === PINNED_BATCH ? -1 : 0;
       const bPin = b.batchName === PINNED_BATCH ? -1 : 0;
