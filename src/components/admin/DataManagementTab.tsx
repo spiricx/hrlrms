@@ -635,7 +635,14 @@ function BatchRepaymentManagement() {
                   <TableRow key={b.id} className={selected.has(b.id) ? 'bg-destructive/5' : ''}>
                     <TableCell><Checkbox checked={selected.has(b.id)} onCheckedChange={() => toggleSelect(b.id)} /></TableCell>
                     <TableCell className="text-muted-foreground text-xs">{i + 1}</TableCell>
-                    <TableCell className="font-medium text-sm">{b.name}</TableCell>
+                    <TableCell className="font-medium text-sm">
+                      <button
+                        onClick={() => navigate(`/batch-repayment?batchId=${b.id}`)}
+                        className="text-left hover:underline text-primary"
+                      >
+                        {b.name}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-xs font-mono">{b.batch_code}</TableCell>
                     <TableCell className="text-xs">{b.state || '—'}</TableCell>
                     <TableCell className="text-xs">{b.bank_branch || '—'}</TableCell>
