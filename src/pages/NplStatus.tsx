@@ -774,7 +774,15 @@ export default function NplStatus() {
                   <TableHead>State</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead className="text-right">Active Loans</TableHead>
-                  <TableHead className="text-right">Active Amount</TableHead>
+                  <TableHead className="text-right">Loan Tenor</TableHead>
+                  <TableHead className="text-right">Total Disbursed</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead className="text-right">Total Repayment Made So Far</TableHead>
+                  <TableHead className="text-right">Months in Arrears</TableHead>
+                  <TableHead className="text-right">Age in Arrears</TableHead>
+                  <TableHead className="text-right">Arrears in Amount</TableHead>
+                  <TableHead className="text-right">DPD</TableHead>
+                  <TableHead>Last Payment Date</TableHead>
                   <TableHead className="text-right">NPL Amount</TableHead>
                   <TableHead className="text-right">NPL Count</TableHead>
                   <TableHead className="text-right">NPL Ratio</TableHead>
@@ -786,17 +794,38 @@ export default function NplStatus() {
                 {batchData.map((row, idx) => {
                   const ratio = row.activeAmount > 0 ? (row.nplAmount / row.activeAmount) * 100 : 0;
                   const isPinned = row.batchName === 'GATEWAY HOLDINGS LTD /OGUN/107-110/2020';
+                  const ageInArrears = row.worstDpd > 0 ? `${Math.floor(row.worstDpd / 30)}m ${row.worstDpd % 30}d` : '—';
                   return (
                     <TableRow key={row.batchId} className={cn(
                       riskRowBg(ratio > 5 ? 90 : ratio >= 3 ? 30 : 0),
                       isPinned && 'ring-2 ring-primary/40 bg-primary/5'
                     )}>
                       <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
-                      <TableCell className={cn("font-medium", isPinned && "text-primary font-bold")}>{row.batchName}</TableCell>
+                      <TableCell className={cn("font-medium", isPinned && "text-primary font-bold")}>
+                        <button
+                          className="text-left underline decoration-dotted hover:decoration-solid hover:text-primary transition-colors cursor-pointer"
+                          onClick={() => {
+                            setSelectedBatchId(row.batchId);
+                            setDrillLevel('accounts');
+                            setSelectedState(row.state || '');
+                            setSelectedBranch(row.branch || '');
+                          }}
+                        >
+                          {row.batchName}
+                        </button>
+                      </TableCell>
                       <TableCell>{row.state || '—'}</TableCell>
                       <TableCell>{row.branch || '—'}</TableCell>
                       <TableCell className="text-right">{row.totalLoans}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(row.activeAmount)}</TableCell>
+                      <TableCell className="text-right">{row.maxTenor} months</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalDisbursed)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalOutstanding)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalRepaid)}</TableCell>
+                      <TableCell className="text-right">{row.totalMonthsInArrears}</TableCell>
+                      <TableCell className="text-right">{ageInArrears}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.totalArrearsAmount)}</TableCell>
+                      <TableCell className={`text-right ${riskColor(row.worstDpd)}`}>{row.worstDpd}</TableCell>
+                      <TableCell>{row.lastPaymentDate ? new Date(row.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
                       <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.nplAmount)}</TableCell>
                       <TableCell className="text-right">{row.nplCount}</TableCell>
                       <TableCell className="text-right">
