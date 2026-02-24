@@ -647,6 +647,14 @@ export default function LoanReconciliation() {
                     }
                     <p className="text-xs text-muted-foreground">Click <strong>Save to History</strong> to record this reconciliation.</p>
                   </div>
+                  {isFullyMatched && (
+                    <Button
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white shrink-0"
+                      onClick={() => setSaveOpen(true)}
+                    >
+                      <Save className="w-4 h-4 mr-2" /> Save Fully Matched to History
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
