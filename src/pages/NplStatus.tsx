@@ -392,7 +392,10 @@ export default function NplStatus() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigateTo(drillLevel === 'accounts' ? 'branch' : 'state')}
+              onClick={() => {
+                setSelectedBatchId(null);
+                navigateTo(drillLevel === 'accounts' ? 'branch' : 'state');
+              }}
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
