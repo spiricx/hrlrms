@@ -29,6 +29,7 @@ import type { Tables } from '@/integrations/supabase/types';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 
 type Beneficiary = Tables<'beneficiaries'>;
+type LoanBatch = Tables<'loan_batches'>;
 
 type DrillLevel = 'state' | 'branch' | 'accounts';
 
@@ -95,6 +96,7 @@ export default function NplStatus() {
   const isAdmin = hasRole('admin');
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [txnDates, setTxnDates] = useState<{ date_paid: string; beneficiary_id: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState('all');
@@ -114,12 +116,14 @@ export default function NplStatus() {
   const arrears = useArrearsLookup();
 
   const fetchData = useCallback(async () => {
-    const [bRes, tRes] = await Promise.all([
+    const [bRes, tRes, lbRes] = await Promise.all([
       supabase.from('beneficiaries').select('*'),
       supabase.from('transactions').select('date_paid, beneficiary_id'),
+      supabase.from('loan_batches').select('*'),
     ]);
     if (bRes.data) setBeneficiaries(bRes.data);
     if (tRes.data) setTxnDates(tRes.data);
+    if (lbRes.data) setBatches(lbRes.data);
     setLoading(false);
   }, []);
 
@@ -252,6 +256,41 @@ export default function NplStatus() {
     }
     return Array.from(map.values()).sort((a, b) => b.nplAmount - a.nplAmount);
   }, [filteredAccounts]);
+
+  // Batch-level aggregation for NPL by Loan Batch
+  const batchData = useMemo(() => {
+    const PINNED_BATCH = 'GATEWAY HOLDINGS LTD /OGUN/107-110/2020';
+    const map = new Map<string, {
+      batchId: string; batchName: string; state: string; branch: string;
+      totalLoans: number; activeAmount: number; nplAmount: number; nplCount: number;
+      par30: number; par90: number;
+    }>();
+    for (const a of filteredAccounts) {
+      const b = beneficiaries.find(ben => ben.id === a.id);
+      const batchId = b?.batch_id || 'no-batch';
+      const batch = batches.find(lb => lb.id === batchId);
+      const batchName = batch?.name || 'Unassigned';
+      const entry = map.get(batchId) || {
+        batchId, batchName, state: batch?.state || a.state, branch: batch?.bank_branch || a.branch,
+        totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, par30: 0, par90: 0,
+      };
+      entry.totalLoans++;
+      entry.activeAmount += a.outstandingBalance;
+      if (a.dpd >= 90) { entry.nplAmount += a.outstandingBalance; entry.nplCount++; }
+      if (a.dpd >= 30) entry.par30 += a.outstandingBalance;
+      if (a.dpd >= 90) entry.par90 += a.outstandingBalance;
+      map.set(batchId, entry);
+    }
+    const rows = Array.from(map.values());
+    // Pin the specified batch at top, rest sorted by NPL amount desc
+    rows.sort((a, b) => {
+      const aPin = a.batchName === PINNED_BATCH ? -1 : 0;
+      const bPin = b.batchName === PINNED_BATCH ? -1 : 0;
+      if (aPin !== bPin) return aPin - bPin;
+      return b.nplAmount - a.nplAmount;
+    });
+    return rows;
+  }, [filteredAccounts, beneficiaries, batches]);
 
   // Branch-level aggregation (for selected state)
   const branchData = useMemo(() => {
@@ -697,6 +736,60 @@ export default function NplStatus() {
           )}
         </div>
       </div>
+
+      {/* Batch NPL Ratio Table */}
+      {drillLevel === 'state' && batchData.length > 0 && (
+        <div className="bg-card rounded-xl shadow-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-bold font-display">NPL Ratio by Loan Batch</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/50">
+                  <TableHead>S/N</TableHead>
+                  <TableHead>Batch Name</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Branch</TableHead>
+                  <TableHead className="text-right">Active Loans</TableHead>
+                  <TableHead className="text-right">Active Amount</TableHead>
+                  <TableHead className="text-right">NPL Amount</TableHead>
+                  <TableHead className="text-right">NPL Count</TableHead>
+                  <TableHead className="text-right">NPL Ratio</TableHead>
+                  <TableHead className="text-right">PAR 30+</TableHead>
+                  <TableHead className="text-right">PAR 90+</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {batchData.map((row, idx) => {
+                  const ratio = row.activeAmount > 0 ? (row.nplAmount / row.activeAmount) * 100 : 0;
+                  const isPinned = row.batchName === 'GATEWAY HOLDINGS LTD /OGUN/107-110/2020';
+                  return (
+                    <TableRow key={row.batchId} className={cn(
+                      riskRowBg(ratio > 5 ? 90 : ratio >= 3 ? 30 : 0),
+                      isPinned && 'ring-2 ring-primary/40 bg-primary/5'
+                    )}>
+                      <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className={cn("font-medium", isPinned && "text-primary font-bold")}>{row.batchName}</TableCell>
+                      <TableCell>{row.state || '—'}</TableCell>
+                      <TableCell>{row.branch || '—'}</TableCell>
+                      <TableCell className="text-right">{row.totalLoans}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.activeAmount)}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.nplAmount)}</TableCell>
+                      <TableCell className="text-right">{row.nplCount}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={nplRatioColor(ratio)}>{ratio.toFixed(1)}%</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.par30)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.par90)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
