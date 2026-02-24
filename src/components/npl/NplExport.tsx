@@ -319,8 +319,8 @@ export function printNplReport(data: NplReportData) {
       <td class="right">${formatCurrency(a.totalPaid)}</td>
       <td class="right">${formatCurrency(a.outstandingBalance)}</td>
       <td class="right">${a.monthsInArrears}</td>
-      <td class="right npl-red">${formatCurrency(a.amountInArrears)}</td>
       <td class="right ${a.dpd >= 90 ? 'npl-red' : ''}">${a.dpd}</td>
+      <td class="right npl-red">${formatCurrency(a.amountInArrears)}</td>
       <td>${formatLastPayment(a.lastPaymentDate)}</td>
       <td class="right">${formatCurrency(a.totalPaid)}</td>
       <td class="right">${individualNplRatio.toFixed(2)}%</td>
