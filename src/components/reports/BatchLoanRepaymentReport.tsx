@@ -32,6 +32,7 @@ export default function BatchLoanRepaymentReport() {
   const [batchRepayments, setBatchRepayments] = useState<BatchRepayment[]>([]);
   const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [staffName, setStaffName] = useState('');
 
   // Filters
   const [fromDate, setFromDate] = useState('');
