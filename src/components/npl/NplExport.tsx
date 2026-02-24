@@ -58,7 +58,7 @@ const REPORT_SUBTITLE = "Report on NPL Status of Home Renovation Loan";
 const DETAIL_HEADERS = [
   'S/N', 'Beneficiary Names', 'Organizations', 'Branch/State', 'No. of Beneficiaries',
   'Total Disbursed (₦)', 'Loan Tenor', 'Expected Monthly Repayment (₦)', 'Actual Amount Paid (₦)',
-  'Closing Balance (₦)', 'Months in Arrears', 'Arrears in Amount (₦)', 'DPD',
+  'Closing Balance (₦)', 'Months in Arrears', 'DPD', 'Arrears in Amount (₦)',
   'Last Payment Date', 'Total Repayment Made so Far (₦)', 'NPL Ratio'
 ];
 
@@ -108,8 +108,8 @@ function buildAccountRow(a: NplAccount, idx: number, totalActiveAmount: number):
     a.totalPaid,
     a.outstandingBalance,
     a.monthsInArrears,
-    a.amountInArrears,
     a.dpd,
+    a.amountInArrears,
     formatLastPayment(a.lastPaymentDate),
     a.totalPaid,
     `${individualNplRatio.toFixed(2)}%`,
@@ -277,7 +277,7 @@ export async function exportNplToPDF(data: NplReportData) {
           row[0], row[1], row[2], row[3], row[4],
           formatCurrency(row[5] as number), row[6], formatCurrency(row[7] as number),
           formatCurrency(row[8] as number), formatCurrency(row[9] as number),
-          row[10], formatCurrency(row[11] as number), row[12],
+          row[10], row[11], formatCurrency(row[12] as number),
           row[13], formatCurrency(row[14] as number), row[15],
         ];
       }),
@@ -319,8 +319,8 @@ export function printNplReport(data: NplReportData) {
       <td class="right">${formatCurrency(a.totalPaid)}</td>
       <td class="right">${formatCurrency(a.outstandingBalance)}</td>
       <td class="right">${a.monthsInArrears}</td>
-      <td class="right npl-red">${formatCurrency(a.amountInArrears)}</td>
       <td class="right ${a.dpd >= 90 ? 'npl-red' : ''}">${a.dpd}</td>
+      <td class="right npl-red">${formatCurrency(a.amountInArrears)}</td>
       <td>${formatLastPayment(a.lastPaymentDate)}</td>
       <td class="right">${formatCurrency(a.totalPaid)}</td>
       <td class="right">${individualNplRatio.toFixed(2)}%</td>

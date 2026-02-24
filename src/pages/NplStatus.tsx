@@ -711,8 +711,8 @@ export default function NplStatus() {
                       <TableHead className="text-right">Actual Amount Paid</TableHead>
                       <TableHead className="text-right">Closing Balance</TableHead>
                       <TableHead className="text-right">Months in Arrears</TableHead>
-                      <TableHead className="text-right">Arrears in Amount</TableHead>
                       <TableHead className="text-right">DPD</TableHead>
+                      <TableHead className="text-right">Arrears in Amount</TableHead>
                       <TableHead>Last Payment Date</TableHead>
                       <TableHead className="text-right">Total Repayment Made so Far</TableHead>
                       <TableHead className="text-right">NPL Ratio</TableHead>
@@ -741,8 +741,8 @@ export default function NplStatus() {
                           <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
                           <TableCell className="text-right">{a.monthsInArrears}</TableCell>
-                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
+                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
                           <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
                           <TableCell className="text-right">
