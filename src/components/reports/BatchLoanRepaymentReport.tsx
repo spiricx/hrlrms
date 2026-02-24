@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import BatchRepaymentReportExportButtons, { type BatchRepaymentReportData } from '@/components/reports/BatchRepaymentReportExport';
 import type { Tables } from '@/integrations/supabase/types';
 
 type BatchRepayment = Tables<'batch_repayments'>;
