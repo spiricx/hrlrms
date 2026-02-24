@@ -44,6 +44,14 @@ export default function BatchLoanRepaymentReport() {
   const [batchFilter, setBatchFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Fetch staff name
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('full_name').eq('user_id', user.id).maybeSingle().then(({ data }) => {
+      if (data?.full_name) setStaffName(data.full_name);
+    });
+  }, [user]);
+
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
