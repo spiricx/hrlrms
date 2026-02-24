@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import LoanRepaymentReportExportButtons, {
   type RepaymentRecord,
   type RepaymentReportData,
 } from '@/components/reports/LoanRepaymentReportExport';
+import BatchLoanRepaymentReport from '@/components/reports/BatchLoanRepaymentReport';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Beneficiary = Tables<'beneficiaries'>;
