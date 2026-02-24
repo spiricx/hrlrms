@@ -26,9 +26,9 @@ import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 
 type Beneficiary = Tables<'beneficiaries'>;
-type Transaction = Tables<'transactions'>;
 
 type DrillLevel = 'state' | 'branch' | 'accounts';
 
