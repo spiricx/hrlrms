@@ -125,7 +125,7 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
           if (!remitaNumber) errors.push('Remita Number is required');
           if (!dateStr) errors.push('Date on Remita Receipt is invalid');
           if (!amountRaw || amountRaw <= 0) errors.push('Amount must be > 0');
-          if (!monthRaw || monthRaw < 1 || monthRaw > 12) errors.push('Month of Payment must be 1-12');
+          if (!monthRaw || monthRaw < 1) errors.push('Month of Payment must be >= 1');
 
           // Match beneficiary by loan ref or NHF number
           let matched: typeof membersList[0] | null = null;
