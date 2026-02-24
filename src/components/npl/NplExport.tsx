@@ -58,7 +58,7 @@ const REPORT_SUBTITLE = "Report on NPL Status of Home Renovation Loan";
 const DETAIL_HEADERS = [
   'S/N', 'Beneficiary Names', 'Organizations', 'Branch/State', 'No. of Beneficiaries',
   'Total Disbursed (₦)', 'Loan Tenor', 'Expected Monthly Repayment (₦)', 'Actual Amount Paid (₦)',
-  'Closing Balance (₦)', 'Months in Arrears', 'Arrears in Amount (₦)', 'DPD',
+  'Closing Balance (₦)', 'Months in Arrears', 'DPD', 'Arrears in Amount (₦)',
   'Last Payment Date', 'Total Repayment Made so Far (₦)', 'NPL Ratio'
 ];
 
