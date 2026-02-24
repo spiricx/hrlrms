@@ -250,16 +250,33 @@ export default function LoanReconciliation() {
         .from('batch_repayments')
         .select('rrr_number, actual_amount, receipt_url, batch_id, loan_batches(name)');
 
-      const txMap = new Map<string, { amount: number; receipt_url: string; name: string }>();
+      const txMap = new Map<string, { amount: number; receipt_url: string; name: string; names: string[] }>();
       (transactions || []).forEach((t: any) => {
         const rrr = (t.rrr_number || '').trim().toLowerCase();
-        if (rrr) txMap.set(rrr, { amount: Number(t.amount), receipt_url: t.receipt_url || '', name: t.beneficiaries?.name || '' });
+        if (!rrr) return;
+        const existing = txMap.get(rrr);
+        const benefName = t.beneficiaries?.name || '';
+        if (existing) {
+          existing.amount += Number(t.amount);
+          if (benefName && !existing.names.includes(benefName)) existing.names.push(benefName);
+          existing.name = existing.names.join(', ');
+        } else {
+          txMap.set(rrr, { amount: Number(t.amount), receipt_url: t.receipt_url || '', name: benefName, names: benefName ? [benefName] : [] });
+        }
       });
 
       const batchMap = new Map<string, { amount: number; receipt_url: string; batchName: string }>();
       (batchRepayments || []).forEach((b: any) => {
         const rrr = (b.rrr_number || '').trim().toLowerCase();
-        if (rrr) batchMap.set(rrr, { amount: Number(b.actual_amount), receipt_url: b.receipt_url || '', batchName: b.loan_batches?.name || '' });
+        if (!rrr) return;
+        const existing = batchMap.get(rrr);
+        const bName = b.loan_batches?.name || '';
+        if (existing) {
+          existing.amount += Number(b.actual_amount);
+          if (bName && !existing.batchName.includes(bName)) existing.batchName += ', ' + bName;
+        } else {
+          batchMap.set(rrr, { amount: Number(b.actual_amount), receipt_url: b.receipt_url || '', batchName: bName });
+        }
       });
 
       const matchResults: MatchResult[] = cbnData.map((row) => {
