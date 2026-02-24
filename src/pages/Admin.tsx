@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Shield, Users, Lock, Database, UserCog, Search, Plus, Trash2, RefreshCw, Eye, EyeOff, KeyRound, Activity } from 'lucide-react';
+import { Shield, Users, Lock, Database, UserCog, Search, Plus, Trash2, RefreshCw, Eye, EyeOff, KeyRound, Activity, Settings2 } from 'lucide-react';
 import ModuleAccessTab from '@/components/admin/ModuleAccessTab';
 import ActivityLogsTab from '@/components/admin/ActivityLogsTab';
+import DataManagementTab from '@/components/admin/DataManagementTab';
 import { format } from 'date-fns';
 
 type AppRole = 'admin' | 'manager' | 'loan_officer';
@@ -549,6 +550,7 @@ export default function Admin() {
           <TabsTrigger value="roles" className="flex items-center gap-1.5"><Users className="w-4 h-4" /> Privileges & Roles</TabsTrigger>
           <TabsTrigger value="module-access" className="flex items-center gap-1.5"><KeyRound className="w-4 h-4" /> Module Access</TabsTrigger>
           <TabsTrigger value="activity-logs" className="flex items-center gap-1.5"><Activity className="w-4 h-4" /> Activity Logs</TabsTrigger>
+          <TabsTrigger value="data-management" className="flex items-center gap-1.5"><Settings2 className="w-4 h-4" /> Data Management</TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-1.5"><Lock className="w-4 h-4" /> Security</TabsTrigger>
           <TabsTrigger value="backend" className="flex items-center gap-1.5"><Database className="w-4 h-4" /> Backend</TabsTrigger>
         </TabsList>
@@ -558,6 +560,7 @@ export default function Admin() {
         <TabsContent value="roles" className="mt-6"><RolesTab /></TabsContent>
         <TabsContent value="module-access" className="mt-6"><ModuleAccessTab /></TabsContent>
         <TabsContent value="activity-logs" className="mt-6"><ActivityLogsTab /></TabsContent>
+        <TabsContent value="data-management" className="mt-6"><DataManagementTab /></TabsContent>
         <TabsContent value="security" className="mt-6"><SecurityTab /></TabsContent>
         <TabsContent value="backend" className="mt-6"><BackendTab /></TabsContent>
       </Tabs>
