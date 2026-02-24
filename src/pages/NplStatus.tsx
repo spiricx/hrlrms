@@ -26,9 +26,9 @@ import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 
 type Beneficiary = Tables<'beneficiaries'>;
-type Transaction = Tables<'transactions'>;
 
 type DrillLevel = 'state' | 'branch' | 'accounts';
 
@@ -51,77 +51,16 @@ interface NplAccount {
 }
 
 /**
- * Calculate DPD using total_paid / monthly_emi to determine how many instalments
- * have been paid. This is the canonical method used across Dashboard, Beneficiaries,
- * and StaffPerformance — ensuring NPL ratios are 100% consistent across all modules.
- *
- * NOTE: We do NOT use transaction month_for records because beneficiaries often
- * make partial / bulk payments tracked in total_paid, not per-instalment records.
- * Using month_for would falsely classify almost every loan as NPL (100% ratio bug).
+ * NPL Status now uses the v_loan_arrears "Golden Record" view as the single
+ * source of truth for DPD, arrears, months in arrears, and verified payments.
+ * This ensures 100% consistency with Dashboard, Beneficiaries, and all modules.
  */
-function calculateDPD(beneficiary: Beneficiary): number {
-  const today = stripTime(new Date());
-  const commDate = stripTime(new Date(beneficiary.commencement_date));
 
-  if (today < commDate) return 0;
-  if (Number(beneficiary.outstanding_balance) <= 0) return 0;
-
-  const monthlyEmi = Number(beneficiary.monthly_emi);
-  if (monthlyEmi <= 0) return 0;
-
-  const totalPaid = Math.round(Number(beneficiary.total_paid) * 100) / 100;
-
-  // Count how many instalments are due (due date <= today), capped at tenor
-  let dueMonths = 0;
-  for (let i = 1; i <= beneficiary.tenor_months; i++) {
-    const dueDate = new Date(commDate);
-    dueDate.setMonth(dueDate.getMonth() + (i - 1));
-    if (today >= stripTime(dueDate)) dueMonths = i;
-    else break;
-  }
-
-  if (dueMonths <= 0) return 0;
-
-  // How many full instalments have been paid
-  const paidMonths = Math.min(Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi), beneficiary.tenor_months);
-
-  // If all due instalments are paid, no DPD
-  if (paidMonths >= dueMonths) return 0;
-
-  // Due date of the first unpaid instalment (0-indexed offset)
-  const firstUnpaidDue = new Date(commDate);
-  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-  const dueDateStripped = stripTime(firstUnpaidDue);
-
-  // DPD inclusive: 1 on the due date itself
-  return Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-}
-
-function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[]): string | null {
-  const bTxns = transactions
+function getLastPaymentDate(beneficiary: Beneficiary, txns: { date_paid: string; beneficiary_id: string }[]): string | null {
+  const bTxns = txns
     .filter(t => t.beneficiary_id === beneficiary.id)
     .sort((a, b) => new Date(b.date_paid).getTime() - new Date(a.date_paid).getTime());
   return bTxns[0]?.date_paid ?? null;
-}
-
-function getAmountInArrears(beneficiary: Beneficiary): number {
-  const today = stripTime(new Date());
-  const commDate = stripTime(new Date(beneficiary.commencement_date));
-
-  // Count how many instalments are due (due date <= today)
-  let dueMonths = 0;
-  for (let i = 1; i <= beneficiary.tenor_months; i++) {
-    const dueDate = new Date(commDate);
-    dueDate.setMonth(dueDate.getMonth() + (i - 1));
-    if (today >= stripTime(dueDate)) dueMonths = i;
-    else break;
-  }
-
-  const expectedTotal = dueMonths * Number(beneficiary.monthly_emi);
-  const totalPaid = Math.round(Number(beneficiary.total_paid) * 100) / 100;
-  // Only the portion that is in arrears (next period has passed)
-  // For NPL display purposes show total overdue deficit
-  return Math.max(0, Math.round((expectedTotal - totalPaid) * 100) / 100);
 }
 
 type ParThreshold = 'par30' | 'par60' | 'par90' | 'par120' | 'par180';
@@ -156,7 +95,7 @@ export default function NplStatus() {
   const isAdmin = hasRole('admin');
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [txnDates, setTxnDates] = useState<{ date_paid: string; beneficiary_id: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -171,13 +110,16 @@ export default function NplStatus() {
   const [selectedState, setSelectedState] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
 
+  // Golden Record: single source of truth for DPD, arrears, NPL status
+  const arrears = useArrearsLookup();
+
   const fetchData = useCallback(async () => {
     const [bRes, tRes] = await Promise.all([
       supabase.from('beneficiaries').select('*'),
-      supabase.from('transactions').select('*'),
+      supabase.from('transactions').select('date_paid, beneficiary_id'),
     ]);
     if (bRes.data) setBeneficiaries(bRes.data);
-    if (tRes.data) setTransactions(tRes.data);
+    if (tRes.data) setTxnDates(tRes.data);
     setLoading(false);
   }, []);
 
@@ -185,8 +127,8 @@ export default function NplStatus() {
     fetchData();
     const channel = supabase
       .channel('npl-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => { fetchData(); arrears.refresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => { fetchData(); arrears.refresh(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchData]);
@@ -202,13 +144,12 @@ export default function NplStatus() {
     })();
   }, []);
 
-  // Build NPL account data
+  // Build NPL account data using Golden Record
   const nplAccounts: NplAccount[] = useMemo(() => {
     const activeLoans = beneficiaries.filter(b => b.status === 'active' || b.status === 'defaulted');
     return activeLoans.map(b => {
+      const ar = getArrearsFromMap(arrears.map, b.id);
       const emi = Number(b.monthly_emi);
-      const arrears = getAmountInArrears(b);
-      const monthsInArrears = emi > 0 ? Math.ceil(arrears / emi) : 0;
       return {
         id: b.id,
         name: b.name,
@@ -219,15 +160,15 @@ export default function NplStatus() {
         loanAmount: Number(b.loan_amount),
         tenorMonths: b.tenor_months,
         monthlyEmi: emi,
-        totalPaid: Number(b.total_paid),
+        totalPaid: ar.verifiedTotalPaid > 0 ? ar.verifiedTotalPaid : Number(b.total_paid),
         outstandingBalance: Number(b.outstanding_balance),
-        dpd: calculateDPD(b),
-        lastPaymentDate: getLastPaymentDate(b, transactions),
-        amountInArrears: arrears,
-        monthsInArrears,
+        dpd: ar.daysOverdue,
+        lastPaymentDate: getLastPaymentDate(b, txnDates),
+        amountInArrears: ar.arrearsAmount,
+        monthsInArrears: ar.arrearsMonths,
       };
     });
-  }, [beneficiaries, transactions]);
+  }, [beneficiaries, txnDates, arrears.map]);
 
   const parDays = PAR_OPTIONS.find(p => p.value === parFilter)?.days ?? 90;
 
@@ -373,7 +314,7 @@ export default function NplStatus() {
     if (branch !== undefined) setSelectedBranch(branch);
   };
 
-  if (loading) {
+  if (loading || arrears.loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-pulse text-muted-foreground">Loading NPL data...</div>
