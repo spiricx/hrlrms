@@ -96,6 +96,7 @@ export default function NplStatus() {
   const isAdmin = hasRole('admin');
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
+  const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [txnDates, setTxnDates] = useState<{ date_paid: string; beneficiary_id: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState('all');
