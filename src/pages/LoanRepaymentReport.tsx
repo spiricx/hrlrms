@@ -9,11 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import LoanRepaymentReportExportButtons, {
   type RepaymentRecord,
   type RepaymentReportData,
 } from '@/components/reports/LoanRepaymentReportExport';
+import BatchLoanRepaymentReport from '@/components/reports/BatchLoanRepaymentReport';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Beneficiary = Tables<'beneficiaries'>;
@@ -236,8 +238,18 @@ export default function LoanRepaymentReport() {
           <h1 className="text-3xl font-bold font-display">Loan Repayment Report</h1>
           <p className="mt-1 text-sm text-muted-foreground">Comprehensive repayment records by date, state, branch & organisation</p>
         </div>
-        <LoanRepaymentReportExportButtons data={reportData} />
       </div>
+
+      <Tabs defaultValue="individual" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="individual">Loan Repayment Report</TabsTrigger>
+          <TabsTrigger value="batch">Batch Loan Repayment Report</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="individual" className="space-y-6">
+          <div className="flex justify-end">
+            <LoanRepaymentReportExportButtons data={reportData} />
+          </div>
 
       {/* Filters */}
       <div className="bg-card rounded-xl shadow-card p-5">
@@ -455,6 +467,12 @@ export default function LoanRepaymentReport() {
           </div>
         )}
       </div>
+        </TabsContent>
+
+        <TabsContent value="batch">
+          <BatchLoanRepaymentReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
