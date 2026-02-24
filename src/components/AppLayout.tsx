@@ -92,7 +92,7 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
         <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
           <img src={fmbnLogo} alt="FMBN Logo" className="w-10 h-auto brightness-0 invert" />
           <div>
-            <h1 className="text-sm font-bold text-sidebar-foreground font-display">HRLMS Portal</h1>
+            <h1 className="text-sm font-bold text-sidebar-foreground font-display">HRL RMS Portal</h1>
             <p className="text-[10px] text-sidebar-foreground/60">Loan Processing Unit</p>
           </div>
         </div>
