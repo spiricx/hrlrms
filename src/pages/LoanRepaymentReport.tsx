@@ -238,8 +238,18 @@ export default function LoanRepaymentReport() {
           <h1 className="text-3xl font-bold font-display">Loan Repayment Report</h1>
           <p className="mt-1 text-sm text-muted-foreground">Comprehensive repayment records by date, state, branch & organisation</p>
         </div>
-        <LoanRepaymentReportExportButtons data={reportData} />
       </div>
+
+      <Tabs defaultValue="individual" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="individual">Loan Repayment Report</TabsTrigger>
+          <TabsTrigger value="batch">Batch Loan Repayment Report</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="individual" className="space-y-6">
+          <div className="flex justify-end">
+            <LoanRepaymentReportExportButtons data={reportData} />
+          </div>
 
       {/* Filters */}
       <div className="bg-card rounded-xl shadow-card p-5">
