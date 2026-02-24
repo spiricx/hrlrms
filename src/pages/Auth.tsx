@@ -115,7 +115,7 @@ export default function Auth() {
           <div className="lg:hidden flex items-center gap-3 justify-center mb-4">
             <img src={fmbnLogo} alt="FMBN Logo" className="w-12 h-auto" />
             <div>
-              <h1 className="text-lg font-bold font-display">HRLMS Portal</h1>
+              <h1 className="text-lg font-bold font-display">HRL RMS Portal</h1>
               <p className="text-[10px] text-muted-foreground">Loan Processing Unit</p>
             </div>
           </div>
