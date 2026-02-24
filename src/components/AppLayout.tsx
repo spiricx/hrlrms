@@ -22,7 +22,9 @@ import {
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
+import AvatarUpload from '@/components/AvatarUpload';
 const HelpChatbot = lazy(() => import('@/components/HelpChatbot'));
 
 function useTheme() {
@@ -69,7 +71,14 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
   const { hasModuleAccess } = useModuleAccess();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('avatar_url').eq('user_id', user.id).single()
+      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+  }, [user]);
 
   return (
     <div className="flex min-h-screen">
@@ -156,9 +165,11 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
 
               {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
-            <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
-              {(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-            </div>
+            <AvatarUpload
+              avatarUrl={avatarUrl}
+              fallback={(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+              onUpload={(url) => setAvatarUrl(url)}
+            />
             <span className="hidden text-sm font-medium sm:block">
               {user?.user_metadata?.surname && user?.user_metadata?.first_name ?
               `Logged in as: ${user.user_metadata.surname}, ${user.user_metadata.first_name}` :
