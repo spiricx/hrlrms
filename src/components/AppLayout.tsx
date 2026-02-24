@@ -157,9 +157,10 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
 
               {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
-            <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-xs font-bold text-primary-foreground">
-              {(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-            </div>
+            <AvatarUpload
+              avatarUrl={null}
+              fallback={(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+            />
             <span className="hidden text-sm font-medium sm:block">
               {user?.user_metadata?.surname && user?.user_metadata?.first_name ?
               `Logged in as: ${user.user_metadata.surname}, ${user.user_metadata.first_name}` :
