@@ -721,7 +721,7 @@ export default function NplStatus() {
                   <TableBody>
                     {accountsList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={15} className="text-center py-12 text-muted-foreground">
+                        <TableCell colSpan={16} className="text-center py-12 text-muted-foreground">
                           No NPL accounts found for the selected criteria
                         </TableCell>
                       </TableRow>
