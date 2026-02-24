@@ -257,6 +257,41 @@ export default function NplStatus() {
     return Array.from(map.values()).sort((a, b) => b.nplAmount - a.nplAmount);
   }, [filteredAccounts]);
 
+  // Batch-level aggregation for NPL by Loan Batch
+  const batchData = useMemo(() => {
+    const PINNED_BATCH = 'GATEWAY HOLDINGS LTD /OGUN/107-110/2020';
+    const map = new Map<string, {
+      batchId: string; batchName: string; state: string; branch: string;
+      totalLoans: number; activeAmount: number; nplAmount: number; nplCount: number;
+      par30: number; par90: number;
+    }>();
+    for (const a of filteredAccounts) {
+      const b = beneficiaries.find(ben => ben.id === a.id);
+      const batchId = b?.batch_id || 'no-batch';
+      const batch = batches.find(lb => lb.id === batchId);
+      const batchName = batch?.name || 'Unassigned';
+      const entry = map.get(batchId) || {
+        batchId, batchName, state: batch?.state || a.state, branch: batch?.bank_branch || a.branch,
+        totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, par30: 0, par90: 0,
+      };
+      entry.totalLoans++;
+      entry.activeAmount += a.outstandingBalance;
+      if (a.dpd >= 90) { entry.nplAmount += a.outstandingBalance; entry.nplCount++; }
+      if (a.dpd >= 30) entry.par30 += a.outstandingBalance;
+      if (a.dpd >= 90) entry.par90 += a.outstandingBalance;
+      map.set(batchId, entry);
+    }
+    const rows = Array.from(map.values());
+    // Pin the specified batch at top, rest sorted by NPL amount desc
+    rows.sort((a, b) => {
+      const aPin = a.batchName === PINNED_BATCH ? -1 : 0;
+      const bPin = b.batchName === PINNED_BATCH ? -1 : 0;
+      if (aPin !== bPin) return aPin - bPin;
+      return b.nplAmount - a.nplAmount;
+    });
+    return rows;
+  }, [filteredAccounts, beneficiaries, batches]);
+
   // Branch-level aggregation (for selected state)
   const branchData = useMemo(() => {
     const stateAccounts = filteredAccounts.filter(a => a.state === selectedState);
