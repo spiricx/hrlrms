@@ -111,6 +111,7 @@ export default function NplStatus() {
   const [drillLevel, setDrillLevel] = useState<DrillLevel>('state');
   const [selectedState, setSelectedState] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
   // Golden Record: single source of truth for DPD, arrears, NPL status
   const arrears = useArrearsLookup();
