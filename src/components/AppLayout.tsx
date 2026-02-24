@@ -76,8 +76,8 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from('profiles').select('avatar_url').eq('user_id', user.id).single()
-      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+    supabase.from('profiles').select('avatar_url').eq('user_id', user.id).single().
+    then(({ data }) => {if (data?.avatar_url) setAvatarUrl(data.avatar_url);});
   }, [user]);
 
   return (
@@ -129,7 +129,7 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
               Role: {roles.join(', ')}
             </p>
           }
-          <p className="text-xs text-sidebar-foreground/40">© FEB 2026 HRL LMS Portal Developed by: SpiricX Dev (Loan Processing Unit) FMBN, Ogun State.
+          <p className="text-xs text-sidebar-foreground/40">© FEB 2026 HRL RMS Portal Developed by: SpiricX Dev (Loan Processing Unit) FMBN, Ogun State.
           </p>
         </div>
       </aside>
@@ -168,8 +168,8 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
             <AvatarUpload
               avatarUrl={avatarUrl}
               fallback={(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
-              onUpload={(url) => setAvatarUrl(url)}
-            />
+              onUpload={(url) => setAvatarUrl(url)} />
+
             <span className="hidden text-sm font-medium sm:block">
               {user?.user_metadata?.surname && user?.user_metadata?.first_name ?
               `Logged in as: ${user.user_metadata.surname}, ${user.user_metadata.first_name}` :
