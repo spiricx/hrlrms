@@ -166,8 +166,9 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
               {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             </button>
             <AvatarUpload
-              avatarUrl={null}
+              avatarUrl={avatarUrl}
               fallback={(user?.user_metadata?.surname?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+              onUpload={(url) => setAvatarUrl(url)}
             />
             <span className="hidden text-sm font-medium sm:block">
               {user?.user_metadata?.surname && user?.user_metadata?.first_name ?
