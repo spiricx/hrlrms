@@ -169,8 +169,41 @@ export default function BatchLoanRepaymentReport() {
     };
   }, [filteredRecords]);
 
+  // Build export data
+  const reportData: BatchRepaymentReportData = useMemo(() => ({
+    records: filteredRecords.map(r => ({
+      batchName: r.batch_name,
+      batchCode: r.batch_code,
+      state: r.batch_state,
+      branch: r.batch_branch,
+      rrrNumber: r.rrr_number,
+      paymentDate: r.payment_date,
+      monthFor: r.month_for,
+      expectedAmount: Number(r.expected_amount),
+      actualAmount: Number(r.actual_amount),
+      variance: Number(r.actual_amount) - Number(r.expected_amount),
+      notes: r.notes || '',
+      batchStatus: r.batch_status,
+    })),
+    filters: { fromDate, toDate, state: stateFilter, branch: branchFilter, batch: batchFilter },
+    staffName: staffName || 'N/A',
+    totalRecords: summary.totalRecords,
+    uniqueBatches: summary.uniqueBatches,
+    totalExpected: summary.totalExpected,
+    totalActual: summary.totalActual,
+    variance: summary.variance,
+    stateBreakdown: summary.stateBreakdown,
+    branchBreakdown: summary.branchBreakdown,
+    batchBreakdown: summary.batchBreakdown,
+  }), [filteredRecords, fromDate, toDate, stateFilter, branchFilter, batchFilter, staffName, summary]);
+
   return (
     <div className="space-y-6">
+      {/* Export Buttons */}
+      <div className="flex justify-end">
+        <BatchRepaymentReportExportButtons data={reportData} />
+      </div>
+
       {/* Filters */}
       <div className="bg-card rounded-xl shadow-card p-5">
         <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider">Filters</h3>
