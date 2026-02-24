@@ -51,54 +51,13 @@ interface NplAccount {
 }
 
 /**
- * Calculate DPD using total_paid / monthly_emi to determine how many instalments
- * have been paid. This is the canonical method used across Dashboard, Beneficiaries,
- * and StaffPerformance — ensuring NPL ratios are 100% consistent across all modules.
- *
- * NOTE: We do NOT use transaction month_for records because beneficiaries often
- * make partial / bulk payments tracked in total_paid, not per-instalment records.
- * Using month_for would falsely classify almost every loan as NPL (100% ratio bug).
+ * NPL Status now uses the v_loan_arrears "Golden Record" view as the single
+ * source of truth for DPD, arrears, months in arrears, and verified payments.
+ * This ensures 100% consistency with Dashboard, Beneficiaries, and all modules.
  */
-function calculateDPD(beneficiary: Beneficiary): number {
-  const today = stripTime(new Date());
-  const commDate = stripTime(new Date(beneficiary.commencement_date));
 
-  if (today < commDate) return 0;
-  if (Number(beneficiary.outstanding_balance) <= 0) return 0;
-
-  const monthlyEmi = Number(beneficiary.monthly_emi);
-  if (monthlyEmi <= 0) return 0;
-
-  const totalPaid = Math.round(Number(beneficiary.total_paid) * 100) / 100;
-
-  // Count how many instalments are due (due date <= today), capped at tenor
-  let dueMonths = 0;
-  for (let i = 1; i <= beneficiary.tenor_months; i++) {
-    const dueDate = new Date(commDate);
-    dueDate.setMonth(dueDate.getMonth() + (i - 1));
-    if (today >= stripTime(dueDate)) dueMonths = i;
-    else break;
-  }
-
-  if (dueMonths <= 0) return 0;
-
-  // How many full instalments have been paid
-  const paidMonths = Math.min(Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi), beneficiary.tenor_months);
-
-  // If all due instalments are paid, no DPD
-  if (paidMonths >= dueMonths) return 0;
-
-  // Due date of the first unpaid instalment (0-indexed offset)
-  const firstUnpaidDue = new Date(commDate);
-  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-  const dueDateStripped = stripTime(firstUnpaidDue);
-
-  // DPD inclusive: 1 on the due date itself
-  return Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-}
-
-function getLastPaymentDate(beneficiary: Beneficiary, transactions: Transaction[]): string | null {
-  const bTxns = transactions
+function getLastPaymentDate(beneficiary: Beneficiary, txns: { date_paid: string; beneficiary_id: string }[]): string | null {
+  const bTxns = txns
     .filter(t => t.beneficiary_id === beneficiary.id)
     .sort((a, b) => new Date(b.date_paid).getTime() - new Date(a.date_paid).getTime());
   return bTxns[0]?.date_paid ?? null;
