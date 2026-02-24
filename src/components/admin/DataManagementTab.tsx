@@ -506,6 +506,7 @@ function TransactionManagement() {
 
 // ─── Batch Loan Repayment Sub-tab ───
 function BatchRepaymentManagement() {
+  const navigate = useNavigate();
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
