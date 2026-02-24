@@ -406,7 +406,7 @@ export default function NplStatus() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* 1. State Filter */}
-          {isAdmin && drillLevel === 'state' && (
+          {drillLevel === 'state' && (
             <Select value={stateFilter} onValueChange={setStateFilter}>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="All States" />
