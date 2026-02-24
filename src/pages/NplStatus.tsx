@@ -95,7 +95,7 @@ export default function NplStatus() {
   const isAdmin = hasRole('admin');
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [txnDates, setTxnDates] = useState<{ date_paid: string; beneficiary_id: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
@@ -110,13 +110,16 @@ export default function NplStatus() {
   const [selectedState, setSelectedState] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
 
+  // Golden Record: single source of truth for DPD, arrears, NPL status
+  const arrears = useArrearsLookup();
+
   const fetchData = useCallback(async () => {
     const [bRes, tRes] = await Promise.all([
       supabase.from('beneficiaries').select('*'),
-      supabase.from('transactions').select('*'),
+      supabase.from('transactions').select('date_paid, beneficiary_id'),
     ]);
     if (bRes.data) setBeneficiaries(bRes.data);
-    if (tRes.data) setTransactions(tRes.data);
+    if (tRes.data) setTxnDates(tRes.data);
     setLoading(false);
   }, []);
 
@@ -124,8 +127,8 @@ export default function NplStatus() {
     fetchData();
     const channel = supabase
       .channel('npl-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => fetchData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => { fetchData(); arrears.refresh(); })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => { fetchData(); arrears.refresh(); })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchData]);
@@ -141,13 +144,12 @@ export default function NplStatus() {
     })();
   }, []);
 
-  // Build NPL account data
+  // Build NPL account data using Golden Record
   const nplAccounts: NplAccount[] = useMemo(() => {
     const activeLoans = beneficiaries.filter(b => b.status === 'active' || b.status === 'defaulted');
     return activeLoans.map(b => {
+      const ar = getArrearsFromMap(arrears.map, b.id);
       const emi = Number(b.monthly_emi);
-      const arrears = getAmountInArrears(b);
-      const monthsInArrears = emi > 0 ? Math.ceil(arrears / emi) : 0;
       return {
         id: b.id,
         name: b.name,
@@ -158,15 +160,15 @@ export default function NplStatus() {
         loanAmount: Number(b.loan_amount),
         tenorMonths: b.tenor_months,
         monthlyEmi: emi,
-        totalPaid: Number(b.total_paid),
+        totalPaid: ar.verifiedTotalPaid > 0 ? ar.verifiedTotalPaid : Number(b.total_paid),
         outstandingBalance: Number(b.outstanding_balance),
-        dpd: calculateDPD(b),
-        lastPaymentDate: getLastPaymentDate(b, transactions),
-        amountInArrears: arrears,
-        monthsInArrears,
+        dpd: ar.daysOverdue,
+        lastPaymentDate: getLastPaymentDate(b, txnDates),
+        amountInArrears: ar.arrearsAmount,
+        monthsInArrears: ar.arrearsMonths,
       };
     });
-  }, [beneficiaries, transactions]);
+  }, [beneficiaries, txnDates, arrears.map]);
 
   const parDays = PAR_OPTIONS.find(p => p.value === parFilter)?.days ?? 90;
 
