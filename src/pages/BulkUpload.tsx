@@ -64,13 +64,27 @@ function parseExcelDate(value: any): string | null {
     }
   }
   if (typeof value === 'string') {
-    // Parse as local date to avoid UTC shift
-    const parts = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (parts) {
-      return formatLocalDate(new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])));
+    // Try YYYY-MM-DD or YYYY-M-D
+    const iso = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (iso) {
+      return formatLocalDate(new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3])));
     }
-    const d = new Date(value);
-    if (!isNaN(d.getTime())) return formatLocalDate(d);
+    // Try DD/MM/YYYY or D/M/YYYY
+    const dmy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmy) {
+      return formatLocalDate(new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1])));
+    }
+    // Try MM/DD/YYYY
+    const mdy = value.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (mdy) {
+      return formatLocalDate(new Date(Number(mdy[3]), Number(mdy[1]) - 1, Number(mdy[2])));
+    }
+    // Last resort: parse component-by-component to avoid UTC shift
+    const fallback = new Date(value);
+    if (!isNaN(fallback.getTime())) {
+      // Re-construct from UTC components to local to prevent day shift
+      return formatLocalDate(new Date(fallback.getUTCFullYear(), fallback.getUTCMonth(), fallback.getUTCDate()));
+    }
   }
   if (value instanceof Date && !isNaN(value.getTime())) {
     return formatLocalDate(value);
