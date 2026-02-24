@@ -741,8 +741,8 @@ export default function NplStatus() {
                           <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(a.outstandingBalance)}</TableCell>
                           <TableCell className="text-right">{a.monthsInArrears}</TableCell>
-                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell className={`text-right ${riskColor(a.dpd)}`}>{a.dpd}</TableCell>
+                          <TableCell className="text-right font-semibold text-destructive">{formatCurrency(a.amountInArrears)}</TableCell>
                           <TableCell>{a.lastPaymentDate ? new Date(a.lastPaymentDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }) : '—'}</TableCell>
                           <TableCell className="text-right">{formatCurrency(a.totalPaid)}</TableCell>
                           <TableCell className="text-right">
