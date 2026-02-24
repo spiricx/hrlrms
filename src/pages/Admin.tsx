@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Shield, Users, Lock, Database, UserCog, Search, Plus, Trash2, RefreshCw, Eye, EyeOff, KeyRound, Activity, Settings2 } from 'lucide-react';
 import ModuleAccessTab from '@/components/admin/ModuleAccessTab';
 import ActivityLogsTab from '@/components/admin/ActivityLogsTab';
+import DataManagementTab from '@/components/admin/DataManagementTab';
 import { format } from 'date-fns';
 
 type AppRole = 'admin' | 'manager' | 'loan_officer';
