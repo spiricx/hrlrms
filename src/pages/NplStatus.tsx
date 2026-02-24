@@ -736,6 +736,60 @@ export default function NplStatus() {
           )}
         </div>
       </div>
+
+      {/* Batch NPL Ratio Table */}
+      {drillLevel === 'state' && batchData.length > 0 && (
+        <div className="bg-card rounded-xl shadow-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-border">
+            <h2 className="text-lg font-bold font-display">NPL Ratio by Loan Batch</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-secondary/50">
+                  <TableHead>S/N</TableHead>
+                  <TableHead>Batch Name</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Branch</TableHead>
+                  <TableHead className="text-right">Active Loans</TableHead>
+                  <TableHead className="text-right">Active Amount</TableHead>
+                  <TableHead className="text-right">NPL Amount</TableHead>
+                  <TableHead className="text-right">NPL Count</TableHead>
+                  <TableHead className="text-right">NPL Ratio</TableHead>
+                  <TableHead className="text-right">PAR 30+</TableHead>
+                  <TableHead className="text-right">PAR 90+</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {batchData.map((row, idx) => {
+                  const ratio = row.activeAmount > 0 ? (row.nplAmount / row.activeAmount) * 100 : 0;
+                  const isPinned = row.batchName === 'GATEWAY HOLDINGS LTD /OGUN/107-110/2020';
+                  return (
+                    <TableRow key={row.batchId} className={cn(
+                      riskRowBg(ratio > 5 ? 90 : ratio >= 3 ? 30 : 0),
+                      isPinned && 'ring-2 ring-primary/40 bg-primary/5'
+                    )}>
+                      <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
+                      <TableCell className={cn("font-medium", isPinned && "text-primary font-bold")}>{row.batchName}</TableCell>
+                      <TableCell>{row.state || '—'}</TableCell>
+                      <TableCell>{row.branch || '—'}</TableCell>
+                      <TableCell className="text-right">{row.totalLoans}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.activeAmount)}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive">{formatCurrency(row.nplAmount)}</TableCell>
+                      <TableCell className="text-right">{row.nplCount}</TableCell>
+                      <TableCell className="text-right">
+                        <Badge variant={nplRatioColor(ratio)}>{ratio.toFixed(1)}%</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.par30)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.par90)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
