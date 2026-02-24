@@ -70,7 +70,14 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
   const { hasModuleAccess } = useModuleAccess();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const { theme, toggle: toggleTheme } = useTheme();
+
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('profiles').select('avatar_url').eq('user_id', user.id).single()
+      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+  }, [user]);
 
   return (
     <div className="flex min-h-screen">
