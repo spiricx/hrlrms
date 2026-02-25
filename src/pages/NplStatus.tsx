@@ -266,7 +266,7 @@ export default function NplStatus() {
       batchId: string; batchName: string; state: string; branch: string;
       totalLoans: number; activeAmount: number; nplAmount: number; nplCount: number;
       par30: number; par90: number;
-      totalDisbursed: number; totalOutstanding: number; totalRepaid: number;
+      totalDisbursed: number; totalMonthlyRepayment: number; totalOutstanding: number; totalRepaid: number;
       totalMonthsInArrears: number; totalArrearsAmount: number; worstDpd: number;
       maxTenor: number; lastPaymentDate: string | null;
     }>();
@@ -278,13 +278,14 @@ export default function NplStatus() {
       const entry = map.get(batchId) || {
         batchId, batchName, state: batch?.state || a.state, branch: batch?.bank_branch || a.branch,
         totalLoans: 0, activeAmount: 0, nplAmount: 0, nplCount: 0, par30: 0, par90: 0,
-        totalDisbursed: 0, totalOutstanding: 0, totalRepaid: 0,
+        totalDisbursed: 0, totalMonthlyRepayment: 0, totalOutstanding: 0, totalRepaid: 0,
         totalMonthsInArrears: 0, totalArrearsAmount: 0, worstDpd: 0,
         maxTenor: 0, lastPaymentDate: null as string | null,
       };
       entry.totalLoans++;
       entry.activeAmount += a.outstandingBalance;
       entry.totalDisbursed += a.loanAmount;
+      entry.totalMonthlyRepayment += a.monthlyEmi;
       entry.totalOutstanding += a.outstandingBalance;
       entry.totalRepaid += a.totalPaid;
       entry.totalMonthsInArrears += a.monthsInArrears;
@@ -791,6 +792,7 @@ export default function NplStatus() {
                 totalLoans: r.totalLoans,
                 maxTenor: r.maxTenor,
                 totalDisbursed: r.totalDisbursed,
+                totalMonthlyRepayment: r.totalMonthlyRepayment,
                 totalOutstanding: r.totalOutstanding,
                 totalRepaid: r.totalRepaid,
                 totalMonthsInArrears: r.totalMonthsInArrears,
@@ -818,6 +820,7 @@ export default function NplStatus() {
                   <TableHead className="text-right">Active Loans</TableHead>
                   <TableHead className="text-right">Loan Tenor</TableHead>
                   <TableHead className="text-right">Total Disbursed</TableHead>
+                  <TableHead className="text-right">Monthly Repayment</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead className="text-right">Total Repayment Made So Far</TableHead>
                   <TableHead className="text-right">Months in Arrears</TableHead>
@@ -861,6 +864,7 @@ export default function NplStatus() {
                       <TableCell className="text-right">{row.totalLoans}</TableCell>
                       <TableCell className="text-right">{row.maxTenor} months</TableCell>
                       <TableCell className="text-right">{formatCurrency(row.totalDisbursed)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(row.totalMonthlyRepayment)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(row.totalOutstanding)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(row.totalRepaid)}</TableCell>
                       <TableCell className="text-right">{row.totalMonthsInArrears}</TableCell>
