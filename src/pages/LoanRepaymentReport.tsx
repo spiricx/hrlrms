@@ -2,7 +2,8 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, formatDate, formatTenor, getOverdueAndArrears, getMonthsDue } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,8 @@ export default function LoanRepaymentReport() {
       if (data?.full_name) setStaffName(data.full_name);
     });
   }, [user]);
+
+  const { map: arrearsMap } = useArrearsLookup();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -132,15 +135,11 @@ export default function LoanRepaymentReport() {
       const newCum = prevCum + Number(t.amount);
       runningCumulative.set(t.beneficiary_id, newCum);
 
-      // Compute overdue/arrears
-      const overdueInfo = getOverdueAndArrears(
-        b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-        Number(b.total_paid), Number(b.outstanding_balance), b.status
-      );
+      // Use Golden Record for overdue/arrears metrics
+      const arrData = getArrearsFromMap(arrearsMap, b.id);
 
-      // Expected repayment = months due * EMI
-      const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
-      const expectedRepayment = monthsDue * Number(b.monthly_emi);
+      // Expected repayment from Golden Record
+      const expectedRepayment = arrData.monthsDue * Number(b.monthly_emi);
 
       // Last repayment amount for this beneficiary
       const benCum = beneficiaryCumulativeMap.get(b.id);
@@ -165,10 +164,10 @@ export default function LoanRepaymentReport() {
         expectedRepayment,
         cumulativePayment: newCum,
         lastRepaymentAmount: benCum?.lastAmount || 0,
-        overdueAmount: overdueInfo.overdueAmount,
-        monthsOverdue: overdueInfo.overdueMonths,
-        arrearsAmount: overdueInfo.arrearsAmount,
-        monthsInArrears: overdueInfo.monthsInArrears,
+        overdueAmount: arrData.overdueAmount,
+        monthsOverdue: arrData.overdueMonths,
+        arrearsAmount: arrData.arrearsAmount,
+        monthsInArrears: arrData.arrearsMonths,
         rrrNumber: t.rrr_number,
         datePaid: t.date_paid,
         amount: Number(t.amount),
@@ -177,7 +176,7 @@ export default function LoanRepaymentReport() {
     });
 
     return records;
-  }, [transactions, beneficiaryMap, beneficiaryCumulativeMap, fromDate, toDate, stateFilter, branchFilter, orgFilter, searchQuery]);
+  }, [transactions, beneficiaryMap, beneficiaryCumulativeMap, arrearsMap, fromDate, toDate, stateFilter, branchFilter, orgFilter, searchQuery]);
 
   // Aggregations
   const reportData: RepaymentReportData = useMemo(() => {
