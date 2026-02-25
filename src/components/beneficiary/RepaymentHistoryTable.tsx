@@ -24,15 +24,12 @@ function getMonthStatus(
   const todayDay = stripTime(now);
   const dueDay = stripTime(entry.dueDate);
 
-  // Use tolerance to handle rounding differences between recorded payments and calculated EMI
-  const tolerance = Math.max(1, entry.emi * 0.005); // ₦1 or 0.5%, whichever is greater
-
-  if (totalPaidForMonth >= entry.emi - tolerance) {
+  if (totalPaidForMonth >= entry.emi) {
     const anyLate = monthTxns.some((t) => stripTime(new Date(t.date_paid)) > dueDay);
     return anyLate ? 'late-paid' : 'paid';
   }
 
-  if (totalPaidForMonth > 0 && totalPaidForMonth < entry.emi - tolerance) {
+  if (totalPaidForMonth > 0 && totalPaidForMonth < entry.emi) {
     return 'partial';
   }
 
@@ -133,7 +130,7 @@ export default function RepaymentHistoryTable({
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatDate(entry.dueDate)}</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(entry.emi)}</td>
                   <td className={`px-4 py-3 text-right font-semibold ${
-                    (status === 'paid' || status === 'late-paid') ? 'text-success' :
+                    paidAmount >= entry.emi ? 'text-success' :
                     paidAmount > 0 ? 'text-warning' :
                     status === 'overdue' ? 'text-destructive' : 'text-muted-foreground'
                   }`}>
