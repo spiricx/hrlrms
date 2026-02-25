@@ -1436,10 +1436,10 @@ export default function BatchRepayment() {
                         mode="single"
                         selected={editBatchRepDate}
                         onSelect={setEditBatchRepDate}
-                        disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        disabled={(d) => d > new Date() || d < new Date('2010-01-01')}
                         captionLayout="dropdown-buttons"
-                        fromYear={2016}
-                        toYear={new Date().getFullYear()}
+                        fromYear={2010}
+                        toYear={2060}
                         initialFocus
                       />
                     </PopoverContent>
@@ -1911,10 +1911,10 @@ export default function BatchRepayment() {
                         mode="single"
                         selected={payDate}
                         onSelect={setPayDate}
-                        disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        disabled={(d) => d > new Date() || d < new Date('2010-01-01')}
                         captionLayout="dropdown-buttons"
-                        fromYear={2016}
-                        toYear={new Date().getFullYear()}
+                        fromYear={2010}
+                        toYear={2060}
                         initialFocus
                       />
                     </PopoverContent>
