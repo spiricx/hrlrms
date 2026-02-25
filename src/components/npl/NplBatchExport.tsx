@@ -13,6 +13,7 @@ export interface BatchRow {
   totalLoans: number;
   maxTenor: number;
   totalDisbursed: number;
+  totalMonthlyRepayment: number;
   totalOutstanding: number;
   totalRepaid: number;
   totalMonthsInArrears: number;
@@ -66,7 +67,7 @@ function getFilterSummary(filters: NplBatchReportData['filters']): string {
 
 const HEADERS = [
   'S/N', 'Batch Name', 'State', 'Branch', 'Active Loans', 'Loan Tenor',
-  'Total Disbursed (₦)', 'Outstanding (₦)', 'Total Repayment Made So Far (₦)',
+  'Total Disbursed (₦)', 'Monthly Repayment (₦)', 'Outstanding (₦)', 'Total Repayment Made So Far (₦)',
   'Months in Arrears', 'Age in Arrears', 'Arrears in Amount (₦)', 'DPD',
   'Last Payment Date', 'NPL Amount (₦)', 'NPL Count', 'NPL Ratio', 'PAR 30+ (₦)', 'PAR 90+ (₦)',
 ];
@@ -76,7 +77,7 @@ function buildRow(r: BatchRow, idx: number): (string | number)[] {
   const age = r.worstDpd > 0 ? `${Math.floor(r.worstDpd / 30)}m ${r.worstDpd % 30}d` : '—';
   return [
     idx + 1, r.batchName, r.state || '—', r.branch || '—', r.totalLoans,
-    `${r.maxTenor} months`, r.totalDisbursed, r.totalOutstanding, r.totalRepaid,
+    `${r.maxTenor} months`, r.totalDisbursed, r.totalMonthlyRepayment, r.totalOutstanding, r.totalRepaid,
     r.totalMonthsInArrears, age, r.totalArrearsAmount, r.worstDpd,
     formatLastPayment(r.lastPaymentDate), r.nplAmount, r.nplCount, ratio, r.par30, r.par90,
   ];
@@ -134,10 +135,10 @@ export async function exportBatchToPDF(data: NplBatchReportData) {
       const row = buildRow(r, i);
       return [
         row[0], row[1], row[2], row[3], row[4], row[5],
-        formatCurrency(row[6] as number), formatCurrency(row[7] as number), formatCurrency(row[8] as number),
-        row[9], row[10], formatCurrency(row[11] as number), row[12],
-        row[13], formatCurrency(row[14] as number), row[15], row[16],
-        formatCurrency(row[17] as number), formatCurrency(row[18] as number),
+        formatCurrency(row[6] as number), formatCurrency(row[7] as number), formatCurrency(row[8] as number), formatCurrency(row[9] as number),
+        row[10], row[11], formatCurrency(row[12] as number), row[13],
+        row[14], formatCurrency(row[15] as number), row[16], row[17],
+        formatCurrency(row[18] as number), formatCurrency(row[19] as number),
       ];
     }),
     styles: { fontSize: 7 },
@@ -167,7 +168,7 @@ export function printBatchReport(data: NplBatchReportData) {
     return `<tr>
       <td class="center">${idx + 1}</td><td>${r.batchName}</td><td>${r.state || '—'}</td><td>${r.branch || '—'}</td>
       <td class="right">${r.totalLoans}</td><td class="right">${r.maxTenor} months</td>
-      <td class="right">${formatCurrency(r.totalDisbursed)}</td><td class="right">${formatCurrency(r.totalOutstanding)}</td>
+      <td class="right">${formatCurrency(r.totalDisbursed)}</td><td class="right">${formatCurrency(r.totalMonthlyRepayment)}</td><td class="right">${formatCurrency(r.totalOutstanding)}</td>
       <td class="right">${formatCurrency(r.totalRepaid)}</td><td class="right">${r.totalMonthsInArrears}</td>
       <td class="right">${age}</td><td class="right npl-red">${formatCurrency(r.totalArrearsAmount)}</td>
       <td class="right ${r.worstDpd >= 90 ? 'npl-red' : ''}">${r.worstDpd}</td>
