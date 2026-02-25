@@ -14,6 +14,7 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 
 type StaffMember = { id: string; title: string; surname: string; first_name: string; staff_id: string; state: string; branch: string; designation: string; email: string; status: string; nhf_number: string | null; };
 type Beneficiary = { id: string; state: string; bank_branch: string; status: string; loan_amount: number; outstanding_balance: number; total_paid: number; monthly_emi: number; created_by: string | null; name: string; employee_id: string; tenor_months: number; interest_rate: number; commencement_date: string; termination_date: string; loan_reference_number: string | null; };
@@ -33,6 +34,7 @@ function formatNairaFull(n: number) {
 
 export default function StaffPerformance() {
   const { toast } = useToast();
+  const { map: arrearsMap } = useArrearsLookup();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -143,39 +145,10 @@ export default function StaffPerformance() {
 
       const activeBens = myBeneficiaries.filter(b => b.status === 'active');
 
-      // --- CORRECT NPL CALCULATION using 90+ Days Past Due (not a proxy) ---
-      // Mirrors the logic in Dashboard.tsx and NplStatus.tsx for consistency
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // --- NPL from Golden Record (v_loan_arrears) ---
       const nplBens = activeBens.filter(b => {
-        if (Number(b.outstanding_balance) <= 0) return false;
-        const commDate = new Date(b.commencement_date);
-        commDate.setHours(0, 0, 0, 0);
-        if (today < commDate) return false;
-        const monthlyEmi = Number(b.monthly_emi);
-        if (monthlyEmi <= 0) return false;
-        const totalPaid = Number(b.total_paid);
-        // Count how many instalments are due
-        let dueMonths = 0;
-        for (let i = 1; i <= b.tenor_months; i++) {
-          const dueDate = new Date(commDate);
-          dueDate.setMonth(dueDate.getMonth() + (i - 1));
-          if (today >= dueDate) dueMonths = i;
-          else break;
-        }
-        if (dueMonths <= 0) return false;
-        const expectedTotal = dueMonths * monthlyEmi;
-        const unpaid = Math.max(0, expectedTotal - totalPaid);
-        const overdueMonths = Math.ceil(unpaid / monthlyEmi);
-        if (overdueMonths <= 0) return false;
-        // Find the first unpaid month's due date for DPD
-        const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
-        const firstUnpaidIdx = paidMonths; // 0-based
-        const firstUnpaidDue = new Date(commDate);
-        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + firstUnpaidIdx);
-        firstUnpaidDue.setHours(0, 0, 0, 0);
-        const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        return dpd >= 90;
+        const a = getArrearsFromMap(arrearsMap, b.id);
+        return a.isNpl;
       });
 
       const portfolioValue = activeBens.reduce((sum, b) => sum + Number(b.loan_amount), 0);
@@ -241,40 +214,17 @@ export default function StaffPerformance() {
         reportYear,
       };
     }).sort((a, b) => b.rankingValue - a.rankingValue);
-  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery, fromDate, toDate]);
+  }, [staff, beneficiaries, transactions, emailToUserId, filterState, searchQuery, fromDate, toDate, arrearsMap]);
 
   // Deduplicated portfolio totals (from beneficiaries directly, not staff metrics which double-count)
   const portfolioTotals = useMemo(() => {
     const filtered = filterState === 'all' ? beneficiaries : beneficiaries.filter(b => b.state === filterState);
     const active = filtered.filter(b => b.status === 'active');
 
-    // Correct NPL: 90+ DPD using installment aging (same logic as Dashboard & NPL modules)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // NPL from Golden Record
     const npl = active.filter(b => {
-      if (Number(b.outstanding_balance) <= 0) return false;
-      const commDate = new Date(b.commencement_date);
-      commDate.setHours(0, 0, 0, 0);
-      if (today < commDate) return false;
-      const monthlyEmi = Number(b.monthly_emi);
-      if (monthlyEmi <= 0) return false;
-      const totalPaid = Number(b.total_paid);
-      let dueMonths = 0;
-      for (let i = 1; i <= b.tenor_months; i++) {
-        const dueDate = new Date(commDate);
-        dueDate.setMonth(dueDate.getMonth() + (i - 1));
-        if (today >= dueDate) dueMonths = i; else break;
-      }
-      if (dueMonths <= 0) return false;
-      const unpaid = Math.max(0, dueMonths * monthlyEmi - totalPaid);
-      const overdueMonths = Math.ceil(unpaid / monthlyEmi);
-      if (overdueMonths <= 0) return false;
-      const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
-      const firstUnpaidDue = new Date(commDate);
-      firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-      firstUnpaidDue.setHours(0, 0, 0, 0);
-      const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      return dpd >= 90;
+      const a = getArrearsFromMap(arrearsMap, b.id);
+      return a.isNpl;
     });
 
     // Recovery: total all-time (since transactions are historical, not current-month)
@@ -293,7 +243,7 @@ export default function StaffPerformance() {
       nplCount: npl.length,
       nplRatio: active.length > 0 ? (npl.reduce((s, b) => s + Number(b.outstanding_balance), 0) / active.reduce((s, b) => s + Number(b.outstanding_balance), 0) * 100) : 0,
     };
-  }, [beneficiaries, transactions, filterState]);
+  }, [beneficiaries, transactions, filterState, arrearsMap]);
 
   // Loan portfolio by staff
   const staffPortfolio = useMemo(() => {
@@ -336,29 +286,11 @@ export default function StaffPerformance() {
       const existing = map.get(b.state);
       const isActive = b.status === 'active';
 
-      // Correct NPL: 90+ DPD using total_paid/monthly_emi (same as Dashboard & NPL module)
+      // NPL from Golden Record
       const isNpl = (() => {
-        if (!isActive || Number(b.outstanding_balance) <= 0) return false;
-        const commDate = new Date(b.commencement_date);
-        commDate.setHours(0, 0, 0, 0);
-        if (today < commDate) return false;
-        const monthlyEmi = Number(b.monthly_emi);
-        if (monthlyEmi <= 0) return false;
-        const totalPaid = Number(b.total_paid);
-        let dueMonths = 0;
-        for (let i = 1; i <= b.tenor_months; i++) {
-          const dueDate = new Date(commDate);
-          dueDate.setMonth(dueDate.getMonth() + (i - 1));
-          if (today >= dueDate) dueMonths = i; else break;
-        }
-        if (dueMonths <= 0) return false;
-        const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
-        if (paidMonths >= dueMonths) return false;
-        const firstUnpaidDue = new Date(commDate);
-        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-        firstUnpaidDue.setHours(0, 0, 0, 0);
-        const dpd = Math.floor((today.getTime() - firstUnpaidDue.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-        return dpd >= 90;
+        if (!isActive) return false;
+        const a = getArrearsFromMap(arrearsMap, b.id);
+        return a.isNpl;
       })();
 
       const benTxns = transactions.filter(t => {

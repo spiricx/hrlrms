@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, PlusCircle } from 'lucide-react';
-import { formatCurrency, formatTenor, getMonthsDue, stripTime } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,17 +20,6 @@ interface BeneficiaryWithPayment extends Beneficiary {
 }
 
 type StatusInfo = {label: string;className: string;};
-
-function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
-  if (overdueMonths <= 0 || Number(b.monthly_emi) <= 0) return 0;
-  const today = stripTime(new Date());
-  const comm = stripTime(new Date(b.commencement_date));
-  const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
-  const firstUnpaidDue = new Date(comm);
-  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-  const due = stripTime(firstUnpaidDue);
-  return Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-}
 
 function getStatusInfoFromArrears(a: ReturnType<typeof getArrearsFromMap>): StatusInfo {
   if (a.loanHealth === 'completed') {
