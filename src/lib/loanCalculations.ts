@@ -298,7 +298,8 @@ export function getOverdueAndArrears(
   status: string,
 ): OverdueArrearsInfo {
   const zero: OverdueArrearsInfo = { overdueMonths: 0, overdueAmount: 0, monthsInArrears: 0, arrearsAmount: 0 };
-  if (status === 'completed' || outstandingBalance <= 0) return zero;
+  // FIX: use 0.01 tolerance for near-zero balances (floating-point precision)
+  if (status === 'completed' || outstandingBalance < 0.01) return zero;
 
   const monthsDue = getMonthsDue(commencementDate, tenorMonths);
   if (monthsDue <= 0) return zero;
