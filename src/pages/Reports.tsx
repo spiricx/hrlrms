@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { formatCurrency, getOverdueAndArrears, stripTime } from '@/lib/loanCalculations';
+import { formatCurrency } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -25,6 +25,7 @@ export default function Reports() {
   const [toDate, setToDate] = useState<Date | undefined>();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
+  const { map: arrearsMap } = useArrearsLookup();
   const [staffName, setStaffName] = useState('');
 
   // Fetch current user's profile name
@@ -94,51 +95,22 @@ export default function Reports() {
   const completedCount = filtered.filter(b => b.status === 'completed').length;
   const defaultedCount = filtered.filter(b => b.status === 'defaulted').length;
 
-  // Compute defaulted using 90+ DPD aging logic (consistent with Dashboard)
-  // Uses the same getOverdueAndArrears utility for accuracy
+  // Compute defaulted/active from v_loan_arrears Golden Record
   const computedDefaulted = useMemo(() => {
     return filtered.filter(b => {
-      if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
-      const emi = Number(b.monthly_emi);
-      if (emi <= 0) return false;
-      const today = stripTime(new Date());
-      const comm = stripTime(new Date(b.commencement_date));
-      if (today < comm) return false;
-
-      const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, emi, Number(b.total_paid), Number(b.outstanding_balance), b.status);
-      if (oa.overdueMonths <= 0) return false;
-
-      // Find due date of first unpaid instalment
-      const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / emi), b.tenor_months);
-      const firstUnpaidDue = new Date(comm);
-      firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-      const due = stripTime(firstUnpaidDue);
-      const dpd = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-      return dpd >= 90;
+      if (b.status === 'completed' || Number(b.outstanding_balance) < 0.01) return false;
+      const arrData = getArrearsFromMap(arrearsMap, b.id);
+      return arrData.isNpl;
     }).length;
-  }, [filtered]);
+  }, [filtered, arrearsMap]);
 
-  // Active = not completed, not defaulted (90+ DPD), has outstanding balance
   const computedActive = useMemo(() => {
     return filtered.filter(b => {
-      if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
-      const emi = Number(b.monthly_emi);
-      if (emi <= 0) return true; // pre-commencement = active
-      const today = stripTime(new Date());
-      const comm = stripTime(new Date(b.commencement_date));
-      if (today < comm) return true;
-
-      const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, emi, Number(b.total_paid), Number(b.outstanding_balance), b.status);
-      if (oa.overdueMonths <= 0) return true;
-
-      const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / emi), b.tenor_months);
-      const firstUnpaidDue = new Date(comm);
-      firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-      const due = stripTime(firstUnpaidDue);
-      const dpd = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-      return dpd < 90; // active if below 90 DPD threshold
+      if (b.status === 'completed' || Number(b.outstanding_balance) < 0.01) return false;
+      const arrData = getArrearsFromMap(arrearsMap, b.id);
+      return !arrData.isNpl;
     }).length;
-  }, [filtered]);
+  }, [filtered, arrearsMap]);
   const totalFacilities = filtered.length;
 
   const statusData = [

@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote, Filter, ShieldAlert } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import StatCard from '@/components/StatCard';
-import { formatCurrency, getOverdueAndArrears, stripTime } from '@/lib/loanCalculations';
+import { formatCurrency } from '@/lib/loanCalculations';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import RecentBeneficiariesWidget from '@/components/dashboard/RecentBeneficiariesWidget';
@@ -45,53 +45,32 @@ export default function Dashboard() {
   const totalOutstanding = beneficiaries.reduce((s, b) => s + Number(b.outstanding_balance), 0);
   const totalCollected = beneficiaries.reduce((s, b) => s + Number(b.total_paid), 0);
 
-  // Dynamically compute loan health based on 90+ Days Past Due
+  // Compute loan health from v_loan_arrears (Golden Record) — single source of truth
   const loanMetrics = useMemo(() => {
+    // Build a lookup from the authoritative view
+    const arrearsMap = new Map<string, LoanArrears>();
+    loanArrears.forEach(a => { if (a.id) arrearsMap.set(a.id, a); });
+
     let defaulted = 0;
     let completed = 0;
     let active = 0;
 
     beneficiaries.forEach((b) => {
-      if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) {
+      if (b.status === 'completed' || Number(b.outstanding_balance) < 0.01) {
         completed++;
         return;
       }
 
-      const comm = stripTime(new Date(b.commencement_date));
-      const today = stripTime(new Date());
-      const monthlyEmi = Number(b.monthly_emi);
-      const totalPaid = Number(b.total_paid);
-
-      if (monthlyEmi > 0 && today >= comm) {
-        const arrears = getOverdueAndArrears(
-          b.commencement_date,
-          b.tenor_months,
-          monthlyEmi,
-          totalPaid,
-          Number(b.outstanding_balance),
-          b.status
-        );
-
-        if (arrears.overdueMonths > 0) {
-          const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
-          const firstUnpaidMonth = paidMonths + 1;
-          const firstUnpaidDate = new Date(comm);
-          firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() + (firstUnpaidMonth - 1));
-          const dueDateStripped = stripTime(firstUnpaidDate);
-          // DPD is inclusive: on the due date = 1 day past due
-          const dpd = Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-
-          if (dpd >= 90) {
-            defaulted++;
-            return;
-          }
-        }
+      const arrRow = arrearsMap.get(b.id);
+      if (arrRow && arrRow.is_npl) {
+        defaulted++;
+      } else {
+        active++;
       }
-      active++;
     });
 
     return { defaulted, completed, active };
-  }, [beneficiaries]);
+  }, [beneficiaries, loanArrears]);
 
   const defaultedCount = loanMetrics.defaulted;
   const completedCount = loanMetrics.completed;
