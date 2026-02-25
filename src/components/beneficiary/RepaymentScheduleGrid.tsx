@@ -23,7 +23,10 @@ function getMonthStatus(
   const todayDay = stripTime(now);
   const dueDay = stripTime(entry.dueDate);
 
-  if (totalPaid >= entry.emi) {
+  // Use tolerance to handle rounding differences between recorded payments and calculated EMI
+  const tolerance = Math.max(1, entry.emi * 0.005); // ₦1 or 0.5%, whichever is greater
+
+  if (totalPaid >= entry.emi - tolerance) {
     // Check if this is an advance payment (paid before due date and in the future)
     const isPaidInAdvance = dueDay > todayDay;
     if (isPaidInAdvance) return 'paid-advance';
@@ -31,7 +34,7 @@ function getMonthStatus(
     return anyLate ? 'late-paid' : 'paid';
   }
 
-  if (totalPaid > 0 && totalPaid < entry.emi) {
+  if (totalPaid > 0 && totalPaid < entry.emi - tolerance) {
     return 'partial';
   }
 
