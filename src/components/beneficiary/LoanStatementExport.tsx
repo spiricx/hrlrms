@@ -71,7 +71,7 @@ function buildStatementData(
       paymentDate: latestTxn ? formatDate(new Date(latestTxn.date_paid)) : '—',
       rrr: latestTxn?.rrr_number || '—',
       status: !isRepayment ? entry.transactionType :
-        paidAmount >= entry.emi - 1 ? 'Paid' : paidAmount > 0 ? 'Partial' : entry.dueDate < new Date() ? 'Overdue' : 'Upcoming',
+        paidAmount >= entry.emi ? 'Paid' : paidAmount > 0 ? 'Partial' : entry.dueDate < new Date() ? 'Overdue' : 'Upcoming',
     };
   });
 }

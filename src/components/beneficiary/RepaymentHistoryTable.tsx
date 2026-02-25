@@ -1,7 +1,6 @@
-import { ExternalLink, CheckCircle, AlertTriangle, Clock, MinusCircle, Info } from 'lucide-react';
-import { formatCurrency, formatDate, stripTime, EMI_TOLERANCE } from '@/lib/loanCalculations';
+import { ExternalLink, CheckCircle, AlertTriangle, Clock, MinusCircle } from 'lucide-react';
+import { formatCurrency, formatDate, stripTime } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Transaction = Tables<'transactions'>;
@@ -25,7 +24,7 @@ function getMonthStatus(
   const todayDay = stripTime(now);
   const dueDay = stripTime(entry.dueDate);
 
-  if (totalPaidForMonth >= entry.emi - EMI_TOLERANCE) {
+  if (totalPaidForMonth >= entry.emi) {
     const anyLate = monthTxns.some((t) => stripTime(new Date(t.date_paid)) > dueDay);
     return anyLate ? 'late-paid' : 'paid';
   }
@@ -131,7 +130,7 @@ export default function RepaymentHistoryTable({
                   <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatDate(entry.dueDate)}</td>
                   <td className="px-4 py-3 text-right">{formatCurrency(entry.emi)}</td>
                   <td className={`px-4 py-3 text-right font-semibold ${
-                    paidAmount >= entry.emi - EMI_TOLERANCE ? 'text-success' :
+                    paidAmount >= entry.emi ? 'text-success' :
                     paidAmount > 0 ? 'text-warning' :
                     status === 'overdue' ? 'text-destructive' : 'text-muted-foreground'
                   }`}>
