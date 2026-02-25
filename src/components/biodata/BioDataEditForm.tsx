@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { calculateLoan, formatCurrency } from '@/lib/loanCalculations';
 
 type Beneficiary = {
   id: string;
@@ -32,6 +33,12 @@ type Beneficiary = {
   state: string;
   bank_branch: string;
   loan_reference_number: string | null;
+  loan_amount: number;
+  tenor_months: number;
+  interest_rate: number;
+  moratorium_months: number;
+  disbursement_date: string;
+  total_paid: number;
 };
 
 interface BioDataEditFormProps {
@@ -68,6 +75,11 @@ export default function BioDataEditForm({ beneficiary, onSaved, onCancel }: BioD
     state: b.state || '',
     bank_branch: b.bank_branch || '',
     loan_reference_number: b.loan_reference_number || '',
+    loan_amount: String(b.loan_amount || ''),
+    tenor_months: String(b.tenor_months || ''),
+    interest_rate: String(b.interest_rate || ''),
+    moratorium_months: String(b.moratorium_months ?? 1),
+    disbursement_date: b.disbursement_date || '',
   });
 
   const set = (key: string, value: string) => setForm(prev => ({ ...prev, [key]: value }));
@@ -77,8 +89,27 @@ export default function BioDataEditForm({ beneficiary, onSaved, onCancel }: BioD
       toast.error('Surname and First Name are required.');
       return;
     }
+    const loanAmount = Number(form.loan_amount);
+    const tenorMonths = Number(form.tenor_months);
+    const interestRate = Number(form.interest_rate);
+    const moratoriumMonths = Number(form.moratorium_months);
+    if (!loanAmount || loanAmount <= 0) { toast.error('Loan Amount must be greater than 0.'); return; }
+    if (!tenorMonths || tenorMonths <= 0) { toast.error('Tenor must be greater than 0.'); return; }
+    if (interestRate < 0) { toast.error('Interest Rate cannot be negative.'); return; }
+    if (!form.disbursement_date) { toast.error('Disbursement Date is required.'); return; }
+
     setSaving(true);
     const fullName = `${form.surname} ${form.first_name} ${form.other_name}`.trim();
+
+    // Recalculate derived loan fields
+    const loan = calculateLoan({
+      principal: loanAmount,
+      annualRate: interestRate,
+      tenorMonths,
+      moratoriumMonths,
+      disbursementDate: new Date(form.disbursement_date),
+    });
+
     const { error } = await supabase
       .from('beneficiaries')
       .update({
@@ -103,6 +134,16 @@ export default function BioDataEditForm({ beneficiary, onSaved, onCancel }: BioD
         state: form.state,
         bank_branch: form.bank_branch,
         loan_reference_number: form.loan_reference_number,
+        loan_amount: loanAmount,
+        tenor_months: tenorMonths,
+        interest_rate: interestRate,
+        moratorium_months: moratoriumMonths,
+        disbursement_date: form.disbursement_date,
+        monthly_emi: loan.monthlyEMI,
+        commencement_date: loan.commencementDate.toISOString().split('T')[0],
+        termination_date: loan.terminationDate.toISOString().split('T')[0],
+        outstanding_balance: Math.max(0, loan.totalPayment - Number(b.total_paid)),
+        status: (loan.totalPayment - Number(b.total_paid)) < 0.01 ? 'completed' : 'active',
       })
       .eq('id', b.id);
 
@@ -110,7 +151,7 @@ export default function BioDataEditForm({ beneficiary, onSaved, onCancel }: BioD
     if (error) {
       toast.error('Failed to update: ' + error.message);
     } else {
-      toast.success('Bio data updated successfully.');
+      toast.success('Loan details updated successfully.');
       onSaved();
     }
   };
@@ -189,6 +230,41 @@ export default function BioDataEditForm({ beneficiary, onSaved, onCancel }: BioD
           </div>
           {field('Bank Branch', 'bank_branch')}
           {field('Loan Reference No.', 'loan_reference_number')}
+        </div>
+      </div>
+
+      {/* Loan Financial Details */}
+      <div>
+        <h3 className="text-sm font-semibold text-primary mb-2 border-b border-border pb-1">Loan Financial Details</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+          {field('Loan Amount (₦)', 'loan_amount', 'number')}
+          {field('Tenor (Months)', 'tenor_months', 'number')}
+          {field('Interest Rate (%)', 'interest_rate', 'number')}
+          {field('Moratorium (Months)', 'moratorium_months', 'number')}
+          {field('Disbursement Date', 'disbursement_date', 'date')}
+          {/* Preview of recalculated values */}
+          {form.loan_amount && form.tenor_months && form.interest_rate && form.disbursement_date && (() => {
+            try {
+              const loan = calculateLoan({
+                principal: Number(form.loan_amount),
+                annualRate: Number(form.interest_rate),
+                tenorMonths: Number(form.tenor_months),
+                moratoriumMonths: Number(form.moratorium_months) || 1,
+                disbursementDate: new Date(form.disbursement_date),
+              });
+              return (
+                <div className="sm:col-span-2 bg-secondary/50 rounded-lg p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground">Preview (auto-calculated on save):</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    <div><span className="text-muted-foreground">Monthly EMI:</span> <span className="font-semibold">{formatCurrency(loan.monthlyEMI)}</span></div>
+                    <div><span className="text-muted-foreground">Total Payment:</span> <span className="font-semibold">{formatCurrency(loan.totalPayment)}</span></div>
+                    <div><span className="text-muted-foreground">Commencement:</span> <span className="font-semibold">{loan.commencementDate.toLocaleDateString()}</span></div>
+                    <div><span className="text-muted-foreground">Termination:</span> <span className="font-semibold">{loan.terminationDate.toLocaleDateString()}</span></div>
+                  </div>
+                </div>
+              );
+            } catch { return null; }
+          })()}
         </div>
       </div>
 

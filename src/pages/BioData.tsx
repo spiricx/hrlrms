@@ -56,6 +56,7 @@ type Beneficiary = {
   termination_date: string;
   outstanding_balance: number;
   total_paid: number;
+  moratorium_months: number;
 };
 
 function buildFields(b: Beneficiary) {

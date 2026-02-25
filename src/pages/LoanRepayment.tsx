@@ -82,7 +82,7 @@ export default function LoanRepayment() {
     const fetchData = async () => {
       // Fetch beneficiaries and their latest transaction in parallel
       const [benResult, txnResult] = await Promise.all([
-        supabase.from('beneficiaries').select('*').eq('status', 'active').order('name', { ascending: true }),
+        supabase.from('beneficiaries').select('*').order('name', { ascending: true }),
         supabase.from('transactions').select('beneficiary_id, date_paid, amount').order('date_paid', { ascending: false })
       ]);
 
@@ -277,7 +277,6 @@ export default function LoanRepayment() {
     const createdAt = new Date(t.created_at);
     const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
     if (hoursSinceCreation > 24) return false;
-    if (historyBen?.status === 'completed') return false;
     return true;
   };
 
