@@ -18,6 +18,7 @@ import LoanRepaymentReportExportButtons, {
 } from '@/components/reports/LoanRepaymentReportExport';
 import BatchLoanRepaymentReport from '@/components/reports/BatchLoanRepaymentReport';
 import type { Tables } from '@/integrations/supabase/types';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -55,12 +56,13 @@ export default function LoanRepaymentReport() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [bRes, tRes] = await Promise.all([
-        supabase.from('beneficiaries').select('*'),
-        supabase.from('transactions').select('*').order('date_paid', { ascending: false }),
+      const [beneficiaryRows, transactionRows] = await Promise.all([
+        fetchAllRows<Beneficiary>('beneficiaries'),
+        fetchAllRows<Transaction>('transactions', '*', { orderBy: 'date_paid', ascending: false }),
       ]);
-      if (bRes.data) setBeneficiaries(bRes.data);
-      if (tRes.data) setTransactions(tRes.data);
+
+      setBeneficiaries(beneficiaryRows);
+      setTransactions(transactionRows);
       setLoading(false);
     };
     fetchData();

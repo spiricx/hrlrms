@@ -502,16 +502,6 @@ export default function BatchRepayment() {
         continue;
       }
 
-      // Update beneficiary balance
-      const newTotalPaid = Number(member.total_paid) + memberAmount;
-      const newOutstanding = Math.max(0, Number(member.outstanding_balance) - memberAmount);
-
-      await supabase.from('beneficiaries').update({
-        total_paid: newTotalPaid,
-        outstanding_balance: newOutstanding,
-        status: newOutstanding <= 0 ? 'completed' : member.status,
-      }).eq('id', member.id);
-
       successCount++;
     }
 
@@ -567,23 +557,12 @@ export default function BatchRepayment() {
           .in('beneficiary_id', memberIds);
 
         if (txs && txs.length > 0) {
-          // Reverse balances
-          for (const tx of txs) {
-            const { data: ben } = await supabase
-              .from('beneficiaries')
-              .select('total_paid, outstanding_balance')
-              .eq('id', tx.beneficiary_id)
-              .single();
-            if (ben) {
-              await supabase.from('beneficiaries').update({
-                total_paid: Math.max(0, Number(ben.total_paid) - Number(tx.amount)),
-                outstanding_balance: Number(ben.outstanding_balance) + Number(tx.amount),
-                status: 'active',
-              }).eq('id', tx.beneficiary_id);
-            }
-          }
-          // Delete transactions
-          await supabase.from('transactions').delete().in('id', txs.map(t => t.id));
+          const { error: deleteTxError } = await supabase
+            .from('transactions')
+            .delete()
+            .in('id', txs.map(t => t.id));
+
+          if (deleteTxError) throw deleteTxError;
         }
       }
 
@@ -685,14 +664,6 @@ export default function BatchRepayment() {
       const { error: txErr } = await supabase.from('transactions').update({ amount: newAmount }).eq('id', editTx.id);
       if (txErr) throw txErr;
 
-      const { data: ben } = await supabase.from('beneficiaries').select('total_paid, outstanding_balance').eq('id', editTx.beneficiary_id).single();
-      if (ben) {
-        await supabase.from('beneficiaries').update({
-          total_paid: Math.max(0, Number(ben.total_paid) + diff),
-          outstanding_balance: Math.max(0, Number(ben.outstanding_balance) - diff),
-        }).eq('id', editTx.beneficiary_id);
-      }
-
       const { data: batchRep } = await supabase.from('batch_repayments').select('actual_amount').eq('id', editTx.batch_repayment_id).single();
       if (batchRep) {
         await supabase.from('batch_repayments').update({
@@ -776,7 +747,6 @@ export default function BatchRepayment() {
             for (const tx of txs) {
               const ratio = oldTxTotal > 0 ? Number(tx.amount) / oldTxTotal : 1 / txs.length;
               const txNewAmount = Math.round(newAmount * ratio * 100) / 100;
-              const txDiff = txNewAmount - Number(tx.amount);
 
               await supabase.from('transactions').update({
                 amount: txNewAmount,
@@ -784,17 +754,6 @@ export default function BatchRepayment() {
                 date_paid: newDateStr,
                 receipt_url: editBatchRepReceipt.trim() || '',
               }).eq('id', tx.id);
-
-              // Update beneficiary balance
-              const { data: ben } = await supabase.from('beneficiaries')
-                .select('total_paid, outstanding_balance')
-                .eq('id', tx.beneficiary_id).single();
-              if (ben) {
-                await supabase.from('beneficiaries').update({
-                  total_paid: Math.max(0, Number(ben.total_paid) + txDiff),
-                  outstanding_balance: Math.max(0, Number(ben.outstanding_balance) - txDiff),
-                }).eq('id', tx.beneficiary_id);
-              }
             }
           }
         }

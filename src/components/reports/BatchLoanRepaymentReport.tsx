@@ -12,6 +12,7 @@ import { Search } from 'lucide-react';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import BatchRepaymentReportExportButtons, { type BatchRepaymentReportData } from '@/components/reports/BatchRepaymentReportExport';
 import type { Tables } from '@/integrations/supabase/types';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 
 type BatchRepayment = Tables<'batch_repayments'>;
 type LoanBatch = Tables<'loan_batches'>;
@@ -56,12 +57,12 @@ export default function BatchLoanRepaymentReport() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [brRes, bRes] = await Promise.all([
-        supabase.from('batch_repayments').select('*').order('payment_date', { ascending: false }),
-        supabase.from('loan_batches').select('*'),
+      const [batchRepaymentRows, batchRows] = await Promise.all([
+        fetchAllRows<BatchRepayment>('batch_repayments', '*', { orderBy: 'payment_date', ascending: false }),
+        fetchAllRows<LoanBatch>('loan_batches'),
       ]);
-      if (brRes.data) setBatchRepayments(brRes.data);
-      if (bRes.data) setBatches(bRes.data);
+      setBatchRepayments(batchRepaymentRows);
+      setBatches(batchRows);
       setLoading(false);
     };
     fetchData();

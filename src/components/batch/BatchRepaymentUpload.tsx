@@ -256,15 +256,6 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
           continue;
         }
 
-        const newTotalPaid = row.totalPaid + row.amount;
-        const newOutstanding = Math.max(0, row.outstandingBalance - row.amount);
-
-        await supabase.from('beneficiaries').update({
-          total_paid: newTotalPaid,
-          outstanding_balance: newOutstanding,
-          status: newOutstanding <= 0 ? 'completed' : row.status,
-        }).eq('id', row.beneficiaryId);
-
         successCount++;
       }
     }
