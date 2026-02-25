@@ -1,5 +1,5 @@
 import { CheckCircle, AlertTriangle, Clock, MinusCircle } from 'lucide-react';
-import { formatDate, formatCurrency, stripTime } from '@/lib/loanCalculations';
+import { formatDate, formatCurrency, stripTime, EMI_TOLERANCE } from '@/lib/loanCalculations';
 import type { ScheduleEntry } from '@/lib/loanCalculations';
 import type { Tables } from '@/integrations/supabase/types';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -23,7 +23,7 @@ function getMonthStatus(
   const todayDay = stripTime(now);
   const dueDay = stripTime(entry.dueDate);
 
-  if (totalPaid >= entry.emi) {
+  if (totalPaid >= entry.emi - EMI_TOLERANCE) {
     // Check if this is an advance payment (paid before due date and in the future)
     const isPaidInAdvance = dueDay > todayDay;
     if (isPaidInAdvance) return 'paid-advance';
@@ -136,11 +136,14 @@ export default function RepaymentScheduleGrid({
                     )}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs max-w-[200px]">
+                <TooltipContent side="top" className="text-xs max-w-[220px]">
                   <p className="font-bold">{statusLabels[status]}</p>
                   <p>Due: {formatDate(entry.dueDate)}</p>
                   <p>Expected: {formatCurrency(entry.emi)}</p>
                   {paidAmount > 0 && <p>Paid: {formatCurrency(paidAmount)}</p>}
+                  {paidAmount > 0 && paidAmount < entry.emi && paidAmount >= entry.emi - EMI_TOLERANCE && (
+                    <p className="text-warning mt-1">Rounding shortfall: {formatCurrency(entry.emi - paidAmount)}</p>
+                  )}
                 </TooltipContent>
               </Tooltip>
             );
