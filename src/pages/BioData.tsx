@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Download, FileText, Printer, Eye, Pencil } from 'lucide-react';
-import { formatCurrency, formatTenor, getOverdueAndArrears } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
@@ -101,15 +101,15 @@ function buildFields(b: Beneficiary) {
   ];
 }
 
-function getArrearsFields(b: Beneficiary, lastPaymentDate: string | null) {
-  const oa = getOverdueAndArrears(
-    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-    Number(b.total_paid), Number(b.outstanding_balance), 'active'
-  );
+/** Get arrears fields from Golden Record instead of client-side calculation */
+function getArrearsFieldsFromGoldenRecord(
+  arrearsData: ReturnType<typeof getArrearsFromMap>,
+  lastPaymentDate: string | null
+) {
   return [
     { label: 'Date of Last Loan Repayment', value: lastPaymentDate ? format(new Date(lastPaymentDate), 'dd/MM/yyyy') : '—' },
-    { label: 'Arrears Amount', value: oa.arrearsAmount > 0 ? formatCurrency(oa.arrearsAmount) : '₦0' },
-    { label: 'Months in Arrears', value: String(oa.monthsInArrears) },
+    { label: 'Arrears Amount', value: arrearsData.arrearsAmount > 0 ? formatCurrency(arrearsData.arrearsAmount) : '₦0' },
+    { label: 'Months in Arrears', value: String(arrearsData.arrearsMonths) },
   ];
 }
 
@@ -184,12 +184,13 @@ function printIndividual(b: Beneficiary) {
   if (win) { win.document.write(html); win.document.close(); win.print(); }
 }
 
-function BioDataDetailContent({ beneficiary, editing, setEditing, setSelected, queryClient }: {
+function BioDataDetailContent({ beneficiary, editing, setEditing, setSelected, queryClient, arrearsMap }: {
   beneficiary: Beneficiary;
   editing: boolean;
   setEditing: (v: boolean) => void;
   setSelected: (v: Beneficiary | null) => void;
   queryClient: ReturnType<typeof useQueryClient>;
+  arrearsMap: Map<string, any>;
 }) {
   const { data: lastPaymentDate } = useQuery({
     queryKey: ['last-payment', beneficiary.id],
@@ -207,7 +208,8 @@ function BioDataDetailContent({ beneficiary, editing, setEditing, setSelected, q
 
   const fullName = `${beneficiary.surname || beneficiary.name?.split(' ')[0] || ''} ${beneficiary.first_name || beneficiary.name?.split(' ')[1] || ''} ${beneficiary.other_name || ''}`.trim();
   const sections = buildFields(beneficiary);
-  const arrearsFields = getArrearsFields(beneficiary, lastPaymentDate ?? null);
+  const arrearsData = getArrearsFromMap(arrearsMap, beneficiary.id);
+  const arrearsFields = getArrearsFieldsFromGoldenRecord(arrearsData, lastPaymentDate ?? null);
 
   return (
     <>
@@ -257,7 +259,7 @@ function BioDataDetailContent({ beneficiary, editing, setEditing, setSelected, q
                 </div>
               </div>
             ))}
-            {/* Repayment & Arrears Section */}
+            {/* Repayment & Arrears Section — from Golden Record */}
             <div>
               <h3 className="text-sm font-semibold text-destructive mb-2 border-b border-destructive/30 pb-1">Repayment & Arrears</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
@@ -282,6 +284,7 @@ export default function BioData() {
   const [editing, setEditing] = useState(false);
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { map: arrearsMap } = useArrearsLookup();
   const { data: staffName = '' } = useQuery({
     queryKey: ['profile-name', user?.id],
     queryFn: async () => {
@@ -334,37 +337,41 @@ export default function BioData() {
     );
   });
 
-  const toRow = (b: typeof beneficiaries[0], i: number) => [
-    i + 1,
-    (b as any).title || '',
-    b.surname || b.name?.split(' ')[0] || '',
-    b.first_name || b.name?.split(' ')[1] || '',
-    b.other_name || '',
-    b.gender || '',
-    b.marital_status || '',
-    b.date_of_birth ? format(new Date(b.date_of_birth), 'dd/MM/yyyy') : '',
-    b.address || '',
-    b.phone_number || '',
-    b.email || '',
-    b.bvn_number || '',
-    b.nin_number || '',
-    b.nhf_number || '',
-    b.department || '',
-    b.employer_number || '',
-    b.employee_id || '',
-    b.date_of_employment ? format(new Date(b.date_of_employment), 'dd/MM/yyyy') : '',
-    b.state || '',
-    b.bank_branch || '',
-    b.loan_reference_number || '',
-    Number(b.loan_amount).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
-    formatTenor(b.tenor_months),
-    Number(b.monthly_emi).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
-    b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : '',
-    formatCurrency(Number(b.outstanding_balance)),
-    (lastPayments as Record<string, string>)[b.id] ? format(new Date((lastPayments as Record<string, string>)[b.id]), 'dd/MM/yyyy') : '—',
-    (() => { const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status); return oa.arrearsAmount > 0 ? formatCurrency(oa.arrearsAmount) : '₦0'; })(),
-    (() => { const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status); return String(oa.monthsInArrears); })(),
-  ];
+  /** Build export row using Golden Record for arrears data */
+  const toRow = (b: typeof beneficiaries[0], i: number) => {
+    const a = getArrearsFromMap(arrearsMap, b.id);
+    return [
+      i + 1,
+      (b as any).title || '',
+      b.surname || b.name?.split(' ')[0] || '',
+      b.first_name || b.name?.split(' ')[1] || '',
+      b.other_name || '',
+      b.gender || '',
+      b.marital_status || '',
+      b.date_of_birth ? format(new Date(b.date_of_birth), 'dd/MM/yyyy') : '',
+      b.address || '',
+      b.phone_number || '',
+      b.email || '',
+      b.bvn_number || '',
+      b.nin_number || '',
+      b.nhf_number || '',
+      b.department || '',
+      b.employer_number || '',
+      b.employee_id || '',
+      b.date_of_employment ? format(new Date(b.date_of_employment), 'dd/MM/yyyy') : '',
+      b.state || '',
+      b.bank_branch || '',
+      b.loan_reference_number || '',
+      Number(b.loan_amount).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
+      formatTenor(b.tenor_months),
+      Number(b.monthly_emi).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' }),
+      b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : '',
+      formatCurrency(Number(b.outstanding_balance)),
+      (lastPayments as Record<string, string>)[b.id] ? format(new Date((lastPayments as Record<string, string>)[b.id]), 'dd/MM/yyyy') : '—',
+      a.arrearsAmount > 0 ? formatCurrency(a.arrearsAmount) : '₦0',
+      String(a.arrearsMonths),
+    ];
+  };
 
   const exportExcel = () => {
     const ws = XLSX.utils.aoa_to_sheet([columns, ...filtered.map(toRow)]);
@@ -433,51 +440,48 @@ export default function BioData() {
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={columns.length + 1} className="px-4 py-12 text-center text-muted-foreground">No records found.</td></tr>
               ) : (
-                filtered.map((b, i) => (
-                  <tr key={b.id} className="border-b table-row-highlight cursor-pointer" onClick={() => setSelected(b as any)}>
-                    <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{(b as any).title || ''}</td>
-                    <td className="px-3 py-2.5 font-medium whitespace-nowrap">{b.surname || b.name?.split(' ')[0] || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.first_name || b.name?.split(' ')[1] || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.other_name || ''}</td>
-                    <td className="px-3 py-2.5">{b.gender || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.marital_status || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.date_of_birth ? format(new Date(b.date_of_birth), 'dd/MM/yyyy') : ''}</td>
-                    <td className="px-3 py-2.5 max-w-[200px] truncate" title={b.address || ''}>{b.address || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.phone_number || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.email || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.bvn_number || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.nin_number || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-medium">{b.nhf_number || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.department || ''}</td>
-                    <td className="px-3 py-2.5">{b.employer_number || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.employee_id || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.date_of_employment ? format(new Date(b.date_of_employment), 'dd/MM/yyyy') : ''}</td>
-                    <td className="px-3 py-2.5">{b.state || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.bank_branch || ''}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap font-medium">{b.loan_reference_number || ''}</td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.loan_amount))}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{formatTenor(b.tenor_months)}</td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : ''}</td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">{(lastPayments as Record<string, string>)[b.id] ? format(new Date((lastPayments as Record<string, string>)[b.id]), 'dd/MM/yyyy') : '—'}</td>
-                    {(() => {
-                      const oa = getOverdueAndArrears(b.commencement_date, b.tenor_months, Number(b.monthly_emi), Number(b.total_paid), Number(b.outstanding_balance), b.status);
-                      return (
-                        <>
-                          <td className={`px-3 py-2.5 text-right whitespace-nowrap ${oa.arrearsAmount > 0 ? 'text-destructive font-semibold' : ''}`}>{oa.arrearsAmount > 0 ? formatCurrency(oa.arrearsAmount) : '₦0'}</td>
-                          <td className={`px-3 py-2.5 text-center whitespace-nowrap ${oa.monthsInArrears > 0 ? 'text-destructive font-semibold' : ''}`}>{oa.monthsInArrears}</td>
-                        </>
-                      );
-                    })()}
-                    <td className="px-3 py-2.5">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelected(b as any); }}>
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
+                filtered.map((b, i) => {
+                  const a = getArrearsFromMap(arrearsMap, b.id);
+                  return (
+                    <tr key={b.id} className="border-b table-row-highlight cursor-pointer" onClick={() => setSelected(b as any)}>
+                      <td className="px-3 py-2.5 text-muted-foreground">{i + 1}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{(b as any).title || ''}</td>
+                      <td className="px-3 py-2.5 font-medium whitespace-nowrap">{b.surname || b.name?.split(' ')[0] || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.first_name || b.name?.split(' ')[1] || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.other_name || ''}</td>
+                      <td className="px-3 py-2.5">{b.gender || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.marital_status || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.date_of_birth ? format(new Date(b.date_of_birth), 'dd/MM/yyyy') : ''}</td>
+                      <td className="px-3 py-2.5 max-w-[200px] truncate" title={b.address || ''}>{b.address || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.phone_number || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.email || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.bvn_number || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.nin_number || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap font-medium">{b.nhf_number || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.department || ''}</td>
+                      <td className="px-3 py-2.5">{b.employer_number || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.employee_id || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.date_of_employment ? format(new Date(b.date_of_employment), 'dd/MM/yyyy') : ''}</td>
+                      <td className="px-3 py-2.5">{b.state || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.bank_branch || ''}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap font-medium">{b.loan_reference_number || ''}</td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.loan_amount))}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{formatTenor(b.tenor_months)}</td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{b.disbursement_date ? format(new Date(b.disbursement_date), 'dd/MM/yyyy') : ''}</td>
+                      <td className="px-3 py-2.5 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">{(lastPayments as Record<string, string>)[b.id] ? format(new Date((lastPayments as Record<string, string>)[b.id]), 'dd/MM/yyyy') : '—'}</td>
+                      {/* Arrears from Golden Record */}
+                      <td className={`px-3 py-2.5 text-right whitespace-nowrap ${a.arrearsAmount > 0 ? 'text-destructive font-semibold' : ''}`}>{a.arrearsAmount > 0 ? formatCurrency(a.arrearsAmount) : '₦0'}</td>
+                      <td className={`px-3 py-2.5 text-center whitespace-nowrap ${a.arrearsMonths > 0 ? 'text-destructive font-semibold' : ''}`}>{a.arrearsMonths}</td>
+                      <td className="px-3 py-2.5">
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelected(b as any); }}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -496,6 +500,7 @@ export default function BioData() {
             setEditing={setEditing}
             setSelected={setSelected}
             queryClient={queryClient}
+            arrearsMap={arrearsMap}
           />}
         </DialogContent>
       </Dialog>

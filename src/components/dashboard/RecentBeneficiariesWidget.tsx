@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { formatCurrency, formatTenor, getOverdueAndArrears, getMonthsDue, stripTime } from '@/lib/loanCalculations';
+import { formatCurrency, formatTenor, stripTime } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
@@ -39,76 +39,27 @@ function formatPaymentDate(date: string): string {
 
 type StatusInfo = {label: string;className: string;};
 
-function computeActualDpd(b: Beneficiary, overdueMonths: number): number {
-  if (overdueMonths <= 0 || Number(b.monthly_emi) <= 0) return 0;
-  const today = stripTime(new Date());
-  const comm = stripTime(new Date(b.commencement_date));
-  const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
-  const firstUnpaidDue = new Date(comm);
-  firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-  const due = stripTime(firstUnpaidDue);
-  return Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-}
-
-function getStatusInfo(b: Beneficiary): StatusInfo {
-  const oa = getOverdueAndArrears(
-    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-    Number(b.total_paid), Number(b.outstanding_balance), b.status
-  );
-
-  if (Number(b.outstanding_balance) <= 0 || b.status === 'completed') {
+/** Get status info from Golden Record arrears data */
+function getStatusInfoFromArrears(a: ReturnType<typeof getArrearsFromMap>): StatusInfo {
+  if (a.loanHealth === 'completed') {
     return { label: 'Fully Repaid', className: 'bg-primary/10 text-primary border-primary/20' };
   }
-
-  const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
-  if (monthsDue === 0) {
+  if (a.monthsDue === 0) {
     return { label: 'Active', className: 'bg-muted text-muted-foreground border-border' };
   }
-
-  if (oa.overdueMonths === 0) {
+  if (a.overdueMonths === 0) {
     return { label: 'Current', className: 'bg-success/10 text-success border-success/20' };
   }
-
-  if (oa.monthsInArrears === 0 && oa.overdueMonths > 0) {
+  if (a.arrearsMonths === 0 && a.overdueMonths > 0) {
     return { label: 'Overdue', className: 'bg-warning/10 text-warning border-warning/20' };
   }
-
-  // Use actual DPD (days since first unpaid instalment's due date)
-  const dpd = computeActualDpd(b, oa.overdueMonths);
-  if (dpd >= 90) {
-    return { label: `NPL / ${dpd} DPD`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
+  if (a.daysOverdue >= 90) {
+    return { label: `NPL / ${a.daysOverdue} DPD`, className: 'bg-destructive/10 text-destructive border-destructive/20' };
   }
-  return { label: `${dpd} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
-}
-
-function getArrearsAmount(b: Beneficiary): number {
-  const oa = getOverdueAndArrears(
-    b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-    Number(b.total_paid), Number(b.outstanding_balance), b.status
-  );
-  return oa.arrearsAmount;
+  return { label: `${a.daysOverdue} Days Past Due`, className: 'bg-warning/10 text-warning border-warning/20' };
 }
 
 type FilterType = 'all' | 'current' | 'arrears' | 'npl' | 'repaid';
-
-function isDefaulted(b: Beneficiary): boolean {
-  if (b.status === 'completed' || Number(b.outstanding_balance) <= 0) return false;
-  const comm = stripTime(new Date(b.commencement_date));
-  const today = stripTime(new Date());
-  const monthlyEmi = Number(b.monthly_emi);
-  const totalPaid = Number(b.total_paid);
-  if (monthlyEmi <= 0 || today < comm) return false;
-  const arrears = getOverdueAndArrears(b.commencement_date, b.tenor_months, monthlyEmi, totalPaid, Number(b.outstanding_balance), b.status);
-  if (arrears.overdueMonths > 0) {
-    const paidMonths = Math.floor(Math.round(totalPaid * 100) / 100 / monthlyEmi);
-    const firstUnpaidDate = new Date(comm);
-    firstUnpaidDate.setMonth(firstUnpaidDate.getMonth() + paidMonths);
-    const dueDateStripped = stripTime(firstUnpaidDate);
-    const dpd = Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-    return dpd >= 90;
-  }
-  return false;
-}
 
 interface WidgetProps {
   healthFilter?: 'all' | 'active' | 'defaulted';
@@ -122,6 +73,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   const [filter, setFilter] = useState<FilterType>('all');
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
+  const { map: arrearsMap } = useArrearsLookup();
 
   const fetchData = useCallback(async () => {
     const { data: bens } = await supabase.
@@ -204,30 +156,32 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
 
     if (filter !== 'all') {
       list = list.filter((b) => {
-        const oa = getOverdueAndArrears(
-          b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-          Number(b.total_paid), Number(b.outstanding_balance), b.status
-        );
-        const monthsDue = getMonthsDue(b.commencement_date, b.tenor_months);
+        const a = getArrearsFromMap(arrearsMap, b.id);
         switch (filter) {
-          case 'current':return monthsDue > 0 && oa.overdueMonths === 0;
-          case 'arrears':return oa.monthsInArrears > 0 && oa.monthsInArrears * 30 < 90;
-          case 'npl':return oa.monthsInArrears * 30 >= 90;
-          case 'repaid':return Number(b.outstanding_balance) <= 0 || b.status === 'completed';
-          default:return true;
+          case 'current': return a.monthsDue > 0 && a.overdueMonths === 0;
+          case 'arrears': return a.arrearsMonths > 0 && a.daysOverdue < 90;
+          case 'npl': return a.daysOverdue >= 90;
+          case 'repaid': return a.loanHealth === 'completed' || Number(b.outstanding_balance) <= 0;
+          default: return true;
         }
       });
     }
 
-    // Apply dashboard-level health filter
+    // Apply dashboard-level health filter using Golden Record
     if (healthFilter === 'active') {
-      list = list.filter((b) => !isDefaulted(b) && Number(b.outstanding_balance) > 0 && b.status !== 'completed');
+      list = list.filter((b) => {
+        const a = getArrearsFromMap(arrearsMap, b.id);
+        return !a.isNpl && Number(b.outstanding_balance) > 0 && b.status !== 'completed';
+      });
     } else if (healthFilter === 'defaulted') {
-      list = list.filter((b) => isDefaulted(b));
+      list = list.filter((b) => {
+        const a = getArrearsFromMap(arrearsMap, b.id);
+        return a.isNpl;
+      });
     }
 
     return list;
-  }, [beneficiaries, search, filter, stateFilter, branchFilter, healthFilter]);
+  }, [beneficiaries, search, filter, stateFilter, branchFilter, healthFilter, arrearsMap]);
 
   const getLastPaymentDisplay = (b: BeneficiaryWithPayment): string => {
     if (Number(b.outstanding_balance) <= 0 && b.lastTransaction) {
@@ -238,21 +192,9 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   };
 
    const handleExport = () => {
-    const today = stripTime(new Date());
     const rows = filtered.map((b, idx) => {
-      const oa = getOverdueAndArrears(
-        b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-        Number(b.total_paid), Number(b.outstanding_balance), b.status
-      );
-      let dpd = 0;
-      if (oa.overdueMonths > 0 && Number(b.monthly_emi) > 0) {
-        const comm = stripTime(new Date(b.commencement_date));
-        const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
-        const firstUnpaidDue = new Date(comm);
-        firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + paidMonths);
-        const due = stripTime(firstUnpaidDue);
-        dpd = Math.max(0, Math.floor((today.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-      }
+      const a = getArrearsFromMap(arrearsMap, b.id);
+      const statusInfo = getStatusInfoFromArrears(a);
       return {
         '#': idx + 1,
         'Beneficiary': b.name,
@@ -269,10 +211,10 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
         'Total Amount Paid': Number(b.total_paid),
         'Last Payment Amount': b.lastTransaction ? Number(b.lastTransaction.amount) : 0,
         'Last Payment Date': b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—',
-        'Age of Arrears': dpd > 0 ? `${dpd} Days` : '—',
-        'Months of Arrears': oa.monthsInArrears,
-        'Amount in Arrears': oa.arrearsAmount,
-        'Status': getStatusInfo(b).label
+        'Age of Arrears': a.daysOverdue > 0 ? `${a.daysOverdue} Days` : '—',
+        'Months of Arrears': a.arrearsMonths,
+        'Amount in Arrears': a.arrearsAmount,
+        'Status': statusInfo.label
       };
     });
     const ws = XLSX.utils.json_to_sheet(rows);
@@ -409,23 +351,8 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
             }
             {!loading &&
             filtered.map((b, idx) => {
-              const statusInfo = getStatusInfo(b);
-              const oa = getOverdueAndArrears(
-                b.commencement_date, b.tenor_months, Number(b.monthly_emi),
-                Number(b.total_paid), Number(b.outstanding_balance), b.status
-              );
-              // Accurate DPD: days since the due date of the first unpaid instalment (inclusive)
-              const today = stripTime(new Date());
-              const comm = stripTime(new Date(b.commencement_date));
-              let dpd = 0;
-              if (oa.overdueMonths > 0 && Number(b.monthly_emi) > 0) {
-                const paidMonths = Math.min(Math.floor(Math.round(Number(b.total_paid) * 100) / 100 / Number(b.monthly_emi)), b.tenor_months);
-                const firstUnpaidMonth = paidMonths + 1;
-                const firstUnpaidDue = new Date(comm);
-                firstUnpaidDue.setMonth(firstUnpaidDue.getMonth() + (firstUnpaidMonth - 1));
-                const dueDateStripped = stripTime(firstUnpaidDue);
-                dpd = Math.max(0, Math.floor((today.getTime() - dueDateStripped.getTime()) / (1000 * 60 * 60 * 24))) + 1;
-              }
+              const a = getArrearsFromMap(arrearsMap, b.id);
+              const statusInfo = getStatusInfoFromArrears(a);
               return (
                 <tr key={b.id} className="table-row-highlight group">
                     {/* # */}
@@ -496,22 +423,22 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-muted-foreground">
                       {b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—'}
                     </td>
-                    {/* Age of Arrears (DPD) */}
-                    <td className={cn('px-4 py-3 whitespace-nowrap text-xs', dpd > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground')}>
-                      {dpd > 0 ? `${dpd} Days` : '—'}
+                    {/* Age of Arrears (DPD) — from Golden Record */}
+                    <td className={cn('px-4 py-3 whitespace-nowrap text-xs', a.daysOverdue > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground')}>
+                      {a.daysOverdue > 0 ? `${a.daysOverdue} Days` : '—'}
                     </td>
-                    {/* Months of Arrears */}
-                    <td className={cn('px-4 py-3 text-center whitespace-nowrap text-xs', oa.monthsInArrears > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground')}>
-                      {oa.monthsInArrears}
+                    {/* Months of Arrears — from Golden Record */}
+                    <td className={cn('px-4 py-3 text-center whitespace-nowrap text-xs', a.arrearsMonths > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground')}>
+                      {a.arrearsMonths}
                     </td>
-                    {/* Amount in Arrears */}
+                    {/* Amount in Arrears — from Golden Record */}
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {oa.arrearsAmount > 0 ?
-                        <span className="text-destructive font-medium">{formatCurrency(oa.arrearsAmount)}</span> :
+                      {a.arrearsAmount > 0 ?
+                        <span className="text-destructive font-medium">{formatCurrency(a.arrearsAmount)}</span> :
                         <span className="text-muted-foreground">₦0</span>
                       }
                     </td>
-                    {/* Status */}
+                    {/* Status — from Golden Record */}
                     <td className="px-4 py-3">
                       <span className={cn(
                         'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border whitespace-nowrap',
