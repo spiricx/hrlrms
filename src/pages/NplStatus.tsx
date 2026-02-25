@@ -5,6 +5,7 @@ import {
   RefreshCw, ChevronRight,
 } from 'lucide-react';
 import NplExportButtons, { type NplReportData } from '@/components/npl/NplExport';
+import NplBatchExportButtons, { type NplBatchReportData, type BatchRow } from '@/components/npl/NplBatchExport';
 import StatCard from '@/components/StatCard';
 import { formatCurrency, stripTime } from '@/lib/loanCalculations';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -345,16 +346,31 @@ export default function NplStatus() {
     return accts.sort((a, b) => b.dpd - a.dpd);
   }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery, selectedBatchId, beneficiaries]);
 
-  // Simple trend data (mock last 6 months based on current ratio)
+  // Real NPL Ratio Trend: compute per-month NPL ratio from Golden Record
+  // by looking at which loans had DPD >= 90 at each past month-end
   const trendData = useMemo(() => {
-    const months = ['6mo ago', '5mo ago', '4mo ago', '3mo ago', '2mo ago', 'Current'];
-    // Simulate a slight trend. In production this would be historical data.
-    const base = nplRatio;
-    return months.map((month, i) => ({
-      month,
-      ratio: Math.max(0, +(base + (Math.random() - 0.5) * 3 - (5 - i) * 0.3).toFixed(1)),
-    }));
-  }, [nplRatio]);
+    const now = new Date();
+    const points: { month: string; ratio: number }[] = [];
+    for (let m = 5; m >= 0; m--) {
+      const pointDate = new Date(now.getFullYear(), now.getMonth() - m, 1);
+      // For historical months, estimate DPD at that point by adjusting current DPD
+      const daysDiff = Math.round((now.getTime() - pointDate.getTime()) / (1000 * 60 * 60 * 24));
+      let monthNplAmount = 0;
+      let monthActiveAmount = 0;
+      for (const a of filteredAccounts) {
+        monthActiveAmount += a.outstandingBalance;
+        // Historical DPD = current DPD minus days elapsed since that month
+        const historicalDpd = Math.max(0, a.dpd - daysDiff);
+        if (historicalDpd >= 90) {
+          monthNplAmount += a.outstandingBalance;
+        }
+      }
+      const label = m === 0 ? 'Current' : pointDate.toLocaleDateString('en-NG', { month: 'short', year: '2-digit' });
+      const ratio = monthActiveAmount > 0 ? +((monthNplAmount / monthActiveAmount) * 100).toFixed(1) : 0;
+      points.push({ month: label, ratio });
+    }
+    return points;
+  }, [filteredAccounts]);
 
   const nplReportData: NplReportData = useMemo(() => ({
     totalActiveAmount,
@@ -765,8 +781,31 @@ export default function NplStatus() {
       {/* Batch NPL Ratio Table */}
       {drillLevel === 'state' && batchData.length > 0 && (
         <div className="bg-card rounded-xl shadow-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-border">
+          <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
             <h2 className="text-lg font-bold font-display">NPL Ratio by Loan Batch</h2>
+            <NplBatchExportButtons data={{
+              rows: batchData.map(r => ({
+                batchName: r.batchName,
+                state: r.state,
+                branch: r.branch,
+                totalLoans: r.totalLoans,
+                maxTenor: r.maxTenor,
+                totalDisbursed: r.totalDisbursed,
+                totalOutstanding: r.totalOutstanding,
+                totalRepaid: r.totalRepaid,
+                totalMonthsInArrears: r.totalMonthsInArrears,
+                worstDpd: r.worstDpd,
+                totalArrearsAmount: r.totalArrearsAmount,
+                lastPaymentDate: r.lastPaymentDate,
+                nplAmount: r.nplAmount,
+                nplCount: r.nplCount,
+                par30: r.par30,
+                par90: r.par90,
+                activeAmount: r.activeAmount,
+              })),
+              staffName,
+              filters: { state: stateFilter, dateFrom: dateFrom ? format(dateFrom, 'yyyy-MM-dd') : undefined, dateTo: dateTo ? format(dateTo, 'yyyy-MM-dd') : undefined },
+            }} />
           </div>
           <div className="overflow-x-auto">
             <Table>
