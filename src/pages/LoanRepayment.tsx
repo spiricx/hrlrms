@@ -634,10 +634,10 @@ export default function LoanRepayment() {
                         mode="single"
                         selected={paymentDate}
                         onSelect={setPaymentDate}
-                        disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                        disabled={(d) => d > new Date() || d < new Date('2010-01-01')}
                         captionLayout="dropdown-buttons"
-                        fromYear={2016}
-                        toYear={new Date().getFullYear()}
+                        fromYear={2010}
+                        toYear={2060}
                         initialFocus
                       />
                     </PopoverContent>
@@ -888,10 +888,10 @@ export default function LoanRepayment() {
                       mode="single"
                       selected={paymentDate}
                       onSelect={setPaymentDate}
-                      disabled={(d) => d > new Date() || d < new Date('2016-01-01')}
+                      disabled={(d) => d > new Date() || d < new Date('2010-01-01')}
                       captionLayout="dropdown-buttons"
-                      fromYear={2016}
-                      toYear={new Date().getFullYear()}
+                      fromYear={2010}
+                      toYear={2060}
                       initialFocus
                     />
                   </PopoverContent>
