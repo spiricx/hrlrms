@@ -102,6 +102,7 @@ export type Database = {
           tenor_months: number
           termination_date: string
           title: string | null
+          total_expected: number
           total_paid: number
           updated_at: string
         }
@@ -142,6 +143,7 @@ export type Database = {
           tenor_months: number
           termination_date: string
           title?: string | null
+          total_expected?: number
           total_paid?: number
           updated_at?: string
         }
@@ -182,6 +184,7 @@ export type Database = {
           tenor_months?: number
           termination_date?: string
           title?: string | null
+          total_expected?: number
           total_paid?: number
           updated_at?: string
         }

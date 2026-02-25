@@ -142,6 +142,7 @@ export default function BioDataEditForm({ beneficiary, onSaved, onCancel }: BioD
         monthly_emi: loan.monthlyEMI,
         commencement_date: loan.commencementDate.toISOString().split('T')[0],
         termination_date: loan.terminationDate.toISOString().split('T')[0],
+        total_expected: loan.totalPayment,
         outstanding_balance: Math.max(0, loan.totalPayment - Number(b.total_paid)),
         status: (loan.totalPayment - Number(b.total_paid)) < 0.01 ? 'completed' : 'active',
       })
