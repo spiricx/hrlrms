@@ -102,6 +102,7 @@ export default function AddBeneficiary() {
       termination_date: formatLocalDate(preview.terminationDate),
       monthly_emi: preview.monthlyEMI,
       outstanding_balance: preview.totalPayment,
+      total_expected: preview.totalPayment,
       bank_branch: form.bankBranch,
       state: form.state,
       created_by: user?.id ?? null,

@@ -244,15 +244,9 @@ export default function LoanRepayment() {
       return;
     }
 
-    // Update beneficiary balance
-    const newTotalPaid = Number(selectedBen.total_paid) + totalAmount;
-    const newOutstanding = Math.max(0, Number(selectedBen.outstanding_balance) - totalAmount);
-
-    await supabase.from('beneficiaries').update({
-      total_paid: newTotalPaid,
-      outstanding_balance: newOutstanding,
-      status: newOutstanding <= 0 ? 'completed' : selectedBen.status
-    }).eq('id', selectedBen.id);
+    // NOTE: The sync_beneficiary_from_transactions trigger automatically
+    // recalculates total_paid, outstanding_balance, and status from the
+    // transactions Golden Record. No manual balance update needed.
 
     setSaving(false);
     setModalOpen(false);
@@ -334,13 +328,7 @@ export default function LoanRepayment() {
       return;
     }
 
-    // Adjust beneficiary balance
-    if (diff !== 0) {
-      await supabase.from('beneficiaries').update({
-        total_paid: Number(historyBen.total_paid) + diff,
-        outstanding_balance: Math.max(0, Number(historyBen.outstanding_balance) - diff)
-      }).eq('id', historyBen.id);
-    }
+    // NOTE: The sync trigger automatically recalculates balances from transactions.
 
     setSaving(false);
     setEditModalOpen(false);
@@ -359,13 +347,7 @@ export default function LoanRepayment() {
       return;
     }
 
-    // Reverse balance
-    const amount = Number(deletingTxn.amount);
-    await supabase.from('beneficiaries').update({
-      total_paid: Math.max(0, Number(historyBen.total_paid) - amount),
-      outstanding_balance: Number(historyBen.outstanding_balance) + amount,
-      status: 'active'
-    }).eq('id', historyBen.id);
+    // NOTE: The sync trigger automatically recalculates balances from transactions.
 
     setDeleting(false);
     setDeleteDialogOpen(false);
@@ -407,12 +389,7 @@ export default function LoanRepayment() {
       return;
     }
 
-    // Reverse combined balance
-    await supabase.from('beneficiaries').update({
-      total_paid: Math.max(0, Number(historyBen.total_paid) - totalAmount),
-      outstanding_balance: Number(historyBen.outstanding_balance) + totalAmount,
-      status: 'active'
-    }).eq('id', historyBen.id);
+    // NOTE: The sync trigger automatically recalculates balances from transactions.
 
     setBulkDeleting(false);
     setBulkDeleteDialogOpen(false);
@@ -432,17 +409,19 @@ export default function LoanRepayment() {
     };
   };
 
-  // Compute running loan balance for history
-  // Starting balance = totalPayment (EMI × tenor) per the annuity formula.
-  // Per business rules the moratorium period does NOT capitalise or add extra interest.
-  const computeHistoryBalances = (txns: Transaction[], loanAmount: number, interestRate: number, tenorMonths: number) => {
-    const monthlyRate = interestRate / 100 / 12;
+  // Compute running loan balance for history using stored total_expected
+  const computeHistoryBalances = (txns: Transaction[], _loanAmount: number, _interestRate: number, _tenorMonths: number, totalExpected?: number) => {
+    // Use stored total_expected from DB (includes moratorium interest).
+    // Fallback to EMI × tenor only if total_expected not available.
+    const monthlyRate = _interestRate / 100 / 12;
     const emi =
       monthlyRate === 0
-        ? loanAmount / tenorMonths
-        : (loanAmount * monthlyRate * Math.pow(1 + monthlyRate, tenorMonths)) /
-          (Math.pow(1 + monthlyRate, tenorMonths) - 1);
-    const startingBalance = Math.round(emi * tenorMonths * 100) / 100;
+        ? _loanAmount / _tenorMonths
+        : (_loanAmount * monthlyRate * Math.pow(1 + monthlyRate, _tenorMonths)) /
+          (Math.pow(1 + monthlyRate, _tenorMonths) - 1);
+    const startingBalance = totalExpected && totalExpected > 0
+      ? Math.round(totalExpected * 100) / 100
+      : Math.round(emi * _tenorMonths * 100) / 100;
     let runningBalance = startingBalance;
     return txns.map((t) => {
       runningBalance = Math.max(0, runningBalance - Number(t.amount));

@@ -223,6 +223,7 @@ export default function BulkUpload() {
       termination_date: r.terminationDate,
       monthly_emi: r.monthlyEMI,
       outstanding_balance: r.totalPayment,
+      total_expected: r.totalPayment,
       bank_branch: r.branch,
       state: r.state,
       nhf_number: r.nhfNumber,
