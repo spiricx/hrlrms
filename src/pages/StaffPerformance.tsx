@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { useToast } from '@/hooks/use-toast';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 
 type StaffMember = { id: string; title: string; surname: string; first_name: string; staff_id: string; state: string; branch: string; designation: string; email: string; status: string; nhf_number: string | null; };
 type Beneficiary = { id: string; state: string; bank_branch: string; status: string; loan_amount: number; outstanding_balance: number; total_paid: number; monthly_emi: number; created_by: string | null; name: string; employee_id: string; tenor_months: number; interest_rate: number; commencement_date: string; termination_date: string; loan_reference_number: string | null; };
@@ -48,16 +49,17 @@ export default function StaffPerformance() {
 
   useEffect(() => {
     (async () => {
-      const [s, b, t, p] = await Promise.all([
-        supabase.from('staff_members').select('id,title,surname,first_name,staff_id,state,branch,designation,email,status,nhf_number'),
-        supabase.from('beneficiaries').select('id,state,bank_branch,status,loan_amount,outstanding_balance,total_paid,monthly_emi,created_by,name,employee_id,tenor_months,interest_rate,commencement_date,termination_date,loan_reference_number'),
-        supabase.from('transactions').select('id,beneficiary_id,amount,date_paid,recorded_by'),
-        supabase.from('profiles').select('user_id,email'),
+      const [staffRows, beneficiaryRows, transactionRows, profileRows] = await Promise.all([
+        fetchAllRows<StaffMember>('staff_members', 'id,title,surname,first_name,staff_id,state,branch,designation,email,status,nhf_number'),
+        fetchAllRows<Beneficiary>('beneficiaries', 'id,state,bank_branch,status,loan_amount,outstanding_balance,total_paid,monthly_emi,created_by,name,employee_id,tenor_months,interest_rate,commencement_date,termination_date,loan_reference_number'),
+        fetchAllRows<Transaction>('transactions', 'id,beneficiary_id,amount,date_paid,recorded_by'),
+        fetchAllRows<Profile>('profiles', 'user_id,email'),
       ]);
-      setStaff((s.data as any[]) || []);
-      setBeneficiaries((b.data as any[]) || []);
-      setTransactions((t.data as any[]) || []);
-      setProfiles((p.data as any[]) || []);
+
+      setStaff(staffRows);
+      setBeneficiaries(beneficiaryRows);
+      setTransactions(transactionRows);
+      setProfiles(profileRows);
       setLoading(false);
     })();
   }, []);

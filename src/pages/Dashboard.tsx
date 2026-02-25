@@ -6,6 +6,7 @@ import { formatCurrency } from '@/lib/loanCalculations';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import RecentBeneficiariesWidget from '@/components/dashboard/RecentBeneficiariesWidget';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type LoanArrears = Tables<'v_loan_arrears'>;
@@ -19,12 +20,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [benResult, arrearsResult] = await Promise.all([
-        supabase.from('beneficiaries').select('*').order('created_at', { ascending: false }),
-        supabase.from('v_loan_arrears').select('*'),
+      const [beneficiaryRows, arrearsRows] = await Promise.all([
+        fetchAllRows<Beneficiary>('beneficiaries', '*', { orderBy: 'created_at', ascending: false }),
+        fetchAllRows<LoanArrears>('v_loan_arrears'),
       ]);
-      if (!benResult.error && benResult.data) setBeneficiaries(benResult.data);
-      if (!arrearsResult.error && arrearsResult.data) setLoanArrears(arrearsResult.data);
+      setBeneficiaries(beneficiaryRows);
+      setLoanArrears(arrearsRows);
       setLoading(false);
     };
     fetchData();
