@@ -191,6 +191,14 @@ export function calculateLoan(params: LoanParams): LoanSummary {
   };
 }
 
+/**
+ * Tolerance (in Naira) for EMI comparisons.
+ * Remittance platforms often round amounts differently, causing tiny shortfalls
+ * (e.g. ₦30,421.60 vs ₦30,421.94). This ₦1 tolerance prevents false "partial"
+ * statuses for what are effectively full payments.
+ */
+export const EMI_TOLERANCE = 1;
+
 export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
