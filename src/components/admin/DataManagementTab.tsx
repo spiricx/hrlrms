@@ -1,16 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
-import { Search, Trash2, Pencil, AlertTriangle, MessageSquare } from 'lucide-react';
+import { format, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
+import { formatCurrency } from '@/lib/loanCalculations';
+import { Trash2, Pencil, AlertTriangle, MessageSquare } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -18,16 +17,31 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import DataManagementFilters, { useDataFilters, type DataFilters } from './DataManagementFilters';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
 
+/* ── helpers ── */
+function matchesDateRange(dateStr: string | null | undefined, from: Date | undefined, to: Date | undefined): boolean {
+  if (!dateStr) return true;
+  if (!from && !to) return true;
+  const d = new Date(dateStr);
+  if (from && isBefore(d, startOfDay(from))) return false;
+  if (to && isAfter(d, endOfDay(to))) return false;
+  return true;
+}
+
+function uniqueSorted(items: string[]): string[] {
+  return [...new Set(items.filter(Boolean))].sort();
+}
+
 // ─── Beneficiaries / Bio Data Sub-tab ───
 function BeneficiaryManagement() {
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const { filters, setFilters } = useDataFilters();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -45,15 +59,23 @@ function BeneficiaryManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
+  const branches = useMemo(() => uniqueSorted(beneficiaries.map(b => b.bank_branch)), [beneficiaries]);
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return beneficiaries.filter(b =>
-      b.name.toLowerCase().includes(q) ||
-      b.employee_id.toLowerCase().includes(q) ||
-      (b.nhf_number && b.nhf_number.toLowerCase().includes(q)) ||
-      (b.loan_reference_number && b.loan_reference_number.toLowerCase().includes(q))
-    );
-  }, [beneficiaries, search]);
+    const q = filters.search.toLowerCase();
+    return beneficiaries.filter(b => {
+      if (q && !(
+        b.name.toLowerCase().includes(q) ||
+        b.employee_id.toLowerCase().includes(q) ||
+        (b.nhf_number && b.nhf_number.toLowerCase().includes(q)) ||
+        (b.loan_reference_number && b.loan_reference_number.toLowerCase().includes(q))
+      )) return false;
+      if (filters.state && b.state !== filters.state) return false;
+      if (filters.branch && b.bank_branch !== filters.branch) return false;
+      if (!matchesDateRange(b.disbursement_date, filters.fromDate, filters.toDate)) return false;
+      return true;
+    });
+  }, [beneficiaries, filters]);
 
   const toggleSelect = (id: string) => {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -70,7 +92,6 @@ function BeneficiaryManagement() {
   const handleBulkDelete = async () => {
     if (selected.size === 0) return;
     setDeleting(true);
-    // First delete related transactions
     const ids = Array.from(selected);
     await supabase.from('transactions').delete().in('beneficiary_id', ids);
     const { error } = await supabase.from('beneficiaries').delete().in('id', ids);
@@ -125,11 +146,14 @@ function BeneficiaryManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by name, NHF, Staff ID, Loan Ref..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-        </div>
+      <DataManagementFilters
+        filters={filters}
+        onChange={setFilters}
+        branches={branches}
+        searchPlaceholder="Search by Name, NHF, Staff ID, Loan Ref..."
+      />
+
+      <div className="flex justify-end">
         {selected.size > 0 && (
           <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
             <Trash2 className="w-4 h-4 mr-1.5" /> Delete Selected ({selected.size})
@@ -274,9 +298,9 @@ function BeneficiaryManagement() {
 
 // ─── Loan Repayment (Transactions) Sub-tab ───
 function TransactionManagement() {
-  const [transactions, setTransactions] = useState<(Transaction & { beneficiary_name?: string })[]>([]);
+  const [transactions, setTransactions] = useState<(Transaction & { beneficiary_name?: string; ben_state?: string; ben_branch?: string; ben_nhf?: string; ben_loan_ref?: string })[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const { filters, setFilters } = useDataFilters();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -290,9 +314,19 @@ function TransactionManagement() {
     const { data: txns } = await supabase.from('transactions').select('*').order('date_paid', { ascending: false }).limit(1000);
     if (txns && txns.length > 0) {
       const benIds = [...new Set(txns.map(t => t.beneficiary_id))];
-      const { data: bens } = await supabase.from('beneficiaries').select('id, name').in('id', benIds);
-      const benMap = new Map(bens?.map(b => [b.id, b.name]) || []);
-      setTransactions(txns.map(t => ({ ...t, beneficiary_name: benMap.get(t.beneficiary_id) || '—' })));
+      const { data: bens } = await supabase.from('beneficiaries').select('id, name, state, bank_branch, nhf_number, loan_reference_number').in('id', benIds);
+      const benMap = new Map(bens?.map(b => [b.id, b]) || []);
+      setTransactions(txns.map(t => {
+        const ben = benMap.get(t.beneficiary_id);
+        return {
+          ...t,
+          beneficiary_name: ben?.name || '—',
+          ben_state: ben?.state || '',
+          ben_branch: ben?.bank_branch || '',
+          ben_nhf: ben?.nhf_number || '',
+          ben_loan_ref: ben?.loan_reference_number || '',
+        };
+      }));
     } else {
       setTransactions([]);
     }
@@ -301,13 +335,23 @@ function TransactionManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
+  const branches = useMemo(() => uniqueSorted(transactions.map(t => t.ben_branch || '')), [transactions]);
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return transactions.filter(t =>
-      (t.beneficiary_name || '').toLowerCase().includes(q) ||
-      t.rrr_number.toLowerCase().includes(q)
-    );
-  }, [transactions, search]);
+    const q = filters.search.toLowerCase();
+    return transactions.filter(t => {
+      if (q && !(
+        (t.beneficiary_name || '').toLowerCase().includes(q) ||
+        t.rrr_number.toLowerCase().includes(q) ||
+        (t.ben_nhf || '').toLowerCase().includes(q) ||
+        (t.ben_loan_ref || '').toLowerCase().includes(q)
+      )) return false;
+      if (filters.state && t.ben_state !== filters.state) return false;
+      if (filters.branch && t.ben_branch !== filters.branch) return false;
+      if (!matchesDateRange(t.date_paid, filters.fromDate, filters.toDate)) return false;
+      return true;
+    });
+  }, [transactions, filters]);
 
   const toggleSelect = (id: string) => {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -325,19 +369,10 @@ function TransactionManagement() {
     if (selected.size === 0) return;
     setDeleting(true);
     const ids = Array.from(selected);
-
-    // Get amounts to reverse
-    const toDelete = transactions.filter(t => ids.includes(t.id));
-    const benAmounts = new Map<string, number>();
-    toDelete.forEach(t => {
-      benAmounts.set(t.beneficiary_id, (benAmounts.get(t.beneficiary_id) || 0) + Number(t.amount));
-    });
-
     const { error } = await supabase.from('transactions').delete().in('id', ids);
     if (error) {
       toast.error(error.message);
     } else {
-      // Note: sync_beneficiary_from_transactions trigger handles balance reversal automatically
       toast.success(`${ids.length} transaction(s) deleted successfully.`);
       setSelected(new Set());
       fetchData();
@@ -380,11 +415,14 @@ function TransactionManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by beneficiary name or RRR..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-        </div>
+      <DataManagementFilters
+        filters={filters}
+        onChange={setFilters}
+        branches={branches}
+        searchPlaceholder="Search by Name, NHF, Loan Ref, RRR..."
+      />
+
+      <div className="flex justify-end">
         {selected.size > 0 && (
           <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
             <Trash2 className="w-4 h-4 mr-1.5" /> Delete Selected ({selected.size})
@@ -509,7 +547,7 @@ function BatchRepaymentManagement() {
   const navigate = useNavigate();
   const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const { filters, setFilters } = useDataFilters();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -527,14 +565,22 @@ function BatchRepaymentManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
+  const branches = useMemo(() => uniqueSorted(batches.map(b => b.bank_branch || '')), [batches]);
+
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return batches.filter(b =>
-      b.name.toLowerCase().includes(q) ||
-      b.batch_code.toLowerCase().includes(q) ||
-      (b.state && b.state.toLowerCase().includes(q))
-    );
-  }, [batches, search]);
+    const q = filters.search.toLowerCase();
+    return batches.filter(b => {
+      if (q && !(
+        b.name.toLowerCase().includes(q) ||
+        b.batch_code.toLowerCase().includes(q) ||
+        (b.state && b.state.toLowerCase().includes(q))
+      )) return false;
+      if (filters.state && b.state !== filters.state) return false;
+      if (filters.branch && b.bank_branch !== filters.branch) return false;
+      if (!matchesDateRange(b.created_at, filters.fromDate, filters.toDate)) return false;
+      return true;
+    });
+  }, [batches, filters]);
 
   const toggleSelect = (id: string) => {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -552,9 +598,7 @@ function BatchRepaymentManagement() {
     if (selected.size === 0) return;
     setDeleting(true);
     const ids = Array.from(selected);
-    // Delete related batch_repayments first
     await supabase.from('batch_repayments').delete().in('batch_id', ids);
-    // Unlink beneficiaries from batch
     await supabase.from('beneficiaries').update({ batch_id: null }).in('batch_id', ids);
     const { error } = await supabase.from('loan_batches').delete().in('id', ids);
     if (error) {
@@ -595,11 +639,14 @@ function BatchRepaymentManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by batch name, code, or state..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
-        </div>
+      <DataManagementFilters
+        filters={filters}
+        onChange={setFilters}
+        branches={branches}
+        searchPlaceholder="Search by batch name, code, or state..."
+      />
+
+      <div className="flex justify-end">
         {selected.size > 0 && (
           <Button variant="destructive" size="sm" onClick={() => setDeleteDialogOpen(true)}>
             <Trash2 className="w-4 h-4 mr-1.5" /> Delete Selected ({selected.size})
