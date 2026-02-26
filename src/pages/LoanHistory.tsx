@@ -16,6 +16,8 @@ import StatCard from '@/components/StatCard';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import type { Tables } from '@/integrations/supabase/types';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -31,6 +33,7 @@ export default function LoanHistory() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const [beneficiaries, setBeneficiaries] = useState<EnrichedBeneficiary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -309,6 +312,7 @@ export default function LoanHistory() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
@@ -341,6 +345,9 @@ export default function LoanHistory() {
                     className="border-b border-border table-row-highlight cursor-pointer"
                     onClick={() => navigate(`/beneficiary/${b.id}`)}
                   >
+                    <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                      <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{idx + 1}</td>
                     <td className="px-3 py-2.5 font-medium text-primary hover:underline">{b.name}</td>
                     <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground">{b.loan_reference_number || '—'}</td>

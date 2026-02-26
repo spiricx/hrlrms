@@ -11,6 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -56,6 +58,7 @@ export default function Beneficiaries() {
   const [loading, setLoading] = useState(true);
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const { data: bens, error } = await supabase.
@@ -148,6 +151,7 @@ export default function Beneficiaries() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF NO </th>
@@ -176,6 +180,9 @@ export default function Beneficiaries() {
 
                 return (
                   <tr key={b.id} className="table-row-highlight">
+                    <td className="px-4 py-3 text-center">
+                      <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="font-medium hover:underline text-accent whitespace-nowrap">

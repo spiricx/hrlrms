@@ -28,6 +28,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type LoanBatch = Tables<'loan_batches'>;
@@ -116,6 +118,7 @@ export default function NplStatus() {
 
   // Golden Record: single source of truth for DPD, arrears, NPL status
   const arrears = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const [bRes, tRes, lbRes] = await Promise.all([
@@ -720,6 +723,7 @@ export default function NplStatus() {
                 <Table>
                   <TableHeader>
                      <TableRow className="bg-secondary/50">
+                      <TableHead className="text-center w-10">★</TableHead>
                       <TableHead className="text-center">S/N</TableHead>
                       <TableHead>Beneficiary Names</TableHead>
                       <TableHead>Organizations</TableHead>
@@ -749,7 +753,10 @@ export default function NplStatus() {
                     {accountsList.map((a, idx) => {
                       const individualNplRatio = totalActiveAmount > 0 ? ((a.outstandingBalance / totalActiveAmount) * 100) : 0;
                       return (
-                        <TableRow key={a.id} className={riskRowBg(a.dpd)}>
+                         <TableRow key={a.id} className={riskRowBg(a.dpd)}>
+                          <TableCell className="text-center">
+                            <StarButton isStarred={isStarred(a.id)} onToggle={() => toggleStar(a.id)} />
+                          </TableCell>
                           <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                           <TableCell className="font-medium">{a.name}</TableCell>
                           <TableCell>{a.organization || '—'}</TableCell>
@@ -814,6 +821,7 @@ export default function NplStatus() {
               <TableHeader>
                 <TableRow className="bg-secondary/50">
                   <TableHead>S/N</TableHead>
+                  <TableHead>Batch Name</TableHead>
                   <TableHead>Batch Name</TableHead>
                   <TableHead>State</TableHead>
                   <TableHead>Branch</TableHead>

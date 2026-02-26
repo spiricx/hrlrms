@@ -19,6 +19,8 @@ import LoanRepaymentReportExportButtons, {
 import BatchLoanRepaymentReport from '@/components/reports/BatchLoanRepaymentReport';
 import type { Tables } from '@/integrations/supabase/types';
 import { fetchAllRows } from '@/lib/fetchAllRows';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -52,6 +54,7 @@ export default function LoanRepaymentReport() {
   }, [user]);
 
   const { map: arrearsMap } = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -401,6 +404,7 @@ export default function LoanRepaymentReport() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 text-center">★</TableHead>
                   <TableHead className="w-12">S/N</TableHead>
                   <TableHead>Beneficiary</TableHead>
                   <TableHead>Organisation</TableHead>
@@ -431,6 +435,9 @@ export default function LoanRepaymentReport() {
                     className="cursor-pointer hover:border-l-[3px] hover:border-l-primary hover:bg-primary/5 transition-all"
                     onClick={() => navigate(`/beneficiary/${r.beneficiaryId}`)}
                   >
+                    <TableCell className="text-center">
+                      <StarButton isStarred={isStarred(r.beneficiaryId)} onToggle={() => toggleStar(r.beneficiaryId)} />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="font-medium text-primary underline-offset-2 hover:underline whitespace-nowrap">{r.beneficiaryName}</TableCell>
                     <TableCell className="max-w-[140px] truncate">{r.organisation}</TableCell>

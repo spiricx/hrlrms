@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import type { Tables } from '@/integrations/supabase/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -37,6 +39,7 @@ export default function LoanRepayment() {
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithTxnInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -475,6 +478,7 @@ export default function LoanRepayment() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/50">
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
@@ -499,6 +503,9 @@ export default function LoanRepayment() {
                 const { overdueAmount, overdueMonths, arrearsAmount, monthsInArrears } = getArrearsInfo(b);
                 return (
                   <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
+                    <td className="px-4 py-3 text-center">
+                      <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-[160px] truncate">{b.department || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>

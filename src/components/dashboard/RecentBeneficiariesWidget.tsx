@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatTenor, stripTime } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
@@ -74,6 +76,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   const [stateFilter, setStateFilter] = useState('all');
   const [branchFilter, setBranchFilter] = useState('all');
   const { map: arrearsMap } = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const { data: bens } = await supabase.
@@ -313,6 +316,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary/50">
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
@@ -355,6 +359,10 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
               const statusInfo = getStatusInfoFromArrears(a);
               return (
                 <tr key={b.id} className="table-row-highlight group">
+                    {/* Star */}
+                    <td className="px-4 py-3 text-center">
+                      <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
                     {/* # */}
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     {/* Beneficiary */}
