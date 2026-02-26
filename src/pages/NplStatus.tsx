@@ -820,6 +820,7 @@ export default function NplStatus() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50">
+                  <TableHead className="text-center w-10">★</TableHead>
                   <TableHead>S/N</TableHead>
                   <TableHead>Batch Name</TableHead>
                   <TableHead>State</TableHead>

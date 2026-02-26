@@ -435,6 +435,9 @@ export default function LoanRepaymentReport() {
                     className="cursor-pointer hover:border-l-[3px] hover:border-l-primary hover:bg-primary/5 transition-all"
                     onClick={() => navigate(`/beneficiary/${r.beneficiaryId}`)}
                   >
+                    <TableCell className="text-center">
+                      <StarButton isStarred={isStarred(r.beneficiaryId)} onToggle={() => toggleStar(r.beneficiaryId)} />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="font-medium text-primary underline-offset-2 hover:underline whitespace-nowrap">{r.beneficiaryName}</TableCell>
                     <TableCell className="max-w-[140px] truncate">{r.organisation}</TableCell>

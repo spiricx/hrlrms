@@ -345,6 +345,9 @@ export default function LoanHistory() {
                     className="border-b border-border table-row-highlight cursor-pointer"
                     onClick={() => navigate(`/beneficiary/${b.id}`)}
                   >
+                    <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                      <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{idx + 1}</td>
                     <td className="px-3 py-2.5 font-medium text-primary hover:underline">{b.name}</td>
                     <td className="px-3 py-2.5 text-xs font-mono text-muted-foreground">{b.loan_reference_number || '—'}</td>

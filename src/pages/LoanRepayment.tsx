@@ -503,6 +503,9 @@ export default function LoanRepayment() {
                 const { overdueAmount, overdueMonths, arrearsAmount, monthsInArrears } = getArrearsInfo(b);
                 return (
                   <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
+                    <td className="px-4 py-3 text-center">
+                      <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-[160px] truncate">{b.department || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>
