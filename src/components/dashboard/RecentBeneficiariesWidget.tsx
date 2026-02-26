@@ -316,6 +316,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-secondary/50">
+              <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
