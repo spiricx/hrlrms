@@ -28,6 +28,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
+import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
+import StarButton from '@/components/StarButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type LoanBatch = Tables<'loan_batches'>;
