@@ -118,6 +118,7 @@ export default function NplStatus() {
 
   // Golden Record: single source of truth for DPD, arrears, NPL status
   const arrears = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const [bRes, tRes, lbRes] = await Promise.all([
