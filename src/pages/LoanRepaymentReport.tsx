@@ -404,6 +404,7 @@ export default function LoanRepaymentReport() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 text-center">★</TableHead>
                   <TableHead className="w-12">S/N</TableHead>
                   <TableHead>Beneficiary</TableHead>
                   <TableHead>Organisation</TableHead>
