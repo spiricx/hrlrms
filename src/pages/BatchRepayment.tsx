@@ -92,6 +92,7 @@ export default function BatchRepayment() {
   const { toast } = useToast();
   const isAdmin = hasRole('admin');
   const { map: arrearsMap, refresh: refreshArrears } = useArrearsLookup();
+  const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
 
   const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [loading, setLoading] = useState(true);
