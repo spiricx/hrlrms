@@ -1090,6 +1090,9 @@ export default function BatchRepayment() {
                           const mLastTx = mTxs[0] || null;
                           return (
                           <tr key={m.id} className="table-row-highlight cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
+                            <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                              <StarButton isStarred={isStarred(m.id)} onToggle={() => toggleStar(m.id)} />
+                            </td>
                             <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.loan_reference_number || m.employee_id}</td>
