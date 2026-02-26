@@ -753,7 +753,10 @@ export default function NplStatus() {
                     {accountsList.map((a, idx) => {
                       const individualNplRatio = totalActiveAmount > 0 ? ((a.outstandingBalance / totalActiveAmount) * 100) : 0;
                       return (
-                        <TableRow key={a.id} className={riskRowBg(a.dpd)}>
+                         <TableRow key={a.id} className={riskRowBg(a.dpd)}>
+                          <TableCell className="text-center">
+                            <StarButton isStarred={isStarred(a.id)} onToggle={() => toggleStar(a.id)} />
+                          </TableCell>
                           <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                           <TableCell className="font-medium">{a.name}</TableCell>
                           <TableCell>{a.organization || '—'}</TableCell>
