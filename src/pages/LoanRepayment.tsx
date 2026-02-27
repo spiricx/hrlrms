@@ -42,6 +42,7 @@ export default function LoanRepayment() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithTxnInfo[]>([]);
   const [loading, setLoading] = useState(true);
