@@ -442,6 +442,9 @@ export default function LoanRepaymentReport() {
                     <TableCell className="text-center">
                       <StarButton isStarred={isStarred(r.beneficiaryId)} onToggle={() => toggleStar(r.beneficiaryId)} />
                     </TableCell>
+                    <TableCell className="text-center">
+                      <FlagButton isFlagged={isFlagged(r.beneficiaryId)} onToggle={() => toggleFlag(r.beneficiaryId)} />
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="font-medium text-primary underline-offset-2 hover:underline whitespace-nowrap">{r.beneficiaryName}</TableCell>
                     <TableCell className="max-w-[140px] truncate">{r.organisation}</TableCell>

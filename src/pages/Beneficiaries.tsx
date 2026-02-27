@@ -187,6 +187,9 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 text-center">
                       <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <FlagButton isFlagged={isFlagged(b.id)} onToggle={() => toggleFlag(b.id)} />
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="font-medium hover:underline text-accent whitespace-nowrap">

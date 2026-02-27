@@ -367,6 +367,10 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
                     <td className="px-4 py-3 text-center">
                       <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
                     </td>
+                    {/* Flag */}
+                    <td className="px-4 py-3 text-center">
+                      <FlagButton isFlagged={isFlagged(b.id)} onToggle={() => toggleFlag(b.id)} />
+                    </td>
                     {/* # */}
                     <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     {/* Beneficiary */}

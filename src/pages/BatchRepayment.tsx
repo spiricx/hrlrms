@@ -95,6 +95,7 @@ export default function BatchRepayment() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap, refresh: refreshArrears } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [loading, setLoading] = useState(true);

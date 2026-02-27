@@ -761,6 +761,9 @@ export default function NplStatus() {
                           <TableCell className="text-center">
                             <StarButton isStarred={isStarred(a.id)} onToggle={() => toggleStar(a.id)} />
                           </TableCell>
+                          <TableCell className="text-center">
+                            <FlagButton isFlagged={isFlagged(a.id)} onToggle={() => toggleFlag(a.id)} />
+                          </TableCell>
                           <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                           <TableCell className="font-medium">{a.name}</TableCell>
                           <TableCell>{a.organization || '—'}</TableCell>
