@@ -79,6 +79,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   const [branchFilter, setBranchFilter] = useState('all');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const { data: bens } = await supabase.
