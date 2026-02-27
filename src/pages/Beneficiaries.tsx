@@ -61,6 +61,7 @@ export default function Beneficiaries() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const { data: bens, error } = await supabase.
