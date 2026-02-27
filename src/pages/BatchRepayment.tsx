@@ -34,6 +34,8 @@ import DateRangeFilter from '@/components/DateRangeFilter';
 import BatchRepaymentUpload from '@/components/batch/BatchRepaymentUpload';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 interface LoanBatch {
   id: string;
