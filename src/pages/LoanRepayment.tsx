@@ -24,6 +24,8 @@ import type { Tables } from '@/integrations/supabase/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
