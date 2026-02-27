@@ -18,6 +18,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import type { Tables } from '@/integrations/supabase/types';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -34,6 +36,7 @@ export default function LoanHistory() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const [beneficiaries, setBeneficiaries] = useState<EnrichedBeneficiary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -313,6 +316,7 @@ export default function LoanHistory() {
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
@@ -347,6 +351,9 @@ export default function LoanHistory() {
                   >
                     <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
                       <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
+                    <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
+                      <FlagButton isFlagged={isFlagged(b.id)} onToggle={() => toggleFlag(b.id)} />
                     </td>
                     <td className="px-3 py-2.5 text-muted-foreground">{idx + 1}</td>
                     <td className="px-3 py-2.5 font-medium text-primary hover:underline">{b.name}</td>

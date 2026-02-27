@@ -30,6 +30,8 @@ import type { Tables } from '@/integrations/supabase/types';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type LoanBatch = Tables<'loan_batches'>;
@@ -119,6 +121,7 @@ export default function NplStatus() {
   // Golden Record: single source of truth for DPD, arrears, NPL status
   const arrears = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const fetchData = useCallback(async () => {
     const [bRes, tRes, lbRes] = await Promise.all([
@@ -724,6 +727,7 @@ export default function NplStatus() {
                   <TableHeader>
                      <TableRow className="bg-secondary/50">
                       <TableHead className="text-center w-10">★</TableHead>
+                      <TableHead className="text-center w-10 text-destructive">⚑</TableHead>
                       <TableHead className="text-center">S/N</TableHead>
                       <TableHead>Beneficiary Names</TableHead>
                       <TableHead>Organizations</TableHead>
@@ -756,6 +760,9 @@ export default function NplStatus() {
                          <TableRow key={a.id} className={riskRowBg(a.dpd)}>
                           <TableCell className="text-center">
                             <StarButton isStarred={isStarred(a.id)} onToggle={() => toggleStar(a.id)} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <FlagButton isFlagged={isFlagged(a.id)} onToggle={() => toggleFlag(a.id)} />
                           </TableCell>
                           <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                           <TableCell className="font-medium">{a.name}</TableCell>

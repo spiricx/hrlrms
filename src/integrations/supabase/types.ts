@@ -294,6 +294,42 @@ export type Database = {
         }
         Relationships: []
       }
+      flagged_beneficiaries: {
+        Row: {
+          beneficiary_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          beneficiary_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          beneficiary_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flagged_beneficiaries_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "beneficiaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flagged_beneficiaries_beneficiary_id_fkey"
+            columns: ["beneficiary_id"]
+            isOneToOne: false
+            referencedRelation: "v_loan_arrears"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integrity_checks: {
         Row: {
           balance_variance: number

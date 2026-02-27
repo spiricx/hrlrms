@@ -24,6 +24,8 @@ import type { Tables } from '@/integrations/supabase/types';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -40,6 +42,7 @@ export default function LoanRepayment() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithTxnInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -479,6 +482,7 @@ export default function LoanRepayment() {
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
@@ -505,6 +509,9 @@ export default function LoanRepayment() {
                   <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
                     <td className="px-4 py-3 text-center">
                       <StarButton isStarred={isStarred(b.id)} onToggle={() => toggleStar(b.id)} />
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <FlagButton isFlagged={isFlagged(b.id)} onToggle={() => toggleFlag(b.id)} />
                     </td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-[160px] truncate">{b.department || '—'}</td>

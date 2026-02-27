@@ -34,6 +34,8 @@ import DateRangeFilter from '@/components/DateRangeFilter';
 import BatchRepaymentUpload from '@/components/batch/BatchRepaymentUpload';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 interface LoanBatch {
   id: string;
@@ -93,6 +95,7 @@ export default function BatchRepayment() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap, refresh: refreshArrears } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1067,6 +1070,7 @@ export default function BatchRepayment() {
                       <thead>
                         <tr className="border-b border-border bg-secondary/50">
                           <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No.</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
@@ -1092,6 +1096,9 @@ export default function BatchRepayment() {
                           <tr key={m.id} className="table-row-highlight cursor-pointer" onClick={() => navigate(`/beneficiary/${m.id}`)}>
                             <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                               <StarButton isStarred={isStarred(m.id)} onToggle={() => toggleStar(m.id)} />
+                            </td>
+                            <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
+                              <FlagButton isFlagged={isFlagged(m.id)} onToggle={() => toggleFlag(m.id)} />
                             </td>
                             <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
