@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { RefreshCw, Search, Filter, ChevronRight, Download, MapPin, Building2 } from 'lucide-react';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatTenor, stripTime } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
