@@ -727,6 +727,7 @@ export default function NplStatus() {
                   <TableHeader>
                      <TableRow className="bg-secondary/50">
                       <TableHead className="text-center w-10">★</TableHead>
+                      <TableHead className="text-center w-10 text-destructive">⚑</TableHead>
                       <TableHead className="text-center">S/N</TableHead>
                       <TableHead>Beneficiary Names</TableHead>
                       <TableHead>Organizations</TableHead>
