@@ -1070,6 +1070,7 @@ export default function BatchRepayment() {
                       <thead>
                         <tr className="border-b border-border bg-secondary/50">
                           <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
+                          <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No.</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
