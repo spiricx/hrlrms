@@ -30,6 +30,8 @@ import type { Tables } from '@/integrations/supabase/types';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
+import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
+import FlagButton from '@/components/FlagButton';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type LoanBatch = Tables<'loan_batches'>;
