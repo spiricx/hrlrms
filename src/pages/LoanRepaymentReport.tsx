@@ -57,6 +57,7 @@ export default function LoanRepaymentReport() {
 
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   useEffect(() => {
     const fetchData = async () => {
