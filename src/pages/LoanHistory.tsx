@@ -316,6 +316,7 @@ export default function LoanHistory() {
             <thead>
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
