@@ -36,6 +36,7 @@ export default function LoanHistory() {
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
+  const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
 
   const [beneficiaries, setBeneficiaries] = useState<EnrichedBeneficiary[]>([]);
   const [loading, setLoading] = useState(true);
