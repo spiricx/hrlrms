@@ -103,7 +103,11 @@ export default function LoanHistory() {
 
   const filtered = useMemo(() => beneficiaries.filter(b => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q) || (b.loan_reference_number || '').toLowerCase().includes(q) || (b.nhf_number || '').toLowerCase().includes(q);
+    const matchesSearch = !q || b.name.toLowerCase().includes(q) ||
+      b.employee_id.toLowerCase().includes(q) ||
+      (b.loan_reference_number || '').toLowerCase().includes(q) ||
+      (b.nhf_number || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q);
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
     const matchesBranch = branchFilter === 'all' || b.bank_branch === branchFilter;
     const matchesOfficer = officerFilter === 'all' || b.creatorName === officerFilter;
@@ -208,7 +212,7 @@ export default function LoanHistory() {
           <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search name, NHF, Ref..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+            <Input placeholder="Search name, Staff ID, Loan Ref, NHF, Org..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
           {isAdmin && (
             <Select value={stateFilter} onValueChange={setStateFilter}>

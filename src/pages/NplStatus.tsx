@@ -45,6 +45,8 @@ interface NplAccount {
   state: string;
   branch: string;
   organization: string;
+  nhfNumber: string;
+  loanRefNumber: string;
   loanAmount: number;
   tenorMonths: number;
   monthlyEmi: number;
@@ -169,6 +171,8 @@ export default function NplStatus() {
         state: b.state,
         branch: b.bank_branch,
         organization: b.department || '',
+        nhfNumber: b.nhf_number || '',
+        loanRefNumber: b.loan_reference_number || '',
         loanAmount: Number(b.loan_amount),
         tenorMonths: b.tenor_months,
         monthlyEmi: emi,
@@ -348,7 +352,11 @@ export default function NplStatus() {
     if (drillLevel === 'accounts' && selectedBranch) accts = accts.filter(a => a.branch === selectedBranch);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      accts = accts.filter(a => a.name.toLowerCase().includes(q) || a.employeeId.toLowerCase().includes(q));
+      accts = accts.filter(a => a.name.toLowerCase().includes(q) ||
+        a.employeeId.toLowerCase().includes(q) ||
+        a.organization.toLowerCase().includes(q) ||
+        a.nhfNumber.toLowerCase().includes(q) ||
+        a.loanRefNumber.toLowerCase().includes(q));
     }
     return accts.sort((a, b) => b.dpd - a.dpd);
   }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery, selectedBatchId, beneficiaries]);
@@ -716,7 +724,7 @@ export default function NplStatus() {
               <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-lg font-bold font-display">NPL Accounts</h2>
                 <Input
-                  placeholder="Search by name or ID..."
+                  placeholder="Search name, Staff ID, Loan Ref, NHF, Org..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-64"

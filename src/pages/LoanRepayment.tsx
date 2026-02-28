@@ -126,9 +126,11 @@ export default function LoanRepayment() {
 
   const filtered = useMemo(() => beneficiaries.filter((b) => {
     const q = search.toLowerCase();
-    const matchesSearch = b.name.toLowerCase().includes(q) ||
+    const matchesSearch = !q || b.name.toLowerCase().includes(q) ||
       b.employee_id.toLowerCase().includes(q) ||
-      (b.nhf_number && b.nhf_number.toLowerCase().includes(q));
+      (b.nhf_number || '').toLowerCase().includes(q) ||
+      (b.loan_reference_number || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q);
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
     // Date range filter on commencement_date
     let matchesDate = true;
@@ -460,7 +462,7 @@ export default function LoanRepayment() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end flex-wrap">
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search by name, NHF or Loan Ref..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+          <Input placeholder="Search name, Staff ID, Loan Ref, NHF, RRR, Org..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
         </div>
         <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         {isAdmin &&

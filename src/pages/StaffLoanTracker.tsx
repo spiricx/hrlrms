@@ -167,7 +167,15 @@ export default function StaffLoanTracker() {
     const filtered = q
       ? result.filter(s =>
           s.staffName.toLowerCase().includes(q) ||
-          s.staffId.toLowerCase().includes(q)
+          s.staffId.toLowerCase().includes(q) ||
+          s.staffState.toLowerCase().includes(q) ||
+          s.staffBranch.toLowerCase().includes(q) ||
+          s.loans.some(l =>
+            (l.loan_reference_number || '').toLowerCase().includes(q) ||
+            l.name.toLowerCase().includes(q) ||
+            (l.surname || '').toLowerCase().includes(q) ||
+            (l.first_name || '').toLowerCase().includes(q)
+          )
         )
       : result;
 
@@ -355,7 +363,7 @@ export default function StaffLoanTracker() {
                 <Input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search staff..."
+                  placeholder="Search name, Staff ID, Loan Ref..."
                   className="pl-9"
                 />
               </div>

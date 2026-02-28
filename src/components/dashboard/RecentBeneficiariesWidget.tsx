@@ -148,7 +148,12 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
-        (b) => b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q)
+        (b) => b.name.toLowerCase().includes(q) ||
+          b.employee_id.toLowerCase().includes(q) ||
+          (b.loan_reference_number || '').toLowerCase().includes(q) ||
+          (b.nhf_number || '').toLowerCase().includes(q) ||
+          (b.department || '').toLowerCase().includes(q) ||
+          (b.lastTransaction?.rrr_number || '').toLowerCase().includes(q)
       );
     }
 
@@ -265,7 +270,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or loan ref..."
+              placeholder="Search name, Staff ID, Loan Ref, NHF, RRR, Org..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-9" />

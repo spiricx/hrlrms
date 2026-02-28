@@ -3,6 +3,8 @@ import { formatCurrency } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +23,7 @@ export default function Reports() {
   const [orgFilter, setOrgFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -67,6 +70,16 @@ export default function Reports() {
       if (stateFilter !== 'all' && b.state !== stateFilter) return false;
       if (branchFilter !== 'all' && b.bank_branch !== branchFilter) return false;
       if (orgFilter !== 'all' && b.department !== orgFilter) return false;
+      // Search filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const match = b.name.toLowerCase().includes(q) ||
+          b.employee_id.toLowerCase().includes(q) ||
+          (b.loan_reference_number || '').toLowerCase().includes(q) ||
+          (b.nhf_number || '').toLowerCase().includes(q) ||
+          (b.department || '').toLowerCase().includes(q);
+        if (!match) return false;
+      }
       if (yearFilter !== 'all' || monthFilter !== 'all') {
         const d = b.disbursement_date ? new Date(b.disbursement_date) : null;
         if (!d) return false;
@@ -86,7 +99,7 @@ export default function Reports() {
       }
       return true;
     });
-  }, [beneficiaries, stateFilter, branchFilter, orgFilter, monthFilter, yearFilter, fromDate, toDate]);
+  }, [beneficiaries, stateFilter, branchFilter, orgFilter, monthFilter, yearFilter, fromDate, toDate, searchQuery]);
 
   const totalDisbursed = filtered.reduce((s, b) => s + Number(b.loan_amount), 0);
   const totalCollected = filtered.reduce((s, b) => s + Number(b.total_paid), 0);
@@ -168,6 +181,10 @@ export default function Reports() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search name, Staff ID, Loan Ref, NHF, Org..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+        </div>
         <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger className="w-40">

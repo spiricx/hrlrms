@@ -327,13 +327,15 @@ export default function BioData() {
 
   const filtered = beneficiaries.filter((b) => {
     const q = search.toLowerCase();
+    if (!q) return true;
     return (
       b.name?.toLowerCase().includes(q) ||
-      b.nhf_number?.toLowerCase().includes(q) ||
       b.employee_id?.toLowerCase().includes(q) ||
-      b.phone_number?.toLowerCase().includes(q) ||
-      b.state?.toLowerCase().includes(q) ||
-      b.loan_reference_number?.toLowerCase().includes(q)
+      (b.loan_reference_number || '').toLowerCase().includes(q) ||
+      (b.nhf_number || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q) ||
+      (b.phone_number || '').toLowerCase().includes(q) ||
+      (b.state || '').toLowerCase().includes(q)
     );
   });
 
@@ -412,7 +414,7 @@ export default function BioData() {
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by name, NHF, Staff ID, phone, state..."
+            placeholder="Search name, Staff ID, Loan Ref, NHF, Org..."
             className="pl-9"
             value={search}
             onChange={(e) => setSearch(e.target.value)}

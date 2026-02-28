@@ -134,7 +134,9 @@ export default function LoanRepaymentReport() {
         const match = b.name.toLowerCase().includes(q) ||
           b.employee_id.toLowerCase().includes(q) ||
           (b.loan_reference_number || '').toLowerCase().includes(q) ||
-          t.rrr_number.toLowerCase().includes(q);
+          (b.nhf_number || '').toLowerCase().includes(q) ||
+          t.rrr_number.toLowerCase().includes(q) ||
+          (b.department || '').toLowerCase().includes(q);
         if (!match) return;
       }
 
@@ -304,7 +306,7 @@ export default function LoanRepaymentReport() {
             <label className="text-xs font-medium text-muted-foreground">Search</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Name, ID, RRR..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-48" />
+              <Input placeholder="Search name, Staff ID, Loan Ref, NHF, RRR, Org..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-72" />
             </div>
           </div>
         </div>
