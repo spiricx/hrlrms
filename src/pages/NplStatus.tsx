@@ -45,6 +45,8 @@ interface NplAccount {
   state: string;
   branch: string;
   organization: string;
+  nhfNumber: string;
+  loanRefNumber: string;
   loanAmount: number;
   tenorMonths: number;
   monthlyEmi: number;
