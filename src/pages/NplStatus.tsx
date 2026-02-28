@@ -354,7 +354,9 @@ export default function NplStatus() {
       const q = searchQuery.toLowerCase();
       accts = accts.filter(a => a.name.toLowerCase().includes(q) ||
         a.employeeId.toLowerCase().includes(q) ||
-        a.organization.toLowerCase().includes(q));
+        a.organization.toLowerCase().includes(q) ||
+        a.nhfNumber.toLowerCase().includes(q) ||
+        a.loanRefNumber.toLowerCase().includes(q));
     }
     return accts.sort((a, b) => b.dpd - a.dpd);
   }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery, selectedBatchId, beneficiaries]);
