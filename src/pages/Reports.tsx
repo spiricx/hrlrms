@@ -181,6 +181,10 @@ export default function Reports() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search name, Staff ID, Loan Ref, NHF, Org..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+        </div>
         <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
         <Select value={monthFilter} onValueChange={setMonthFilter}>
           <SelectTrigger className="w-40">
