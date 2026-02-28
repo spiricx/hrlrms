@@ -103,7 +103,11 @@ export default function LoanHistory() {
 
   const filtered = useMemo(() => beneficiaries.filter(b => {
     const q = search.toLowerCase();
-    const matchesSearch = !q || b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q) || (b.loan_reference_number || '').toLowerCase().includes(q) || (b.nhf_number || '').toLowerCase().includes(q);
+    const matchesSearch = !q || b.name.toLowerCase().includes(q) ||
+      b.employee_id.toLowerCase().includes(q) ||
+      (b.loan_reference_number || '').toLowerCase().includes(q) ||
+      (b.nhf_number || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q);
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
     const matchesBranch = branchFilter === 'all' || b.bank_branch === branchFilter;
     const matchesOfficer = officerFilter === 'all' || b.creatorName === officerFilter;
