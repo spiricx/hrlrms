@@ -104,7 +104,11 @@ export default function Beneficiaries() {
   const filtered = useMemo(() => {
     return beneficiaries.filter((b) => {
       const q = search.toLowerCase();
-      const matchesSearch = b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q) || b.nhf_number && b.nhf_number.toLowerCase().includes(q);
+      const matchesSearch = !q || b.name.toLowerCase().includes(q) ||
+        b.employee_id.toLowerCase().includes(q) ||
+        (b.nhf_number || '').toLowerCase().includes(q) ||
+        (b.loan_reference_number || '').toLowerCase().includes(q) ||
+        (b.department || '').toLowerCase().includes(q);
       const matchesState = stateFilter === 'all' || b.state === stateFilter;
       return matchesSearch && matchesState;
     });
