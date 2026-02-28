@@ -134,7 +134,9 @@ export default function LoanRepaymentReport() {
         const match = b.name.toLowerCase().includes(q) ||
           b.employee_id.toLowerCase().includes(q) ||
           (b.loan_reference_number || '').toLowerCase().includes(q) ||
-          t.rrr_number.toLowerCase().includes(q);
+          (b.nhf_number || '').toLowerCase().includes(q) ||
+          t.rrr_number.toLowerCase().includes(q) ||
+          (b.department || '').toLowerCase().includes(q);
         if (!match) return;
       }
 
