@@ -119,7 +119,7 @@ export default function StaffPerformance() {
       if (!matchesState) return false;
       if (!q) return true;
       const fullName = `${s.title} ${s.surname} ${s.first_name}`.toLowerCase();
-      return fullName.includes(q) || s.staff_id.toLowerCase().includes(q) || (s.nhf_number || '').toLowerCase().includes(q);
+      return fullName.includes(q) || s.staff_id.toLowerCase().includes(q) || (s.nhf_number || '').toLowerCase().includes(q) || s.designation.toLowerCase().includes(q) || s.state.toLowerCase().includes(q) || s.branch.toLowerCase().includes(q);
     }).map(s => {
       // Resolve this staff member's user_id via email → profiles lookup
       const userId = emailToUserId.get((s.email || '').toLowerCase()) || null;
