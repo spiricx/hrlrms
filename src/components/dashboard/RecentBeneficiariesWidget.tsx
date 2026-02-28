@@ -148,7 +148,12 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
-        (b) => b.name.toLowerCase().includes(q) || b.employee_id.toLowerCase().includes(q)
+        (b) => b.name.toLowerCase().includes(q) ||
+          b.employee_id.toLowerCase().includes(q) ||
+          (b.loan_reference_number || '').toLowerCase().includes(q) ||
+          (b.nhf_number || '').toLowerCase().includes(q) ||
+          (b.department || '').toLowerCase().includes(q) ||
+          (b.lastTransaction?.rrr_number || '').toLowerCase().includes(q)
       );
     }
 
