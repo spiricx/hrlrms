@@ -718,7 +718,7 @@ export default function NplStatus() {
               <div className="px-6 py-4 border-b border-border flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-lg font-bold font-display">NPL Accounts</h2>
                 <Input
-                  placeholder="Search by name or ID..."
+                  placeholder="Search name, Staff ID, Org..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="w-64"

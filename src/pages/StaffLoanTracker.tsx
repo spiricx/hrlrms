@@ -363,7 +363,7 @@ export default function StaffLoanTracker() {
                 <Input
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search staff..."
+                  placeholder="Search name, Staff ID, Loan Ref..."
                   className="pl-9"
                 />
               </div>

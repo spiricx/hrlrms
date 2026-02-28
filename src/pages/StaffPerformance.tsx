@@ -607,7 +607,7 @@ export default function StaffPerformance() {
         <div className="flex gap-2 flex-wrap items-center">
           <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search by Staff ID, Name or NHF..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
+            <Input placeholder="Search name, Staff ID, NHF, Designation..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
           </div>
           <Select value={filterState} onValueChange={setFilterState}>
             <SelectTrigger className="w-48"><SelectValue placeholder="Filter by State" /></SelectTrigger>
