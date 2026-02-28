@@ -3,6 +3,8 @@ import { formatCurrency } from '@/lib/loanCalculations';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Search } from 'lucide-react';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import { useAuth } from '@/contexts/AuthContext';
