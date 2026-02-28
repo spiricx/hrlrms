@@ -70,6 +70,16 @@ export default function Reports() {
       if (stateFilter !== 'all' && b.state !== stateFilter) return false;
       if (branchFilter !== 'all' && b.bank_branch !== branchFilter) return false;
       if (orgFilter !== 'all' && b.department !== orgFilter) return false;
+      // Search filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const match = b.name.toLowerCase().includes(q) ||
+          b.employee_id.toLowerCase().includes(q) ||
+          (b.loan_reference_number || '').toLowerCase().includes(q) ||
+          (b.nhf_number || '').toLowerCase().includes(q) ||
+          (b.department || '').toLowerCase().includes(q);
+        if (!match) return false;
+      }
       if (yearFilter !== 'all' || monthFilter !== 'all') {
         const d = b.disbursement_date ? new Date(b.disbursement_date) : null;
         if (!d) return false;
@@ -89,7 +99,7 @@ export default function Reports() {
       }
       return true;
     });
-  }, [beneficiaries, stateFilter, branchFilter, orgFilter, monthFilter, yearFilter, fromDate, toDate]);
+  }, [beneficiaries, stateFilter, branchFilter, orgFilter, monthFilter, yearFilter, fromDate, toDate, searchQuery]);
 
   const totalDisbursed = filtered.reduce((s, b) => s + Number(b.loan_amount), 0);
   const totalCollected = filtered.reduce((s, b) => s + Number(b.total_paid), 0);
