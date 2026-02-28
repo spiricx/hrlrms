@@ -327,13 +327,15 @@ export default function BioData() {
 
   const filtered = beneficiaries.filter((b) => {
     const q = search.toLowerCase();
+    if (!q) return true;
     return (
       b.name?.toLowerCase().includes(q) ||
-      b.nhf_number?.toLowerCase().includes(q) ||
       b.employee_id?.toLowerCase().includes(q) ||
-      b.phone_number?.toLowerCase().includes(q) ||
-      b.state?.toLowerCase().includes(q) ||
-      b.loan_reference_number?.toLowerCase().includes(q)
+      (b.loan_reference_number || '').toLowerCase().includes(q) ||
+      (b.nhf_number || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q) ||
+      (b.phone_number || '').toLowerCase().includes(q) ||
+      (b.state || '').toLowerCase().includes(q)
     );
   });
 
