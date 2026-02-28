@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Package, Search, Plus, Banknote, ExternalLink, Loader2, ChevronLeft,
   FileSpreadsheet, History, TrendingDown, CalendarCheck, AlertTriangle, Clock, Eye, Trash2,
-  Pencil, ChevronDown, ChevronRight, CalendarIcon
+  Pencil, ChevronDown, ChevronRight, CalendarIcon, Upload
 } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -32,6 +32,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import BatchRepaymentUpload from '@/components/batch/BatchRepaymentUpload';
+import MultiBatchUpload from '@/components/batch/MultiBatchUpload';
 import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
 import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
@@ -174,6 +175,9 @@ export default function BatchRepayment() {
   const [editTx, setEditTx] = useState<{ id: string; beneficiary_id: string; beneficiary_name: string; amount: number; rrr_number: string; month_for: number; batch_repayment_id: string } | null>(null);
   const [editTxAmount, setEditTxAmount] = useState('');
   const [editTxSaving, setEditTxSaving] = useState(false);
+
+  // Multi-batch upload state
+  const [multiBatchUploadOpen, setMultiBatchUploadOpen] = useState(false);
 
   const fetchBatches = async () => {
     const { data, error } = await supabase
@@ -1502,9 +1506,14 @@ export default function BatchRepayment() {
             <FileSpreadsheet className="w-4 h-4" /> Export to Excel
           </Button>
           {(isAdmin || hasRole('loan_officer')) && (
-            <Button onClick={() => setCreateOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" /> Create Batch
-            </Button>
+            <>
+              <Button variant="outline" onClick={() => setMultiBatchUploadOpen(true)} className="gap-2">
+                <Upload className="w-4 h-4" /> Multi-Batch Upload
+              </Button>
+              <Button onClick={() => setCreateOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" /> Create Batch
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -2078,6 +2087,25 @@ export default function BatchRepayment() {
               {editBatchSaving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Changes'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Multi-Batch Upload Dialog */}
+      <Dialog open={multiBatchUploadOpen} onOpenChange={setMultiBatchUploadOpen}>
+        <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Multi-Batch Repayment Upload</DialogTitle>
+            <DialogDescription>
+              Upload one Excel file to record repayments across multiple loan batches at once.
+            </DialogDescription>
+          </DialogHeader>
+          <MultiBatchUpload
+            onComplete={() => {
+              fetchBatches();
+              refreshArrears();
+              setMultiBatchUploadOpen(false);
+            }}
+          />
         </DialogContent>
       </Dialog>
     </div>
