@@ -171,6 +171,8 @@ export default function NplStatus() {
         state: b.state,
         branch: b.bank_branch,
         organization: b.department || '',
+        nhfNumber: b.nhf_number || '',
+        loanRefNumber: b.loan_reference_number || '',
         loanAmount: Number(b.loan_amount),
         tenorMonths: b.tenor_months,
         monthlyEmi: emi,
