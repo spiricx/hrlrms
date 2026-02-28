@@ -126,9 +126,11 @@ export default function LoanRepayment() {
 
   const filtered = useMemo(() => beneficiaries.filter((b) => {
     const q = search.toLowerCase();
-    const matchesSearch = b.name.toLowerCase().includes(q) ||
+    const matchesSearch = !q || b.name.toLowerCase().includes(q) ||
       b.employee_id.toLowerCase().includes(q) ||
-      (b.nhf_number && b.nhf_number.toLowerCase().includes(q));
+      (b.nhf_number || '').toLowerCase().includes(q) ||
+      (b.loan_reference_number || '').toLowerCase().includes(q) ||
+      (b.department || '').toLowerCase().includes(q);
     const matchesState = stateFilter === 'all' || b.state === stateFilter;
     // Date range filter on commencement_date
     let matchesDate = true;
