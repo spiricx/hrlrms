@@ -348,7 +348,9 @@ export default function NplStatus() {
     if (drillLevel === 'accounts' && selectedBranch) accts = accts.filter(a => a.branch === selectedBranch);
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      accts = accts.filter(a => a.name.toLowerCase().includes(q) || a.employeeId.toLowerCase().includes(q));
+      accts = accts.filter(a => a.name.toLowerCase().includes(q) ||
+        a.employeeId.toLowerCase().includes(q) ||
+        a.organization.toLowerCase().includes(q));
     }
     return accts.sort((a, b) => b.dpd - a.dpd);
   }, [filteredAccounts, parDays, drillLevel, selectedState, selectedBranch, searchQuery, selectedBatchId, beneficiaries]);
