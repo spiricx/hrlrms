@@ -23,6 +23,7 @@ export default function Reports() {
   const [orgFilter, setOrgFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState<Date | undefined>();
   const [toDate, setToDate] = useState<Date | undefined>();
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
