@@ -44,14 +44,14 @@ const EXPECTED_HEADERS = [
   'First Name',
   'Other Name',
   'Organisations',
-  'NHF number',
+  'NHF Number',
   'Loan Reference Number',
+  'Loan Tenor',
+  'Date of Loan Disbursement',
+  'Loan Amount',
+  'Interest',
   'State',
   'Branch',
-  'Loan Tenor',
-  'Loan Amount',
-  'Date of Loan Disbursement',
-  'Interest',
 ];
 
 const parseExcelDate = parseSpreadsheetDate;
