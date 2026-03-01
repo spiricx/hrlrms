@@ -16,6 +16,10 @@ interface BatchRepaymentUploadProps {
 }
 
 interface ParsedRepaymentRow {
+  title: string;
+  surname: string;
+  firstName: string;
+  otherName: string;
   name: string;
   organisation: string;
   loanRefNo: string;
@@ -36,10 +40,13 @@ interface ParsedRepaymentRow {
 }
 
 const EXPECTED_HEADERS = [
-  'Names',
-  'Organizations',
-  'Loan Ref No',
+  'Title',
+  'Surname',
+  'First Name',
+  'Other Name',
+  'Organisations',
   'NHF Number',
+  'Loan Reference Number',
   'Remita Number',
   'Date on Remita Receipt',
   'Amount',
@@ -51,7 +58,7 @@ const parseExcelDate = parseSpreadsheetDate;
 function generateTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
     EXPECTED_HEADERS,
-    ['Adeyemi John Olu', 'Federal Ministry of Works', 'HRL-2025-00001', 'NHF-00012345', 'RRR-123456789', '2025-06-15', 19332.80, 6],
+    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 'RRR-123456789', '2025-06-15', 19332.80, 6],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Repayments');
@@ -112,9 +119,13 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
         const parsed: ParsedRepaymentRow[] = jsonData.map((row: any) => {
           const errors: string[] = [];
 
-          const name = String(row['Names'] || '').trim();
-          const organisation = String(row['Organizations'] || row['Organisations'] || '').trim();
-          const loanRefNo = String(row['Loan Ref No'] || row['Loan Reference Number'] || '').trim();
+          const title = String(row['Title'] || '').trim();
+          const surname = String(row['Surname'] || '').trim();
+          const firstName = String(row['First Name'] || '').trim();
+          const otherName = String(row['Other Name'] || '').trim();
+          const name = [surname, firstName, otherName].filter(Boolean).join(' ') || String(row['Names'] || '').trim();
+          const organisation = String(row['Organisations'] || row['Organizations'] || '').trim();
+          const loanRefNo = String(row['Loan Reference Number'] || row['Loan Ref No'] || '').trim();
           const nhfNumber = String(row['NHF Number'] || row['NHF number'] || '').trim();
           const remitaNumber = String(row['Remita Number'] || '').trim();
           const dateStr = parseExcelDate(row['Date on Remita Receipt']);
@@ -149,6 +160,10 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
           if (!matched) errors.push('No matching beneficiary found in this batch');
 
           return {
+            title,
+            surname,
+            firstName,
+            otherName,
             name,
             organisation,
             loanRefNo,

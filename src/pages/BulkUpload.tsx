@@ -44,14 +44,14 @@ const EXPECTED_HEADERS = [
   'First Name',
   'Other Name',
   'Organisations',
-  'NHF number',
+  'NHF Number',
   'Loan Reference Number',
+  'Loan Tenor',
+  'Date of Loan Disbursement',
+  'Loan Amount',
+  'Interest',
   'State',
   'Branch',
-  'Loan Tenor',
-  'Loan Amount',
-  'Date of Loan Disbursement',
-  'Interest',
 ];
 
 const parseExcelDate = parseSpreadsheetDate;
@@ -64,7 +64,7 @@ function validateRow(row: any): ParsedRow {
   const firstName = String(row['First Name'] || '').trim();
   const otherName = String(row['Other Name'] || '').trim();
   const organisation = String(row['Organisations'] || '').trim();
-  const nhfNumber = String(row['NHF number'] || '').trim();
+  const nhfNumber = String(row['NHF Number'] || row['NHF number'] || '').trim();
   const loanRef = String(row['Loan Reference Number'] || '').trim();
   const state = String(row['State'] || '').trim();
   const branch = String(row['Branch'] || '').trim();
@@ -141,7 +141,7 @@ function validateRow(row: any): ParsedRow {
 function generateTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
     EXPECTED_HEADERS,
-    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 'Lagos', 'Ikeja Branch', 3, 2500000, '2025-01-15', 6],
+    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 3, '2025-01-15', 2500000, 6, 'Lagos', 'Ikeja Branch'],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Loans');
