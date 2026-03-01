@@ -141,7 +141,7 @@ function validateRow(row: any): ParsedRow {
 function generateTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
     EXPECTED_HEADERS,
-    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 'Lagos', 'Ikeja Branch', 3, 2500000, '2025-01-15', 6],
+    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 3, '2025-01-15', 2500000, 6, 'Lagos', 'Ikeja Branch'],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Loans');
