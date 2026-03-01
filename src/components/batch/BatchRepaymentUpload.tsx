@@ -40,10 +40,13 @@ interface ParsedRepaymentRow {
 }
 
 const EXPECTED_HEADERS = [
-  'Names',
-  'Organizations',
-  'Loan Ref No',
+  'Title',
+  'Surname',
+  'First Name',
+  'Other Name',
+  'Organisations',
   'NHF Number',
+  'Loan Reference Number',
   'Remita Number',
   'Date on Remita Receipt',
   'Amount',
@@ -55,7 +58,7 @@ const parseExcelDate = parseSpreadsheetDate;
 function generateTemplate() {
   const ws = XLSX.utils.aoa_to_sheet([
     EXPECTED_HEADERS,
-    ['Adeyemi John Olu', 'Federal Ministry of Works', 'HRL-2025-00001', 'NHF-00012345', 'RRR-123456789', '2025-06-15', 19332.80, 6],
+    ['Mr', 'Adeyemi', 'John', 'Olu', 'Federal Ministry of Works', 'NHF-00012345', 'HRL-2025-00001', 'RRR-123456789', '2025-06-15', 19332.80, 6],
   ]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Repayments');
