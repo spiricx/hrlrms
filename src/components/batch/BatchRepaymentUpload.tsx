@@ -119,9 +119,13 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
         const parsed: ParsedRepaymentRow[] = jsonData.map((row: any) => {
           const errors: string[] = [];
 
-          const name = String(row['Names'] || '').trim();
-          const organisation = String(row['Organizations'] || row['Organisations'] || '').trim();
-          const loanRefNo = String(row['Loan Ref No'] || row['Loan Reference Number'] || '').trim();
+          const title = String(row['Title'] || '').trim();
+          const surname = String(row['Surname'] || '').trim();
+          const firstName = String(row['First Name'] || '').trim();
+          const otherName = String(row['Other Name'] || '').trim();
+          const name = [surname, firstName, otherName].filter(Boolean).join(' ') || String(row['Names'] || '').trim();
+          const organisation = String(row['Organisations'] || row['Organizations'] || '').trim();
+          const loanRefNo = String(row['Loan Reference Number'] || row['Loan Ref No'] || '').trim();
           const nhfNumber = String(row['NHF Number'] || row['NHF number'] || '').trim();
           const remitaNumber = String(row['Remita Number'] || '').trim();
           const dateStr = parseExcelDate(row['Date on Remita Receipt']);
@@ -156,6 +160,10 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
           if (!matched) errors.push('No matching beneficiary found in this batch');
 
           return {
+            title,
+            surname,
+            firstName,
+            otherName,
             name,
             organisation,
             loanRefNo,
