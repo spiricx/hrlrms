@@ -16,6 +16,10 @@ interface BatchRepaymentUploadProps {
 }
 
 interface ParsedRepaymentRow {
+  title: string;
+  surname: string;
+  firstName: string;
+  otherName: string;
   name: string;
   organisation: string;
   loanRefNo: string;
