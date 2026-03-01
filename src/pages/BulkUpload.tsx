@@ -64,7 +64,7 @@ function validateRow(row: any): ParsedRow {
   const firstName = String(row['First Name'] || '').trim();
   const otherName = String(row['Other Name'] || '').trim();
   const organisation = String(row['Organisations'] || '').trim();
-  const nhfNumber = String(row['NHF number'] || '').trim();
+  const nhfNumber = String(row['NHF Number'] || row['NHF number'] || '').trim();
   const loanRef = String(row['Loan Reference Number'] || '').trim();
   const state = String(row['State'] || '').trim();
   const branch = String(row['Branch'] || '').trim();
