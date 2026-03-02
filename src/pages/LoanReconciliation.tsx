@@ -119,6 +119,7 @@ const YEARS = Array.from({ length: currentYear - 2015 }, (_, i) => currentYear -
 export default function LoanReconciliation() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // ── Reconcile state ──
   const [file, setFile] = useState<File | null>(null);
