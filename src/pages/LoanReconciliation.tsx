@@ -249,7 +249,7 @@ export default function LoanReconciliation() {
     try {
       const { data: transactions } = await supabase
         .from('transactions')
-        .select('rrr_number, amount, receipt_url, beneficiary_id, beneficiaries(name)');
+        .select('rrr_number, amount, receipt_url, beneficiary_id, beneficiaries(name, department)');
 
       const { data: batchRepayments } = await supabase
         .from('batch_repayments')
