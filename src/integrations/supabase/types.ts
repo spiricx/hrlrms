@@ -95,6 +95,7 @@ export type Database = {
           nin_number: string | null
           other_name: string | null
           outstanding_balance: number
+          passport_photo_url: string | null
           phone_number: string | null
           state: string
           status: string
@@ -136,6 +137,7 @@ export type Database = {
           nin_number?: string | null
           other_name?: string | null
           outstanding_balance: number
+          passport_photo_url?: string | null
           phone_number?: string | null
           state?: string
           status?: string
@@ -177,6 +179,7 @@ export type Database = {
           nin_number?: string | null
           other_name?: string | null
           outstanding_balance?: number
+          passport_photo_url?: string | null
           phone_number?: string | null
           state?: string
           status?: string
