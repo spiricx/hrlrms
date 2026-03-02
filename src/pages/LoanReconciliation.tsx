@@ -54,6 +54,9 @@ interface MatchResult {
   dbReceiptUrl?: string;
   beneficiaryName?: string;
   batchName?: string;
+  organisation?: string;
+  beneficiaryId?: string;
+  batchId?: string;
 }
 
 interface ReconciliationSession {
