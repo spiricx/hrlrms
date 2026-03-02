@@ -234,6 +234,10 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
         continue;
       }
 
+      // Detect overpayment: if total actual > total expected, distribute variance pro-rata
+      const variance = totalActual - totalExpected;
+      const hasOverpayment = variance > 0.01 && totalExpected > 0;
+
       // Insert batch repayment record
       const { error: batchError } = await supabase.from('batch_repayments').insert({
         batch_id: batchId,
@@ -243,7 +247,9 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
         rrr_number: rrr,
         payment_date: paymentDate,
         receipt_url: '',
-        notes: `Excel upload: ${fileName}`,
+        notes: hasOverpayment
+          ? `Excel upload: ${fileName} | Overpayment of ${formatCurrency(variance)} distributed pro-rata`
+          : `Excel upload: ${fileName}`,
         recorded_by: user?.id || null,
       } as any);
 
@@ -252,18 +258,30 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
         continue;
       }
 
-      // Insert individual transactions & update balances
-      for (const row of groupRows) {
+      // Calculate pro-rata shares for overpayment distribution
+      const memberShares: { row: ParsedRepaymentRow; allocatedAmount: number }[] = groupRows.map(row => {
+        if (hasOverpayment && totalExpected > 0) {
+          const share = row.monthlyEmi / totalExpected;
+          const bonus = Math.round(variance * share * 100) / 100;
+          return { row, allocatedAmount: row.monthlyEmi + bonus };
+        }
+        return { row, allocatedAmount: row.amount };
+      });
+
+      // Insert individual transactions with distributed amounts
+      for (const { row, allocatedAmount } of memberShares) {
         if (!row.beneficiaryId) continue;
 
         const { error: txError } = await supabase.from('transactions').insert({
           beneficiary_id: row.beneficiaryId,
-          amount: row.amount,
+          amount: allocatedAmount,
           rrr_number: rrr,
           date_paid: row.dateOnRemitaReceipt,
           month_for: row.monthOfPayment,
           recorded_by: user?.id || null,
-          notes: `Batch ${batchCode} Excel upload`,
+          notes: hasOverpayment
+            ? `Batch ${batchCode} Excel upload (includes pro-rata overpayment share)`
+            : `Batch ${batchCode} Excel upload`,
         });
 
         if (txError) {
@@ -272,6 +290,13 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
         }
 
         successCount++;
+      }
+
+      if (hasOverpayment) {
+        toast({
+          title: 'Overpayment Distributed',
+          description: `${formatCurrency(variance)} overpayment for RRR ${rrr} distributed pro-rata to ${groupRows.length} members.`,
+        });
       }
     }
 

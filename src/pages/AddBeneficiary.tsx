@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload, X, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -58,6 +58,30 @@ export default function AddBeneficiary() {
     }));
   };
   const [submitting, setSubmitting] = useState(false);
+  const [passportFile, setPassportFile] = useState<File | null>(null);
+  const [passportPreview, setPassportPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePassportSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File Too Large', description: 'Passport photograph must be 5MB or less.', variant: 'destructive' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid File', description: 'Please select an image file.', variant: 'destructive' });
+      return;
+    }
+    setPassportFile(file);
+    setPassportPreview(URL.createObjectURL(file));
+  };
+
+  const clearPassport = () => {
+    setPassportFile(null);
+    setPassportPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +109,22 @@ export default function AddBeneficiary() {
     const fullName = `${form.surname} ${form.firstName}${form.otherName ? ' ' + form.otherName : ''}`;
 
     setSubmitting(true);
+
+    // Upload passport photo if provided
+    let passportPhotoUrl: string | null = null;
+    if (passportFile) {
+      const ext = passportFile.name.split('.').pop();
+      const filePath = `passport-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, passportFile);
+      if (uploadError) {
+        toast({ title: 'Photo Upload Failed', description: uploadError.message, variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      passportPhotoUrl = urlData.publicUrl;
+    }
+
     const { error } = await supabase.from('beneficiaries').insert({
       name: fullName,
       title: form.title,
@@ -118,7 +158,8 @@ export default function AddBeneficiary() {
       employer_number: form.employerNumber,
       date_of_employment: form.dateOfEmployment || null,
       loan_reference_number: form.loanReferenceNumber,
-    });
+      passport_photo_url: passportPhotoUrl,
+    } as any);
     setSubmitting(false);
 
     if (error) {
@@ -193,6 +234,32 @@ export default function AddBeneficiary() {
             <div className="space-y-2">
               <Label htmlFor="dob">Date of Birth</Label>
               <Input id="dob" type="date" value={form.dateOfBirth} onChange={e => handleChange('dateOfBirth', e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Passport Photograph */}
+        <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
+          <h2 className="text-lg font-bold font-display">Passport Photograph <span className="text-sm font-normal text-muted-foreground">(Optional)</span></h2>
+          <div className="flex items-center gap-4">
+            {passportPreview ? (
+              <div className="relative">
+                <img src={passportPreview} alt="Passport" className="w-28 h-28 rounded-lg object-cover border-2 border-border" />
+                <button type="button" onClick={clearPassport} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-28 h-28 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <User className="w-8 h-8" />
+                <span className="text-xs">Upload Photo</span>
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePassportSelect} className="hidden" />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Upload a passport photograph of the customer.</p>
+              <p className="text-xs">JPG, PNG or WEBP format. Maximum 5MB.</p>
             </div>
           </div>
         </div>

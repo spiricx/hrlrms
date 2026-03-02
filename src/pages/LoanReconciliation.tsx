@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,9 @@ interface MatchResult {
   dbReceiptUrl?: string;
   beneficiaryName?: string;
   batchName?: string;
+  organisation?: string;
+  beneficiaryId?: string;
+  batchId?: string;
 }
 
 interface ReconciliationSession {
@@ -115,6 +119,7 @@ const YEARS = Array.from({ length: currentYear - 2015 }, (_, i) => currentYear -
 export default function LoanReconciliation() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // ── Reconcile state ──
   const [file, setFile] = useState<File | null>(null);
@@ -244,38 +249,42 @@ export default function LoanReconciliation() {
     try {
       const { data: transactions } = await supabase
         .from('transactions')
-        .select('rrr_number, amount, receipt_url, beneficiary_id, beneficiaries(name)');
+        .select('rrr_number, amount, receipt_url, beneficiary_id, beneficiaries(name, department)');
 
       const { data: batchRepayments } = await supabase
         .from('batch_repayments')
         .select('rrr_number, actual_amount, receipt_url, batch_id, loan_batches(name)');
 
-      const txMap = new Map<string, { amount: number; receipt_url: string; name: string; names: string[] }>();
+      const txMap = new Map<string, { amount: number; receipt_url: string; name: string; names: string[]; beneficiaryId: string; organisation: string }>();
       (transactions || []).forEach((t: any) => {
         const rrr = (t.rrr_number || '').trim().toLowerCase();
         if (!rrr) return;
         const existing = txMap.get(rrr);
         const benefName = t.beneficiaries?.name || '';
+        const dept = t.beneficiaries?.department || '';
+        const benId = t.beneficiary_id || '';
         if (existing) {
           existing.amount += Number(t.amount);
           if (benefName && !existing.names.includes(benefName)) existing.names.push(benefName);
           existing.name = existing.names.join(', ');
+          if (!existing.organisation && dept) existing.organisation = dept;
         } else {
-          txMap.set(rrr, { amount: Number(t.amount), receipt_url: t.receipt_url || '', name: benefName, names: benefName ? [benefName] : [] });
+          txMap.set(rrr, { amount: Number(t.amount), receipt_url: t.receipt_url || '', name: benefName, names: benefName ? [benefName] : [], beneficiaryId: benId, organisation: dept });
         }
       });
 
-      const batchMap = new Map<string, { amount: number; receipt_url: string; batchName: string }>();
+      const batchMap = new Map<string, { amount: number; receipt_url: string; batchName: string; batchId: string; organisation: string }>();
       (batchRepayments || []).forEach((b: any) => {
         const rrr = (b.rrr_number || '').trim().toLowerCase();
         if (!rrr) return;
         const existing = batchMap.get(rrr);
         const bName = b.loan_batches?.name || '';
+        const bId = b.batch_id || '';
         if (existing) {
           existing.amount += Number(b.actual_amount);
           if (bName && !existing.batchName.includes(bName)) existing.batchName += ', ' + bName;
         } else {
-          batchMap.set(rrr, { amount: Number(b.actual_amount), receipt_url: b.receipt_url || '', batchName: bName });
+          batchMap.set(rrr, { amount: Number(b.actual_amount), receipt_url: b.receipt_url || '', batchName: bName, batchId: bId, organisation: bName });
         }
       });
 
@@ -283,11 +292,11 @@ export default function LoanReconciliation() {
         const rrr = row.remitaNumber.toLowerCase();
         if (txMap.has(rrr)) {
           const tx = txMap.get(rrr)!;
-          return { cbnRow: row, matchType: Math.abs(tx.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'individual', dbAmount: tx.amount, dbReceiptUrl: tx.receipt_url, beneficiaryName: tx.name } as MatchResult;
+          return { cbnRow: row, matchType: Math.abs(tx.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'individual', dbAmount: tx.amount, dbReceiptUrl: tx.receipt_url, beneficiaryName: tx.name, beneficiaryId: tx.beneficiaryId, organisation: tx.organisation } as MatchResult;
         }
         if (batchMap.has(rrr)) {
           const b = batchMap.get(rrr)!;
-          return { cbnRow: row, matchType: Math.abs(b.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'batch', dbAmount: b.amount, dbReceiptUrl: b.receipt_url, batchName: b.batchName } as MatchResult;
+          return { cbnRow: row, matchType: Math.abs(b.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'batch', dbAmount: b.amount, dbReceiptUrl: b.receipt_url, batchName: b.batchName, batchId: b.batchId, organisation: b.organisation } as MatchResult;
         }
         return { cbnRow: row, matchType: 'unmatched' } as MatchResult;
       });
@@ -748,7 +757,8 @@ export default function LoanReconciliation() {
                               <TableHead className="text-right">System Amount</TableHead>
                               <TableHead className="text-right">Variance</TableHead>
                               <TableHead>Source</TableHead>
-                              <TableHead>Beneficiary / Batch</TableHead>
+                              <TableHead>Batch / Organisation</TableHead>
+                              <TableHead>Beneficiary</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -765,7 +775,26 @@ export default function LoanReconciliation() {
                                   r.matchType === 'amount_mismatch' ? 'bg-amber-500/5' : ''
                                 }>
                                   <TableCell className="text-xs text-muted-foreground">{r.cbnRow.rowIndex}</TableCell>
-                                  <TableCell className="font-mono text-sm">{r.cbnRow.remitaNumber || '-'}</TableCell>
+                                  <TableCell className="font-mono text-sm">
+                                    {r.cbnRow.remitaNumber ? (
+                                      r.matchType !== 'unmatched' ? (
+                                        <button
+                                          className="text-primary hover:underline font-mono cursor-pointer"
+                                          onClick={() => {
+                                            if (r.source === 'individual' && r.beneficiaryId) {
+                                              navigate(`/beneficiary/${r.beneficiaryId}`);
+                                            } else if (r.source === 'batch' && r.batchId) {
+                                              navigate(`/batch-repayment?batch=${r.batchId}`);
+                                            }
+                                          }}
+                                        >
+                                          {r.cbnRow.remitaNumber}
+                                        </button>
+                                      ) : (
+                                        r.cbnRow.remitaNumber
+                                      )
+                                    ) : '-'}
+                                  </TableCell>
                                   <TableCell className="text-right font-mono text-sm">{fmt(r.cbnRow.amount)}</TableCell>
                                   <TableCell className="text-right font-mono text-sm">{r.dbAmount != null ? fmt(r.dbAmount) : '-'}</TableCell>
                                   <TableCell className="text-right font-mono text-sm">
@@ -780,7 +809,8 @@ export default function LoanReconciliation() {
                                     {r.source === 'batch' && <Badge variant="secondary" className="text-xs">Batch</Badge>}
                                     {!r.source && <span className="text-xs text-muted-foreground">-</span>}
                                   </TableCell>
-                                  <TableCell className="text-sm">{r.beneficiaryName || r.batchName || '-'}</TableCell>
+                                  <TableCell className="text-sm">{r.batchName || r.organisation || '-'}</TableCell>
+                                  <TableCell className="text-sm">{r.beneficiaryName || '-'}</TableCell>
                                   <TableCell>
                                     {r.matchType === 'exact' && <Badge className="bg-emerald-600 text-white gap-1"><CheckCircle2 className="w-3 h-3" /> Matched</Badge>}
                                     {r.matchType === 'amount_mismatch' && <Badge className="bg-amber-500 text-white gap-1"><XCircle className="w-3 h-3" /> Mismatch</Badge>}
@@ -794,7 +824,7 @@ export default function LoanReconciliation() {
                               (tab === 'mismatch' && r.matchType === 'amount_mismatch') ||
                               (tab === 'unmatched' && r.matchType === 'unmatched')).length === 0 && (
                               <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No records found</TableCell>
+                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No records found</TableCell>
                               </TableRow>
                             )}
                           </TableBody>
