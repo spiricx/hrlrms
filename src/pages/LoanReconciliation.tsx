@@ -757,7 +757,8 @@ export default function LoanReconciliation() {
                               <TableHead className="text-right">System Amount</TableHead>
                               <TableHead className="text-right">Variance</TableHead>
                               <TableHead>Source</TableHead>
-                              <TableHead>Beneficiary / Batch</TableHead>
+                              <TableHead>Batch / Organisation</TableHead>
+                              <TableHead>Beneficiary</TableHead>
                               <TableHead>Status</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -774,7 +775,26 @@ export default function LoanReconciliation() {
                                   r.matchType === 'amount_mismatch' ? 'bg-amber-500/5' : ''
                                 }>
                                   <TableCell className="text-xs text-muted-foreground">{r.cbnRow.rowIndex}</TableCell>
-                                  <TableCell className="font-mono text-sm">{r.cbnRow.remitaNumber || '-'}</TableCell>
+                                  <TableCell className="font-mono text-sm">
+                                    {r.cbnRow.remitaNumber ? (
+                                      r.matchType !== 'unmatched' ? (
+                                        <button
+                                          className="text-primary hover:underline font-mono cursor-pointer"
+                                          onClick={() => {
+                                            if (r.source === 'individual' && r.beneficiaryId) {
+                                              navigate(`/beneficiary/${r.beneficiaryId}`);
+                                            } else if (r.source === 'batch' && r.batchId) {
+                                              navigate(`/batch-repayment?batch=${r.batchId}`);
+                                            }
+                                          }}
+                                        >
+                                          {r.cbnRow.remitaNumber}
+                                        </button>
+                                      ) : (
+                                        r.cbnRow.remitaNumber
+                                      )
+                                    ) : '-'}
+                                  </TableCell>
                                   <TableCell className="text-right font-mono text-sm">{fmt(r.cbnRow.amount)}</TableCell>
                                   <TableCell className="text-right font-mono text-sm">{r.dbAmount != null ? fmt(r.dbAmount) : '-'}</TableCell>
                                   <TableCell className="text-right font-mono text-sm">
@@ -789,7 +809,8 @@ export default function LoanReconciliation() {
                                     {r.source === 'batch' && <Badge variant="secondary" className="text-xs">Batch</Badge>}
                                     {!r.source && <span className="text-xs text-muted-foreground">-</span>}
                                   </TableCell>
-                                  <TableCell className="text-sm">{r.beneficiaryName || r.batchName || '-'}</TableCell>
+                                  <TableCell className="text-sm">{r.batchName || r.organisation || '-'}</TableCell>
+                                  <TableCell className="text-sm">{r.beneficiaryName || '-'}</TableCell>
                                   <TableCell>
                                     {r.matchType === 'exact' && <Badge className="bg-emerald-600 text-white gap-1"><CheckCircle2 className="w-3 h-3" /> Matched</Badge>}
                                     {r.matchType === 'amount_mismatch' && <Badge className="bg-amber-500 text-white gap-1"><XCircle className="w-3 h-3" /> Mismatch</Badge>}
