@@ -255,32 +255,36 @@ export default function LoanReconciliation() {
         .from('batch_repayments')
         .select('rrr_number, actual_amount, receipt_url, batch_id, loan_batches(name)');
 
-      const txMap = new Map<string, { amount: number; receipt_url: string; name: string; names: string[] }>();
+      const txMap = new Map<string, { amount: number; receipt_url: string; name: string; names: string[]; beneficiaryId: string; organisation: string }>();
       (transactions || []).forEach((t: any) => {
         const rrr = (t.rrr_number || '').trim().toLowerCase();
         if (!rrr) return;
         const existing = txMap.get(rrr);
         const benefName = t.beneficiaries?.name || '';
+        const dept = t.beneficiaries?.department || '';
+        const benId = t.beneficiary_id || '';
         if (existing) {
           existing.amount += Number(t.amount);
           if (benefName && !existing.names.includes(benefName)) existing.names.push(benefName);
           existing.name = existing.names.join(', ');
+          if (!existing.organisation && dept) existing.organisation = dept;
         } else {
-          txMap.set(rrr, { amount: Number(t.amount), receipt_url: t.receipt_url || '', name: benefName, names: benefName ? [benefName] : [] });
+          txMap.set(rrr, { amount: Number(t.amount), receipt_url: t.receipt_url || '', name: benefName, names: benefName ? [benefName] : [], beneficiaryId: benId, organisation: dept });
         }
       });
 
-      const batchMap = new Map<string, { amount: number; receipt_url: string; batchName: string }>();
+      const batchMap = new Map<string, { amount: number; receipt_url: string; batchName: string; batchId: string; organisation: string }>();
       (batchRepayments || []).forEach((b: any) => {
         const rrr = (b.rrr_number || '').trim().toLowerCase();
         if (!rrr) return;
         const existing = batchMap.get(rrr);
         const bName = b.loan_batches?.name || '';
+        const bId = b.batch_id || '';
         if (existing) {
           existing.amount += Number(b.actual_amount);
           if (bName && !existing.batchName.includes(bName)) existing.batchName += ', ' + bName;
         } else {
-          batchMap.set(rrr, { amount: Number(b.actual_amount), receipt_url: b.receipt_url || '', batchName: bName });
+          batchMap.set(rrr, { amount: Number(b.actual_amount), receipt_url: b.receipt_url || '', batchName: bName, batchId: bId, organisation: bName });
         }
       });
 
@@ -288,11 +292,11 @@ export default function LoanReconciliation() {
         const rrr = row.remitaNumber.toLowerCase();
         if (txMap.has(rrr)) {
           const tx = txMap.get(rrr)!;
-          return { cbnRow: row, matchType: Math.abs(tx.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'individual', dbAmount: tx.amount, dbReceiptUrl: tx.receipt_url, beneficiaryName: tx.name } as MatchResult;
+          return { cbnRow: row, matchType: Math.abs(tx.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'individual', dbAmount: tx.amount, dbReceiptUrl: tx.receipt_url, beneficiaryName: tx.name, beneficiaryId: tx.beneficiaryId, organisation: tx.organisation } as MatchResult;
         }
         if (batchMap.has(rrr)) {
           const b = batchMap.get(rrr)!;
-          return { cbnRow: row, matchType: Math.abs(b.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'batch', dbAmount: b.amount, dbReceiptUrl: b.receipt_url, batchName: b.batchName } as MatchResult;
+          return { cbnRow: row, matchType: Math.abs(b.amount - row.amount) < 0.01 ? 'exact' : 'amount_mismatch', source: 'batch', dbAmount: b.amount, dbReceiptUrl: b.receipt_url, batchName: b.batchName, batchId: b.batchId, organisation: b.organisation } as MatchResult;
         }
         return { cbnRow: row, matchType: 'unmatched' } as MatchResult;
       });
