@@ -58,6 +58,30 @@ export default function AddBeneficiary() {
     }));
   };
   const [submitting, setSubmitting] = useState(false);
+  const [passportFile, setPassportFile] = useState<File | null>(null);
+  const [passportPreview, setPassportPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePassportSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'File Too Large', description: 'Passport photograph must be 5MB or less.', variant: 'destructive' });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid File', description: 'Please select an image file.', variant: 'destructive' });
+      return;
+    }
+    setPassportFile(file);
+    setPassportPreview(URL.createObjectURL(file));
+  };
+
+  const clearPassport = () => {
+    setPassportFile(null);
+    setPassportPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
