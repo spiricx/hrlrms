@@ -238,6 +238,32 @@ export default function AddBeneficiary() {
           </div>
         </div>
 
+        {/* Passport Photograph */}
+        <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
+          <h2 className="text-lg font-bold font-display">Passport Photograph <span className="text-sm font-normal text-muted-foreground">(Optional)</span></h2>
+          <div className="flex items-center gap-4">
+            {passportPreview ? (
+              <div className="relative">
+                <img src={passportPreview} alt="Passport" className="w-28 h-28 rounded-lg object-cover border-2 border-border" />
+                <button type="button" onClick={clearPassport} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="w-28 h-28 rounded-lg border-2 border-dashed border-border hover:border-primary/50 flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                <User className="w-8 h-8" />
+                <span className="text-xs">Upload Photo</span>
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePassportSelect} className="hidden" />
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>Upload a passport photograph of the customer.</p>
+              <p className="text-xs">JPG, PNG or WEBP format. Maximum 5MB.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Contact & Identification */}
         <div className="bg-card rounded-xl shadow-card p-6 space-y-5">
           <h2 className="text-lg font-bold font-display">Contact &amp; Identification</h2>
