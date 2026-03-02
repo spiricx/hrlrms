@@ -824,7 +824,7 @@ export default function LoanReconciliation() {
                               (tab === 'mismatch' && r.matchType === 'amount_mismatch') ||
                               (tab === 'unmatched' && r.matchType === 'unmatched')).length === 0 && (
                               <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No records found</TableCell>
+                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No records found</TableCell>
                               </TableRow>
                             )}
                           </TableBody>
