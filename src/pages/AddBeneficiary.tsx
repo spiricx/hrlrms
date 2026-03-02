@@ -109,6 +109,22 @@ export default function AddBeneficiary() {
     const fullName = `${form.surname} ${form.firstName}${form.otherName ? ' ' + form.otherName : ''}`;
 
     setSubmitting(true);
+
+    // Upload passport photo if provided
+    let passportPhotoUrl: string | null = null;
+    if (passportFile) {
+      const ext = passportFile.name.split('.').pop();
+      const filePath = `passport-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, passportFile);
+      if (uploadError) {
+        toast({ title: 'Photo Upload Failed', description: uploadError.message, variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      passportPhotoUrl = urlData.publicUrl;
+    }
+
     const { error } = await supabase.from('beneficiaries').insert({
       name: fullName,
       title: form.title,
@@ -142,7 +158,8 @@ export default function AddBeneficiary() {
       employer_number: form.employerNumber,
       date_of_employment: form.dateOfEmployment || null,
       loan_reference_number: form.loanReferenceNumber,
-    });
+      passport_photo_url: passportPhotoUrl,
+    } as any);
     setSubmitting(false);
 
     if (error) {
