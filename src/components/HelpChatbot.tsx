@@ -46,8 +46,22 @@ export default function HelpChatbot() {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1;
-    utterance.pitch = 1;
+    utterance.rate = 0.92;
+    utterance.pitch = 1.05;
+
+    // Pick a natural-sounding female voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredNames = [
+      'Microsoft Zira', 'Google UK English Female', 'Samantha', 'Karen',
+      'Moira', 'Fiona', 'Victoria', 'Google US English', 'Tessa',
+    ];
+    const femaleVoice =
+      voices.find(v => preferredNames.some(p => v.name.includes(p))) ||
+      voices.find(v => /female|woman/i.test(v.name)) ||
+      voices.find(v => ['Samantha', 'Karen', 'Zira', 'Hazel', 'Susan', 'Catherine', 'Moira', 'Tessa', 'Victoria'].some(n => v.name.includes(n))) ||
+      null;
+    if (femaleVoice) utterance.voice = femaleVoice;
+
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
