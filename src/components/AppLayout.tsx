@@ -110,10 +110,10 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
                 to={item.path}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200',
                   active ?
-                  'bg-sidebar-accent text-sidebar-primary' :
-                  'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                  'bg-sidebar-accent text-sidebar-primary translate-x-2 border-l-[3px] border-sidebar-primary shadow-sm' :
+                  'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:translate-x-1'
                 )}>
 
                 <item.icon className="w-4 h-4 flex-shrink-0" />

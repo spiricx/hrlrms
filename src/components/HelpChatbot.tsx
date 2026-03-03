@@ -1,11 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageSquareMore, X, Send, Bot, User, Loader2 } from 'lucide-react';
+import { MessageSquareMore, X, Send, Bot, User, Loader2, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/help-chat`;
+
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/[#*_~`>\-\[\]()!|]/g, '')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/\n/g, ' ')
+    .trim();
+}
 
 export default function HelpChatbot() {
   const [open, setOpen] = useState(false);
@@ -14,16 +22,55 @@ export default function HelpChatbot() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const lastSpokenRef = useRef<number>(-1);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  // Auto-read new assistant messages
+  useEffect(() => {
+    if (!ttsEnabled || loading) return;
+    const lastIdx = messages.length - 1;
+    const lastMsg = messages[lastIdx];
+    if (lastMsg?.role === 'assistant' && lastIdx > lastSpokenRef.current && lastIdx > 0) {
+      lastSpokenRef.current = lastIdx;
+      speakText(stripMarkdown(lastMsg.content));
+    }
+  }, [messages, loading, ttsEnabled]);
+
+  const speakText = useCallback((text: string) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }, []);
+
+  const toggleTts = useCallback(() => {
+    setTtsEnabled(prev => {
+      if (prev) stopSpeaking();
+      return !prev;
+    });
+  }, [stopSpeaking]);
+
   const send = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
 
+    stopSpeaking();
     const userMsg: Msg = { role: 'user', content: text };
     setMessages((prev) => [...prev, userMsg]);
     setInput('');
@@ -43,7 +90,7 @@ export default function HelpChatbot() {
     };
 
     try {
-      const allMessages = [...messages, userMsg].filter((_, i) => i > 0); // skip initial greeting
+      const allMessages = [...messages, userMsg].filter((_, i) => i > 0);
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -88,7 +135,6 @@ export default function HelpChatbot() {
         }
       }
 
-      // Flush remaining
       if (textBuffer.trim()) {
         for (let raw of textBuffer.split('\n')) {
           if (!raw) continue;
@@ -113,7 +159,7 @@ export default function HelpChatbot() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages]);
+  }, [input, loading, messages, stopSpeaking]);
 
   const quickQuestions = [
     'How do I record a loan repayment?',
@@ -141,7 +187,14 @@ export default function HelpChatbot() {
           <div className="flex items-center gap-2 px-4 py-3 gradient-primary text-primary-foreground">
             <Bot className="w-5 h-5" />
             <span className="text-sm font-semibold flex-1">HRL RMS Help Assistant</span>
-            <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded">
+            <button
+              onClick={toggleTts}
+              className={cn("p-1 rounded transition-colors", ttsEnabled ? "hover:bg-white/20" : "bg-white/20")}
+              title={ttsEnabled ? 'Mute voice' : 'Unmute voice'}
+            >
+              {ttsEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+            <button onClick={() => { setOpen(false); stopSpeaking(); }} className="p-1 hover:bg-white/20 rounded">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -202,6 +255,15 @@ export default function HelpChatbot() {
               </div>
             )}
           </div>
+
+          {/* Speaking indicator */}
+          {isSpeaking && (
+            <div className="px-3 py-1.5 bg-primary/5 border-t border-border flex items-center gap-2 text-xs text-primary">
+              <Volume2 className="w-3 h-3 animate-pulse" />
+              <span>Reading aloud...</span>
+              <button onClick={stopSpeaking} className="ml-auto text-muted-foreground hover:text-foreground text-[10px] underline">Stop</button>
+            </div>
+          )}
 
           {/* Input */}
           <div className="border-t border-border p-2 flex gap-2">

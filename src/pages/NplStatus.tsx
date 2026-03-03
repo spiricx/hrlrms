@@ -881,8 +881,8 @@ export default function NplStatus() {
                           {row.batchName}
                         </button>
                       </TableCell>
-                      <TableCell>{row.state || '—'}</TableCell>
-                      <TableCell>{row.branch || '—'}</TableCell>
+                      <TableCell>{row.state || 'Ogun'}</TableCell>
+                      <TableCell>{row.branch || 'ABEOKUTA'}</TableCell>
                       <TableCell className="text-right">{row.totalLoans}</TableCell>
                       <TableCell className="text-right">{row.maxTenor} months</TableCell>
                       <TableCell className="text-right">{formatCurrency(row.totalDisbursed)}</TableCell>

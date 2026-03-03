@@ -196,6 +196,7 @@ export default function BeneficiaryDetail() {
         totalExpected={loan.totalPayment}
         tenorMonths={beneficiary.tenor_months}
         daysOverdue={loanArrears?.days_past_due ?? 0}
+        monthsOverdue={loanArrears?.overdue_months ?? 0}
         monthsInArrears={loanArrears?.arrears_months ?? 0}
         monthsPaid={loanArrears?.months_paid ?? 0}
       />
