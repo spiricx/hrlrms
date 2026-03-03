@@ -52,7 +52,7 @@ export default function BeneficiaryDetail() {
       const [benRes, txRes, arrearsRes] = await Promise.all([
         supabase.from('beneficiaries').select('*').eq('id', id).maybeSingle(),
         supabase.from('transactions').select('*').eq('beneficiary_id', id).order('month_for', { ascending: true }),
-        supabase.from('v_loan_arrears').select('days_past_due, arrears_months, months_paid').eq('id', id).maybeSingle(),
+        supabase.from('v_loan_arrears').select('days_past_due, arrears_months, overdue_months, months_paid').eq('id', id).maybeSingle(),
       ]);
 
       if (benRes.error) {
