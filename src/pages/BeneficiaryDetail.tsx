@@ -83,6 +83,7 @@ export default function BeneficiaryDetail() {
         setLoanArrears({
           days_past_due: Number(arrearsRes.data.days_past_due) || 0,
           arrears_months: Number(arrearsRes.data.arrears_months) || 0,
+          overdue_months: Number(arrearsRes.data.overdue_months) || 0,
           months_paid: Number(arrearsRes.data.months_paid) || 0,
         });
       }
