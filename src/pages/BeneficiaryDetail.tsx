@@ -40,7 +40,7 @@ export default function BeneficiaryDetail() {
   const { id } = useParams<{ id: string }>();
   const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loanArrears, setLoanArrears] = useState<{ days_past_due: number; arrears_months: number; months_paid: number } | null>(null);
+  const [loanArrears, setLoanArrears] = useState<{ days_past_due: number; arrears_months: number; overdue_months: number; months_paid: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creatorProfile, setCreatorProfile] = useState<{ full_name: string; state: string; bank_branch: string } | null>(null);
