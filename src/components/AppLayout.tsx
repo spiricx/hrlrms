@@ -116,8 +116,8 @@ export default function AppLayout({ children }: {children: ReactNode;}) {
                   'text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                 )}>
 
-                <item.icon className="w-4 h-4" />
-                {item.label}
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Link>);
 
           })}
