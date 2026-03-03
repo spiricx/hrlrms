@@ -40,7 +40,7 @@ export default function BeneficiaryDetail() {
   const { id } = useParams<{ id: string }>();
   const [beneficiary, setBeneficiary] = useState<Beneficiary | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loanArrears, setLoanArrears] = useState<{ days_past_due: number; arrears_months: number; months_paid: number } | null>(null);
+  const [loanArrears, setLoanArrears] = useState<{ days_past_due: number; arrears_months: number; overdue_months: number; months_paid: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creatorProfile, setCreatorProfile] = useState<{ full_name: string; state: string; bank_branch: string } | null>(null);
@@ -52,7 +52,7 @@ export default function BeneficiaryDetail() {
       const [benRes, txRes, arrearsRes] = await Promise.all([
         supabase.from('beneficiaries').select('*').eq('id', id).maybeSingle(),
         supabase.from('transactions').select('*').eq('beneficiary_id', id).order('month_for', { ascending: true }),
-        supabase.from('v_loan_arrears').select('days_past_due, arrears_months, months_paid').eq('id', id).maybeSingle(),
+        supabase.from('v_loan_arrears').select('days_past_due, arrears_months, overdue_months, months_paid').eq('id', id).maybeSingle(),
       ]);
 
       if (benRes.error) {
@@ -83,6 +83,7 @@ export default function BeneficiaryDetail() {
         setLoanArrears({
           days_past_due: Number(arrearsRes.data.days_past_due) || 0,
           arrears_months: Number(arrearsRes.data.arrears_months) || 0,
+          overdue_months: Number(arrearsRes.data.overdue_months) || 0,
           months_paid: Number(arrearsRes.data.months_paid) || 0,
         });
       }
@@ -195,6 +196,7 @@ export default function BeneficiaryDetail() {
         totalExpected={loan.totalPayment}
         tenorMonths={beneficiary.tenor_months}
         daysOverdue={loanArrears?.days_past_due ?? 0}
+        monthsOverdue={loanArrears?.overdue_months ?? 0}
         monthsInArrears={loanArrears?.arrears_months ?? 0}
         monthsPaid={loanArrears?.months_paid ?? 0}
       />
