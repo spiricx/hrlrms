@@ -835,11 +835,10 @@ export default function NplStatus() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-secondary/50">
-                  <TableHead>S/N</TableHead>
-                  <TableHead>Batch Name</TableHead>
-                  <TableHead>Batch Name</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Branch</TableHead>
+                   <TableHead>S/N</TableHead>
+                   <TableHead>Batch Name</TableHead>
+                   <TableHead>State</TableHead>
+                   <TableHead>Branch</TableHead>
                   <TableHead className="text-right">Active Loans</TableHead>
                   <TableHead className="text-right">Loan Tenor</TableHead>
                   <TableHead className="text-right">Total Disbursed</TableHead>
