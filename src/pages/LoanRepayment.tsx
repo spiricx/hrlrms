@@ -506,7 +506,7 @@ export default function LoanRepayment() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((b) => {
+              {filtered.map((b, idx) => {
                 const { overdueAmount, overdueMonths, arrearsAmount, monthsInArrears } = getArrearsInfo(b);
                 return (
                   <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
