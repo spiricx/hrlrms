@@ -57,6 +57,7 @@ type Beneficiary = {
   outstanding_balance: number;
   total_paid: number;
   moratorium_months: number;
+  passport_photo_url: string | null;
 };
 
 function buildFields(b: Beneficiary) {
