@@ -1598,7 +1598,7 @@ export default function BatchRepayment() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map(batch => {
+              {filtered.map((batch, idx) => {
                 const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
                 return (
                   <tr key={batch.id} className="table-row-highlight">
@@ -1610,6 +1610,7 @@ export default function BatchRepayment() {
                         />
                       </td>
                     )}
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs">{batch.batch_code}</td>
                     <td className="px-4 py-3 font-medium">
                       <button onClick={() => openDetail(batch)} className="text-left hover:underline text-primary">

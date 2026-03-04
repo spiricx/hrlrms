@@ -172,7 +172,7 @@ export default function Dashboard() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
         <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
           <div className="p-3 rounded-lg bg-success/10">
             <CheckCircle2 className="w-6 h-6 text-success" />

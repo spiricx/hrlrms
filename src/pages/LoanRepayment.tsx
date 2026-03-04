@@ -516,6 +516,7 @@ export default function LoanRepayment() {
                     <td className="px-4 py-3 text-center">
                       <FlagButton isFlagged={isFlagged(b.id)} onToggle={() => toggleFlag(b.id)} />
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-[160px] truncate">{b.department || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>
