@@ -1580,6 +1580,7 @@ export default function BatchRepayment() {
                     />
                   </th>
                 )}
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
