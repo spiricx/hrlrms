@@ -1093,7 +1093,7 @@ export default function BatchRepayment() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {detailMembers.map(m => {
+                        {detailMembers.map((m, idx) => {
                           const mArrears = getArrearsFromMap(arrearsMap, m.id);
                           const mTxs = (detailTransactions[m.id] || []).sort((a: any, b: any) => new Date(b.date_paid).getTime() - new Date(a.date_paid).getTime());
                           const mLastTx = mTxs[0] || null;
@@ -1105,6 +1105,7 @@ export default function BatchRepayment() {
                             <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                               <FlagButton isFlagged={isFlagged(m.id)} onToggle={() => toggleFlag(m.id)} />
                             </td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                             <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.loan_reference_number || m.employee_id}</td>
