@@ -159,7 +159,7 @@ export default function Dashboard() {
       </div>
 
       {/* NPL Ratio card */}
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
           <div className="p-3 rounded-lg bg-destructive/10">
             <ShieldAlert className="w-6 h-6 text-destructive" />
