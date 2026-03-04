@@ -215,8 +215,25 @@ function BioDataDetailContent({ beneficiary, editing, setEditing, setSelected, q
   return (
     <>
       <DialogHeader>
-        <DialogTitle className="text-xl">{fullName}</DialogTitle>
-        <p className="text-sm text-muted-foreground">Individual Loan Applicant Bio Data</p>
+        <div className="flex items-start gap-4">
+          {beneficiary.passport_photo_url ? (
+            <img
+              src={beneficiary.passport_photo_url}
+              alt={`${fullName} passport photo`}
+              className="w-20 h-20 rounded-lg object-cover border-2 border-primary/20 shadow-sm flex-shrink-0"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed border-border flex-shrink-0">
+              <span className="text-2xl font-bold text-muted-foreground">
+                {(beneficiary.first_name?.[0] || beneficiary.name?.[0] || '?').toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div>
+            <DialogTitle className="text-xl">{fullName}</DialogTitle>
+            <p className="text-sm text-muted-foreground">Individual Loan Applicant Bio Data</p>
+          </div>
+        </div>
       </DialogHeader>
 
       {editing ? (
