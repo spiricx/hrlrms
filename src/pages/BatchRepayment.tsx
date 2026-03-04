@@ -1075,6 +1075,7 @@ export default function BatchRepayment() {
                         <tr className="border-b border-border bg-secondary/50">
                           <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
                           <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Name</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF No.</th>
                           <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Ref</th>
@@ -1092,7 +1093,7 @@ export default function BatchRepayment() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {detailMembers.map(m => {
+                        {detailMembers.map((m, idx) => {
                           const mArrears = getArrearsFromMap(arrearsMap, m.id);
                           const mTxs = (detailTransactions[m.id] || []).sort((a: any, b: any) => new Date(b.date_paid).getTime() - new Date(a.date_paid).getTime());
                           const mLastTx = mTxs[0] || null;
@@ -1104,6 +1105,7 @@ export default function BatchRepayment() {
                             <td className="px-4 py-3 text-center" onClick={e => e.stopPropagation()}>
                               <FlagButton isFlagged={isFlagged(m.id)} onToggle={() => toggleFlag(m.id)} />
                             </td>
+                            <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                             <td className="px-4 py-3 font-medium text-primary hover:underline">{m.name}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.nhf_number || '—'}</td>
                             <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{m.loan_reference_number || m.employee_id}</td>
@@ -1580,6 +1582,7 @@ export default function BatchRepayment() {
                     />
                   </th>
                 )}
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Batch Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
@@ -1597,7 +1600,7 @@ export default function BatchRepayment() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map(batch => {
+              {filtered.map((batch, idx) => {
                 const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
                 return (
                   <tr key={batch.id} className="table-row-highlight">
@@ -1609,6 +1612,7 @@ export default function BatchRepayment() {
                         />
                       </td>
                     )}
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3 font-mono text-xs">{batch.batch_code}</td>
                     <td className="px-4 py-3 font-medium">
                       <button onClick={() => openDetail(batch)} className="text-left hover:underline text-primary">

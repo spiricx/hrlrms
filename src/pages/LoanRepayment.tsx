@@ -485,6 +485,7 @@ export default function LoanRepayment() {
               <tr className="border-b border-border bg-secondary/50">
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground w-10">★</th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">S/N</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
@@ -505,7 +506,7 @@ export default function LoanRepayment() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filtered.map((b) => {
+              {filtered.map((b, idx) => {
                 const { overdueAmount, overdueMonths, arrearsAmount, monthsInArrears } = getArrearsInfo(b);
                 return (
                   <tr key={b.id} className={cn("table-row-highlight", monthsInArrears > 0 && "bg-destructive/5", overdueMonths > 0 && monthsInArrears === 0 && "bg-warning/5")}>
@@ -515,6 +516,7 @@ export default function LoanRepayment() {
                     <td className="px-4 py-3 text-center">
                       <FlagButton isFlagged={isFlagged(b.id)} onToggle={() => toggleFlag(b.id)} />
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{idx + 1}</td>
                     <td className="px-4 py-3 font-medium whitespace-nowrap">{b.name}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-[160px] truncate">{b.department || '—'}</td>
                     <td className="px-4 py-3 text-muted-foreground">{b.state || '—'}</td>

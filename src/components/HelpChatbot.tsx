@@ -46,19 +46,22 @@ export default function HelpChatbot() {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.92;
-    utterance.pitch = 1.05;
+    utterance.rate = 0.88;
+    utterance.pitch = 1.08;
+    utterance.volume = 0.95;
 
-    // Pick a natural-sounding female voice
+    // Pick the most natural-sounding female voice available
     const voices = window.speechSynthesis.getVoices();
     const preferredNames = [
-      'Microsoft Zira', 'Google UK English Female', 'Samantha', 'Karen',
-      'Moira', 'Fiona', 'Victoria', 'Google US English', 'Tessa',
+      'Samantha', 'Karen', 'Microsoft Zira', 'Google UK English Female',
+      'Moira', 'Fiona', 'Victoria', 'Tessa', 'Catherine', 'Hazel',
+      'Google US English', 'Susan', 'Serena', 'Martha', 'Nicky',
     ];
     const femaleVoice =
       voices.find(v => preferredNames.some(p => v.name.includes(p))) ||
       voices.find(v => /female|woman/i.test(v.name)) ||
-      voices.find(v => ['Samantha', 'Karen', 'Zira', 'Hazel', 'Susan', 'Catherine', 'Moira', 'Tessa', 'Victoria'].some(n => v.name.includes(n))) ||
+      voices.find(v => v.lang.startsWith('en') && /female|woman|samantha|karen|zira|hazel|susan|catherine|moira|tessa|victoria|serena|martha/i.test(v.name)) ||
+      voices.find(v => v.lang.startsWith('en')) ||
       null;
     if (femaleVoice) utterance.voice = femaleVoice;
 
