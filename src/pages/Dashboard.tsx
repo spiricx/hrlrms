@@ -118,7 +118,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Total Loan Facilities"
           value={String(beneficiaries.length)}
