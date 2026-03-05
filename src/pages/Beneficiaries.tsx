@@ -211,6 +211,7 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatTenor(b.tenor_months)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.loan_amount))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap font-semibold text-success">{formatCurrency(Number(b.total_paid))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {b.lastTransaction ?
