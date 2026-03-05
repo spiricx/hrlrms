@@ -329,6 +329,7 @@ export default function LoanHistory() {
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Officer</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Created</th>
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-success font-bold">Total Repaid</th>
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Health</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Days Overdue</th>
@@ -337,7 +338,7 @@ export default function LoanHistory() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">No loans match the selected filters.</td></tr>
+                <tr><td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">No loans match the selected filters.</td></tr>
               )}
               {filtered.map((b, idx) => {
                 const health = classifyHealth(b);
@@ -372,6 +373,7 @@ export default function LoanHistory() {
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-xs">{formatCurrency(Number(b.loan_amount))}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold text-success">{formatCurrency(Number(b.total_paid))}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold">
                       {formatCurrency(Number(b.outstanding_balance))}
                     </td>

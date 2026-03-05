@@ -495,6 +495,7 @@ export default function LoanRepayment() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-success font-bold">Total Repaid</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Repayment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-warning">Overdue Amt</th>
@@ -526,6 +527,7 @@ export default function LoanRepayment() {
                     <td className="px-4 py-3 whitespace-nowrap">{formatTenor(b.tenor_months)}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(Number(b.loan_amount))}</td>
                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(Number(b.outstanding_balance))}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-success">{formatCurrency(Number(b.total_paid))}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right">{b.lastPaymentAmount != null ? formatCurrency(b.lastPaymentAmount) : '—'}</td>
                     {/* Overdue */}

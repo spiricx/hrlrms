@@ -168,6 +168,7 @@ export default function Beneficiaries() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-success font-bold">Total Repaid</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Last Repayment Amt</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground text-warning">Overdue Amt</th>
@@ -210,6 +211,7 @@ export default function Beneficiaries() {
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{formatTenor(b.tenor_months)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.loan_amount))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.outstanding_balance))}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap font-semibold text-success">{formatCurrency(Number(b.total_paid))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">{formatCurrency(Number(b.monthly_emi))}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {b.lastTransaction ?
@@ -254,7 +256,7 @@ export default function Beneficiaries() {
               })}
               {filtered.length === 0 &&
               <tr>
-                  <td colSpan={16} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={19} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>
