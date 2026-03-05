@@ -69,7 +69,7 @@ export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', on
   return (
     <div className="relative group cursor-pointer" onClick={() => inputRef.current?.click()}>
       <Avatar className={size}>
-        <AvatarImage src={url || undefined} alt="Avatar" />
+        <AvatarImage src={displayUrl || undefined} alt="Avatar" />
         <AvatarFallback className="gradient-primary text-primary-foreground text-xs font-bold">
           {fallback}
         </AvatarFallback>
