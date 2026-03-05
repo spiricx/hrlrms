@@ -59,7 +59,7 @@ export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', on
     if (updateError) {
       toast.error('Failed to save avatar');
     } else {
-      setUrl(finalUrl);
+      setLocalUrl(finalUrl);
       onUpload?.(finalUrl);
       toast.success('Avatar updated!');
     }
