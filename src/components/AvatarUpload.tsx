@@ -15,8 +15,11 @@ interface AvatarUploadProps {
 export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', onUpload }: AvatarUploadProps) {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
-  const [url, setUrl] = useState(avatarUrl);
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Use localUrl (from recent upload) if available, otherwise use prop with fresh cache-buster
+  const displayUrl = localUrl || (avatarUrl ? `${avatarUrl.split('?')[0]}?t=${Date.now()}` : null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
