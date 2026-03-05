@@ -327,7 +327,7 @@ export default function BatchRepayment() {
       return;
     }
     setCreatingBatch(true);
-    const code = generateBatchCode();
+    const code = await generateBatchCode();
     const { error } = await supabase.from('loan_batches').insert({
       batch_code: code,
       name: batchName.trim(),
