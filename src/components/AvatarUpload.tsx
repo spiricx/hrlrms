@@ -51,9 +51,10 @@ export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', on
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
     const finalUrl = `${publicUrl}?t=${Date.now()}`;
 
+    // Store the clean URL (without cache-buster) in the database
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ avatar_url: finalUrl } as any)
+      .update({ avatar_url: publicUrl } as any)
       .eq('user_id', user.id);
 
     if (updateError) {
