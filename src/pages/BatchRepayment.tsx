@@ -300,10 +300,21 @@ export default function BatchRepayment() {
     return matchSearch && matchState && matchesDate;
   }), [batches, search, stateFilter, fromDate, toDate]);
 
-  const generateBatchCode = () => {
+  const generateBatchCode = async () => {
     const year = new Date().getFullYear();
-    const seq = String(batches.length + 1).padStart(3, '0');
-    return `BATCH-${year}-${seq}`;
+    const prefix = `BATCH-${year}-`;
+    // Query ALL batch codes (including deleted/recreated) to find the true max sequence
+    const { data } = await supabase
+      .from('loan_batches')
+      .select('batch_code')
+      .like('batch_code', `${prefix}%`);
+    let maxSeq = 0;
+    (data || []).forEach(row => {
+      const seqStr = row.batch_code.replace(prefix, '');
+      const num = parseInt(seqStr, 10);
+      if (!isNaN(num) && num > maxSeq) maxSeq = num;
+    });
+    return `${prefix}${String(maxSeq + 1).padStart(3, '0')}`;
   };
 
   const handleCreateBatch = async () => {
@@ -316,7 +327,7 @@ export default function BatchRepayment() {
       return;
     }
     setCreatingBatch(true);
-    const code = generateBatchCode();
+    const code = await generateBatchCode();
     const { error } = await supabase.from('loan_batches').insert({
       batch_code: code,
       name: batchName.trim(),
