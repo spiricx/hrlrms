@@ -338,7 +338,7 @@ export default function LoanHistory() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={12} className="px-4 py-12 text-center text-muted-foreground">No loans match the selected filters.</td></tr>
+                <tr><td colSpan={15} className="px-4 py-12 text-center text-muted-foreground">No loans match the selected filters.</td></tr>
               )}
               {filtered.map((b, idx) => {
                 const health = classifyHealth(b);
