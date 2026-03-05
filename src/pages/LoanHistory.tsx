@@ -373,6 +373,7 @@ export default function LoanHistory() {
                       </div>
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-xs">{formatCurrency(Number(b.loan_amount))}</td>
+                    <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold text-success">{formatCurrency(Number(b.total_paid))}</td>
                     <td className="px-3 py-2.5 text-right font-mono text-xs font-semibold">
                       {formatCurrency(Number(b.outstanding_balance))}
                     </td>
