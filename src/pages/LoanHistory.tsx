@@ -329,6 +329,7 @@ export default function LoanHistory() {
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Officer</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Created</th>
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Loan Amount</th>
+                <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-success font-bold">Total Repaid</th>
                 <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Balance</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Health</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Days Overdue</th>
