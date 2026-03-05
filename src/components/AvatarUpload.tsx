@@ -15,8 +15,11 @@ interface AvatarUploadProps {
 export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', onUpload }: AvatarUploadProps) {
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
-  const [url, setUrl] = useState(avatarUrl);
+  const [localUrl, setLocalUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Use localUrl (from recent upload) if available, otherwise use prop with fresh cache-buster
+  const displayUrl = localUrl || (avatarUrl ? `${avatarUrl.split('?')[0]}?t=${Date.now()}` : null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -48,15 +51,16 @@ export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', on
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
     const finalUrl = `${publicUrl}?t=${Date.now()}`;
 
+    // Store the clean URL (without cache-buster) in the database
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ avatar_url: finalUrl } as any)
+      .update({ avatar_url: publicUrl } as any)
       .eq('user_id', user.id);
 
     if (updateError) {
       toast.error('Failed to save avatar');
     } else {
-      setUrl(finalUrl);
+      setLocalUrl(finalUrl);
       onUpload?.(finalUrl);
       toast.success('Avatar updated!');
     }
@@ -66,7 +70,7 @@ export default function AvatarUpload({ avatarUrl, fallback, size = 'h-8 w-8', on
   return (
     <div className="relative group cursor-pointer" onClick={() => inputRef.current?.click()}>
       <Avatar className={size}>
-        <AvatarImage src={url || undefined} alt="Avatar" />
+        <AvatarImage src={displayUrl || undefined} alt="Avatar" />
         <AvatarFallback className="gradient-primary text-primary-foreground text-xs font-bold">
           {fallback}
         </AvatarFallback>
