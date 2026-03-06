@@ -189,8 +189,9 @@ export async function exportToPDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(`Beneficiary: ${beneficiary.name}`, 14, infoY);
-  doc.text(`Loan Ref: ${beneficiary.employee_id}`, 14, infoY + 5);
-  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 10);
+  doc.text(`Employee ID: ${beneficiary.employee_id}`, 14, infoY + 5);
+  doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 10);
+  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 15);
   doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
 
   doc.setFont('helvetica', 'normal');
