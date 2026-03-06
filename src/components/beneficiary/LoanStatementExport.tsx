@@ -153,7 +153,7 @@ export function exportToExcel(
 
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([buf], { type: 'application/octet-stream' });
-  saveAs(blob, `Loan_Statement_${beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.xlsx`);
+  saveAs(blob, `Loan_Statement_${beneficiary.loan_reference_number || beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.xlsx`);
   toast.success('Excel statement exported successfully');
 }
 
