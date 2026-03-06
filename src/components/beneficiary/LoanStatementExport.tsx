@@ -238,7 +238,7 @@ export async function exportToPDF(
     doc.text(`Generated: ${formatDateTime(now)} | Page ${i} of ${pageCount}`, centerX, 200, { align: 'center' });
   }
 
-  doc.save(`Loan_Statement_${beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.pdf`);
+  doc.save(`Loan_Statement_${beneficiary.loan_reference_number || beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.pdf`);
   toast.success('PDF statement exported successfully');
 }
 
