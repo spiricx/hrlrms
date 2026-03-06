@@ -708,6 +708,56 @@ export default function StaffDirectory() {
       </div>
       <div className="space-y-1"><Label>Status/Event Date</Label><Input type="date" value={form.status_date} onChange={e => handleChange('status_date', e.target.value)} /></div>
       <div className="space-y-1"><Label>Status Reason</Label><Input value={form.status_reason} onChange={e => handleChange('status_reason', e.target.value)} placeholder="e.g. Voluntary resignation" /></div>
+      
+      {/* Passport Photograph Upload */}
+      <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+        <Label>Passport Photograph (Optional)</Label>
+        <div className="flex items-center gap-4">
+          {photoPreview ? (
+            <div className="relative">
+              <img src={photoPreview} alt="Passport preview" className="w-20 h-20 rounded-lg object-cover border border-border" />
+              <button
+                type="button"
+                onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                className="absolute -top-2 -right-2 p-0.5 rounded-full bg-destructive text-destructive-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : form.passport_photo_url ? (
+            <img src={`${form.passport_photo_url.split('?')[0]}?t=${Date.now()}`} alt="Current photo" className="w-20 h-20 rounded-lg object-cover border border-border" />
+          ) : null}
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => photoInputRef.current?.click()}
+              className="gap-2"
+            >
+              <Camera className="w-4 h-4" />
+              {photoPreview || form.passport_photo_url ? 'Change Photo' : 'Upload Photo'}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">Max 5MB · JPG, PNG</p>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) {
+                  toast({ title: 'File too large', description: 'Passport photo must be under 5MB', variant: 'destructive' });
+                  return;
+                }
+                setPhotoFile(file);
+                setPhotoPreview(URL.createObjectURL(file));
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 
