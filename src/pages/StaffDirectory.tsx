@@ -59,6 +59,7 @@ const emptyForm = {
   state: '', branch: '', unit: '', department: '', designation: '',
   cadre: '', group_name: '', gender: '', marital_status: '', date_of_birth: '', phone: '',
   email: '', date_employed: '', status: 'Active', status_date: '', status_reason: '',
+  passport_photo_url: '',
 };
 
 // --- Utility functions ---
