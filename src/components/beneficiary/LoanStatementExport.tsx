@@ -192,7 +192,7 @@ export async function exportToPDF(
   doc.text(`Employee ID: ${beneficiary.employee_id}`, 14, infoY + 5);
   doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 10);
   doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 15);
-  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
+  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 20);
 
   doc.setFont('helvetica', 'normal');
   doc.text(`Organization: ${beneficiary.department}`, 150, infoY);
