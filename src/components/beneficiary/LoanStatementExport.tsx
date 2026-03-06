@@ -293,7 +293,8 @@ export function printStatement(
       <div class="info">
         <div class="info-col">
           <div class="info-row"><span class="label">Beneficiary:</span> ${beneficiary.name}</div>
-          <div class="info-row"><span class="label">Loan Reference:</span> ${beneficiary.employee_id}</div>
+          <div class="info-row"><span class="label">Employee ID:</span> ${beneficiary.employee_id}</div>
+          <div class="info-row"><span class="label">Loan Reference:</span> ${beneficiary.loan_reference_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">NHF Number:</span> ${beneficiary.nhf_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">Organization:</span> ${beneficiary.department}</div>
         </div>
