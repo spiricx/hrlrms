@@ -1,0 +1,1 @@
+ALTER TABLE public.staff_members ADD COLUMN passport_photo_url text DEFAULT NULL;

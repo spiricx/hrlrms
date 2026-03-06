@@ -773,6 +773,7 @@ export type Database = {
           nhf_number: string | null
           nin_number: string | null
           other_names: string | null
+          passport_photo_url: string | null
           phone: string | null
           staff_id: string
           state: string
@@ -803,6 +804,7 @@ export type Database = {
           nhf_number?: string | null
           nin_number?: string | null
           other_names?: string | null
+          passport_photo_url?: string | null
           phone?: string | null
           staff_id: string
           state?: string
@@ -833,6 +835,7 @@ export type Database = {
           nhf_number?: string | null
           nin_number?: string | null
           other_names?: string | null
+          passport_photo_url?: string | null
           phone?: string | null
           staff_id?: string
           state?: string
