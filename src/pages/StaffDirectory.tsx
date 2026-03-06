@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2, Upload, Pin } from 'lucide-react';
+import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2, Upload, Pin, Camera, X } from 'lucide-react';
 import BulkStaffUpload from '@/components/staff/BulkStaffUpload';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +59,7 @@ const emptyForm = {
   state: '', branch: '', unit: '', department: '', designation: '',
   cadre: '', group_name: '', gender: '', marital_status: '', date_of_birth: '', phone: '',
   email: '', date_employed: '', status: 'Active', status_date: '', status_reason: '',
+  passport_photo_url: '',
 };
 
 // --- Utility functions ---
@@ -176,6 +177,9 @@ export default function StaffDirectory() {
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
   const [submitting, setSubmitting] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Transfer state
   const [showTransfer, setShowTransfer] = useState(false);
@@ -312,13 +316,25 @@ export default function StaffDirectory() {
     }
   };
 
+  const uploadPassportPhoto = async (staffId: string, file: File): Promise<string | null> => {
+    const ext = file.name.split('.').pop();
+    const path = `staff/${staffId}/passport.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: 'Photo upload failed', description: uploadError.message, variant: 'destructive' });
+      return null;
+    }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    return publicUrl;
+  };
+
   const handleSubmit = async () => {
     if (!form.surname || !form.first_name || !form.staff_id) {
       toast({ title: 'Missing fields', description: 'Surname, First Name and Staff ID are required', variant: 'destructive' });
       return;
     }
     setSubmitting(true);
-    const payload = {
+    const payload: any = {
       title: form.title, surname: form.surname, first_name: form.first_name,
       other_names: form.other_names, staff_id: form.staff_id,
       nhf_number: form.nhf_number, bvn_number: form.bvn_number, nin_number: form.nin_number,
@@ -331,23 +347,76 @@ export default function StaffDirectory() {
       status_date: form.status_date || null, status_reason: form.status_reason,
       created_by: user?.id,
     };
-    const { data, error } = await supabase.from('staff_members').insert(payload as any).select().single();
-    setSubmitting(false);
+    const { data, error } = await supabase.from('staff_members').insert(payload).select().single();
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      // Log creation
-      if (data) {
-        await supabase.from('staff_audit_logs').insert({
-          staff_id: (data as any).id, action: 'create', field_changed: 'record',
-          old_value: '', new_value: 'Created new staff record', modified_by: user?.id,
-        } as any);
-      }
-      toast({ title: 'Staff member added' });
-      setShowAdd(false);
-      setForm({ ...emptyForm });
-      fetchStaff();
+      setSubmitting(false);
+      return;
     }
+
+    // Upload passport photo if provided
+    if (data && photoFile) {
+      const photoUrl = await uploadPassportPhoto((data as any).id, photoFile);
+      if (photoUrl) {
+        await supabase.from('staff_members').update({ passport_photo_url: photoUrl } as any).eq('id', (data as any).id);
+      }
+    }
+
+    // Log creation
+    if (data) {
+      await supabase.from('staff_audit_logs').insert({
+        staff_id: (data as any).id, action: 'create', field_changed: 'record',
+        old_value: '', new_value: 'Created new staff record', modified_by: user?.id,
+      } as any);
+
+      // If email is provided, create user account and send invitation
+      if (form.email) {
+        try {
+          const fullName = [form.surname, form.first_name, form.other_names].filter(Boolean).join(' ');
+          const tempPassword = `FMBN_${form.staff_id}_${Date.now().toString(36)}`;
+          
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: form.email,
+            password: tempPassword,
+            options: {
+              data: {
+                full_name: fullName,
+                surname: form.surname,
+                first_name: form.first_name,
+                other_names: form.other_names,
+                staff_id_no: form.staff_id,
+                nhf_account_number: form.nhf_number,
+                bank_branch: form.branch,
+                state: form.state,
+              },
+              emailRedirectTo: window.location.origin,
+            },
+          });
+
+          if (!signUpError) {
+            // Send password reset so staff can set their own password
+            await supabase.auth.resetPasswordForEmail(form.email, {
+              redirectTo: `${window.location.origin}/reset-password`,
+            });
+            toast({
+              title: 'Invitation sent!',
+              description: `A password setup link has been sent to ${form.email}. The staff member can use it to set their password and access the portal.`,
+            });
+          }
+        } catch {
+          // Non-critical: staff record was created, invitation just failed
+          toast({ title: 'Note', description: 'Staff record created but invitation email could not be sent. You can resend later.' });
+        }
+      }
+    }
+
+    setSubmitting(false);
+    toast({ title: 'Staff member added' });
+    setShowAdd(false);
+    setForm({ ...emptyForm });
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    fetchStaff();
   };
 
   const openEdit = (s: StaffMember) => {
@@ -363,6 +432,7 @@ export default function StaffDirectory() {
       date_of_birth: s.date_of_birth || '', phone: s.phone || '', email: s.email || '',
       date_employed: s.date_employed || '', status: s.status || 'Active',
       status_date: s.status_date || '', status_reason: s.status_reason || '',
+      passport_photo_url: (s as any).passport_photo_url || '',
     });
     setShowEdit(true);
   };
@@ -638,6 +708,56 @@ export default function StaffDirectory() {
       </div>
       <div className="space-y-1"><Label>Status/Event Date</Label><Input type="date" value={form.status_date} onChange={e => handleChange('status_date', e.target.value)} /></div>
       <div className="space-y-1"><Label>Status Reason</Label><Input value={form.status_reason} onChange={e => handleChange('status_reason', e.target.value)} placeholder="e.g. Voluntary resignation" /></div>
+      
+      {/* Passport Photograph Upload */}
+      <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+        <Label>Passport Photograph (Optional)</Label>
+        <div className="flex items-center gap-4">
+          {photoPreview ? (
+            <div className="relative">
+              <img src={photoPreview} alt="Passport preview" className="w-20 h-20 rounded-lg object-cover border border-border" />
+              <button
+                type="button"
+                onClick={() => { setPhotoFile(null); setPhotoPreview(null); }}
+                className="absolute -top-2 -right-2 p-0.5 rounded-full bg-destructive text-destructive-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : form.passport_photo_url ? (
+            <img src={`${form.passport_photo_url.split('?')[0]}?t=${Date.now()}`} alt="Current photo" className="w-20 h-20 rounded-lg object-cover border border-border" />
+          ) : null}
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => photoInputRef.current?.click()}
+              className="gap-2"
+            >
+              <Camera className="w-4 h-4" />
+              {photoPreview || form.passport_photo_url ? 'Change Photo' : 'Upload Photo'}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-1">Max 5MB · JPG, PNG</p>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (file.size > 5 * 1024 * 1024) {
+                  toast({ title: 'File too large', description: 'Passport photo must be under 5MB', variant: 'destructive' });
+                  return;
+                }
+                setPhotoFile(file);
+                setPhotoPreview(URL.createObjectURL(file));
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -958,12 +1078,17 @@ export default function StaffDirectory() {
       </Dialog>
 
       {/* Add/Edit Staff Dialog */}
-      <Dialog open={showAdd || showEdit} onOpenChange={open => { if (!open) { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); } }}>
+      <Dialog open={showAdd || showEdit} onOpenChange={open => { if (!open) { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); setPhotoFile(null); setPhotoPreview(null); } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{showEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</DialogTitle></DialogHeader>
           {renderFormFields()}
+          {showAdd && form.email && (
+            <p className="text-xs text-accent bg-accent/10 rounded-md px-3 py-2">
+              💡 An invitation email will be sent to <strong>{form.email}</strong> with a link to set their password and access the portal.
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-3">
-            <Button variant="outline" onClick={() => { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); setPhotoFile(null); setPhotoPreview(null); }}>Cancel</Button>
             <Button onClick={showEdit ? handleUpdate : handleSubmit} disabled={submitting}>
               {submitting ? 'Saving…' : showEdit ? 'Update Staff' : 'Add Staff'}
             </Button>

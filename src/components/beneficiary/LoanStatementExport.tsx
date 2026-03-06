@@ -110,7 +110,8 @@ export function exportToExcel(
     ['FEDERAL MORTGAGE BANK OF NIGERIA'],
     [],
     ['Beneficiary Name', beneficiary.name],
-    ['Loan Reference Number', beneficiary.employee_id],
+    ['Employee ID', beneficiary.employee_id],
+    ['Loan Reference Number', beneficiary.loan_reference_number || 'Not Set'],
     ['NHF Number', beneficiary.nhf_number || 'Not Set'],
     ['Organization', beneficiary.department],
     ['State', beneficiary.state || '—'],
@@ -152,7 +153,7 @@ export function exportToExcel(
 
   const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([buf], { type: 'application/octet-stream' });
-  saveAs(blob, `Loan_Statement_${beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.xlsx`);
+  saveAs(blob, `Loan_Statement_${beneficiary.loan_reference_number || beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.xlsx`);
   toast.success('Excel statement exported successfully');
 }
 
@@ -188,9 +189,10 @@ export async function exportToPDF(
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(`Beneficiary: ${beneficiary.name}`, 14, infoY);
-  doc.text(`Loan Ref: ${beneficiary.employee_id}`, 14, infoY + 5);
-  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 10);
-  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
+  doc.text(`Employee ID: ${beneficiary.employee_id}`, 14, infoY + 5);
+  doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 10);
+  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 15);
+  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 20);
 
   doc.setFont('helvetica', 'normal');
   doc.text(`Organization: ${beneficiary.department}`, 150, infoY);
@@ -236,7 +238,7 @@ export async function exportToPDF(
     doc.text(`Generated: ${formatDateTime(now)} | Page ${i} of ${pageCount}`, centerX, 200, { align: 'center' });
   }
 
-  doc.save(`Loan_Statement_${beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.pdf`);
+  doc.save(`Loan_Statement_${beneficiary.loan_reference_number || beneficiary.employee_id}_${beneficiary.name.replace(/\s+/g, '_')}.pdf`);
   toast.success('PDF statement exported successfully');
 }
 
@@ -291,7 +293,8 @@ export function printStatement(
       <div class="info">
         <div class="info-col">
           <div class="info-row"><span class="label">Beneficiary:</span> ${beneficiary.name}</div>
-          <div class="info-row"><span class="label">Loan Reference:</span> ${beneficiary.employee_id}</div>
+          <div class="info-row"><span class="label">Employee ID:</span> ${beneficiary.employee_id}</div>
+          <div class="info-row"><span class="label">Loan Reference:</span> ${beneficiary.loan_reference_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">NHF Number:</span> ${beneficiary.nhf_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">Organization:</span> ${beneficiary.department}</div>
         </div>
