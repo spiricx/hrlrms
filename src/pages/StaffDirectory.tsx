@@ -1078,12 +1078,17 @@ export default function StaffDirectory() {
       </Dialog>
 
       {/* Add/Edit Staff Dialog */}
-      <Dialog open={showAdd || showEdit} onOpenChange={open => { if (!open) { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); } }}>
+      <Dialog open={showAdd || showEdit} onOpenChange={open => { if (!open) { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); setPhotoFile(null); setPhotoPreview(null); } }}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{showEdit ? 'Edit Staff Member' : 'Add New Staff Member'}</DialogTitle></DialogHeader>
           {renderFormFields()}
+          {showAdd && form.email && (
+            <p className="text-xs text-accent bg-accent/10 rounded-md px-3 py-2">
+              💡 An invitation email will be sent to <strong>{form.email}</strong> with a link to set their password and access the portal.
+            </p>
+          )}
           <div className="flex justify-end gap-2 pt-3">
-            <Button variant="outline" onClick={() => { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowAdd(false); setShowEdit(false); setEditingStaff(null); setForm({ ...emptyForm }); setPhotoFile(null); setPhotoPreview(null); }}>Cancel</Button>
             <Button onClick={showEdit ? handleUpdate : handleSubmit} disabled={submitting}>
               {submitting ? 'Saving…' : showEdit ? 'Update Staff' : 'Add Staff'}
             </Button>
