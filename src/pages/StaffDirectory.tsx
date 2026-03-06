@@ -316,13 +316,25 @@ export default function StaffDirectory() {
     }
   };
 
+  const uploadPassportPhoto = async (staffId: string, file: File): Promise<string | null> => {
+    const ext = file.name.split('.').pop();
+    const path = `staff/${staffId}/passport.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
+    if (uploadError) {
+      toast({ title: 'Photo upload failed', description: uploadError.message, variant: 'destructive' });
+      return null;
+    }
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
+    return publicUrl;
+  };
+
   const handleSubmit = async () => {
     if (!form.surname || !form.first_name || !form.staff_id) {
       toast({ title: 'Missing fields', description: 'Surname, First Name and Staff ID are required', variant: 'destructive' });
       return;
     }
     setSubmitting(true);
-    const payload = {
+    const payload: any = {
       title: form.title, surname: form.surname, first_name: form.first_name,
       other_names: form.other_names, staff_id: form.staff_id,
       nhf_number: form.nhf_number, bvn_number: form.bvn_number, nin_number: form.nin_number,
@@ -335,23 +347,76 @@ export default function StaffDirectory() {
       status_date: form.status_date || null, status_reason: form.status_reason,
       created_by: user?.id,
     };
-    const { data, error } = await supabase.from('staff_members').insert(payload as any).select().single();
-    setSubmitting(false);
+    const { data, error } = await supabase.from('staff_members').insert(payload).select().single();
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      // Log creation
-      if (data) {
-        await supabase.from('staff_audit_logs').insert({
-          staff_id: (data as any).id, action: 'create', field_changed: 'record',
-          old_value: '', new_value: 'Created new staff record', modified_by: user?.id,
-        } as any);
-      }
-      toast({ title: 'Staff member added' });
-      setShowAdd(false);
-      setForm({ ...emptyForm });
-      fetchStaff();
+      setSubmitting(false);
+      return;
     }
+
+    // Upload passport photo if provided
+    if (data && photoFile) {
+      const photoUrl = await uploadPassportPhoto((data as any).id, photoFile);
+      if (photoUrl) {
+        await supabase.from('staff_members').update({ passport_photo_url: photoUrl } as any).eq('id', (data as any).id);
+      }
+    }
+
+    // Log creation
+    if (data) {
+      await supabase.from('staff_audit_logs').insert({
+        staff_id: (data as any).id, action: 'create', field_changed: 'record',
+        old_value: '', new_value: 'Created new staff record', modified_by: user?.id,
+      } as any);
+
+      // If email is provided, create user account and send invitation
+      if (form.email) {
+        try {
+          const fullName = [form.surname, form.first_name, form.other_names].filter(Boolean).join(' ');
+          const tempPassword = `FMBN_${form.staff_id}_${Date.now().toString(36)}`;
+          
+          const { error: signUpError } = await supabase.auth.signUp({
+            email: form.email,
+            password: tempPassword,
+            options: {
+              data: {
+                full_name: fullName,
+                surname: form.surname,
+                first_name: form.first_name,
+                other_names: form.other_names,
+                staff_id_no: form.staff_id,
+                nhf_account_number: form.nhf_number,
+                bank_branch: form.branch,
+                state: form.state,
+              },
+              emailRedirectTo: window.location.origin,
+            },
+          });
+
+          if (!signUpError) {
+            // Send password reset so staff can set their own password
+            await supabase.auth.resetPasswordForEmail(form.email, {
+              redirectTo: `${window.location.origin}/reset-password`,
+            });
+            toast({
+              title: 'Invitation sent!',
+              description: `A password setup link has been sent to ${form.email}. The staff member can use it to set their password and access the portal.`,
+            });
+          }
+        } catch {
+          // Non-critical: staff record was created, invitation just failed
+          toast({ title: 'Note', description: 'Staff record created but invitation email could not be sent. You can resend later.' });
+        }
+      }
+    }
+
+    setSubmitting(false);
+    toast({ title: 'Staff member added' });
+    setShowAdd(false);
+    setForm({ ...emptyForm });
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    fetchStaff();
   };
 
   const openEdit = (s: StaffMember) => {
