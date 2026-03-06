@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote, Filter, ShieldAlert } from 'lucide-react';
+import { Wallet, Users, AlertTriangle, CheckCircle2, TrendingUp, Banknote, ShieldAlert, Percent } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import StatCard from '@/components/StatCard';
 import { formatCurrency } from '@/lib/loanCalculations';
@@ -30,25 +30,19 @@ export default function Dashboard() {
     };
     fetchData();
 
-    const channel = supabase.
-    channel('dashboard-beneficiaries').
-    on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'beneficiaries' },
-      () => {fetchData();}
-    ).
-    subscribe();
+    const channel = supabase
+      .channel('dashboard-beneficiaries')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'beneficiaries' }, () => { fetchData(); })
+      .subscribe();
 
-    return () => {supabase.removeChannel(channel);};
+    return () => { supabase.removeChannel(channel); };
   }, []);
 
   const totalDisbursed = beneficiaries.reduce((s, b) => s + Number(b.loan_amount), 0);
   const totalOutstanding = beneficiaries.reduce((s, b) => s + Number(b.outstanding_balance), 0);
   const totalCollected = beneficiaries.reduce((s, b) => s + Number(b.total_paid), 0);
 
-  // Compute loan health from v_loan_arrears (Golden Record) — single source of truth
   const loanMetrics = useMemo(() => {
-    // Build a lookup from the authoritative view
     const arrearsMap = new Map<string, LoanArrears>();
     loanArrears.forEach(a => { if (a.id) arrearsMap.set(a.id, a); });
 
@@ -61,7 +55,6 @@ export default function Dashboard() {
         completed++;
         return;
       }
-
       const arrRow = arrearsMap.get(b.id);
       if (arrRow && arrRow.is_npl) {
         defaulted++;
@@ -77,7 +70,6 @@ export default function Dashboard() {
   const completedCount = loanMetrics.completed;
   const activeCount = loanMetrics.active;
 
-  // NPL metrics from v_loan_arrears (single source of truth)
   const nplMetrics = useMemo(() => {
     const activeLoans = loanArrears.filter(a => a.status !== 'completed' && Number(a.outstanding_balance) > 0);
     const nplLoans = activeLoans.filter(a => a.is_npl === true);
@@ -87,13 +79,12 @@ export default function Dashboard() {
     return { nplAmount: nplOutstanding, nplRatio, nplCount: nplLoans.length };
   }, [loanArrears]);
 
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-pulse text-muted-foreground">Loading dashboard...</div>
-      </div>);
-
+      </div>
+    );
   }
 
   return (
@@ -117,50 +108,57 @@ export default function Dashboard() {
         </ToggleGroup>
       </div>
 
-      {/* Stats */}
+      {/* Row 1: 5 cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <StatCard
           label="Total Loan Facilities"
           value={String(beneficiaries.length)}
           icon={<Users className="w-5 h-5" />}
-          trend={`${activeCount} active · ${defaultedCount} defaulted`} />
-
+          trend={`${activeCount} active · ${defaultedCount} defaulted`}
+        />
         <StatCard
           label="Total Disbursed"
           value={formatCurrency(totalDisbursed)}
           icon={<Banknote className="w-5 h-5" />}
-          variant="accent" />
-
+          variant="accent"
+        />
         <StatCard
           label="Outstanding Balance"
           value={formatCurrency(totalOutstanding)}
-          icon={<Wallet className="w-5 h-5" />} />
-
+          icon={<Wallet className="w-5 h-5" />}
+        />
         <StatCard
           label="Total Collected"
           value={formatCurrency(totalCollected)}
           icon={<TrendingUp className="w-5 h-5" />}
-          variant="success" />
-
+          variant="success"
+        />
         <StatCard
           label="Defaulted Loans"
           value={String(defaultedCount)}
           icon={<AlertTriangle className="w-5 h-5" />}
           variant="destructive"
-          trend={`of ${beneficiaries.length} total`} />
+          trend={`of ${beneficiaries.length} total`}
+        />
+      </div>
 
+      {/* Row 2: Completed, NPL Amount, NPL Ratio */}
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          label="Completed Loans"
+          value={String(completedCount)}
+          icon={<CheckCircle2 className="w-5 h-5" />}
+          variant="success"
+          trend={`of ${beneficiaries.length} total`}
+        />
         <StatCard
           label="NPL Amount"
           value={formatCurrency(nplMetrics.nplAmount)}
           icon={<ShieldAlert className="w-5 h-5" />}
           variant="destructive"
-          trend={`${nplMetrics.nplCount} NPL accounts`} />
-
-      </div>
-
-      {/* NPL Ratio card */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
+          trend={`${nplMetrics.nplCount} NPL accounts`}
+        />
+        <div className="bg-card rounded-xl p-5 shadow-card transition-shadow hover:shadow-elevated flex items-center gap-4">
           <div className="p-3 rounded-lg bg-destructive/10">
             <ShieldAlert className="w-6 h-6 text-destructive" />
           </div>
@@ -171,9 +169,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Summary cards */}
+      {/* Row 3: Completed count, Active count, Annuity Rate */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-        <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
+        <div className="bg-card rounded-xl p-5 shadow-card transition-shadow hover:shadow-elevated flex items-center gap-4">
           <div className="p-3 rounded-lg bg-success/10">
             <CheckCircle2 className="w-6 h-6 text-success" />
           </div>
@@ -182,18 +180,18 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">Completed Loans</p>
           </div>
         </div>
-        <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
+        <div className="bg-card rounded-xl p-5 shadow-card transition-shadow hover:shadow-elevated flex items-center gap-4">
           <div className="p-3 rounded-lg bg-primary/10">
-            <Users className="w-6 h-6 text-primary" />
+            <TrendingUp className="w-6 h-6 text-primary" />
           </div>
           <div>
             <p className="text-2xl font-bold font-display">{activeCount}</p>
             <p className="text-xs text-muted-foreground">Active Loans</p>
           </div>
         </div>
-        <div className="bg-card rounded-xl p-5 shadow-card flex items-center gap-4">
+        <div className="bg-card rounded-xl p-5 shadow-card transition-shadow hover:shadow-elevated flex items-center gap-4">
           <div className="p-3 rounded-lg bg-accent/10">
-            <Banknote className="w-6 h-6 text-accent" />
+            <Percent className="w-6 h-6 text-accent" />
           </div>
           <div>
             <p className="text-2xl font-bold font-display">6%</p>
@@ -204,6 +202,6 @@ export default function Dashboard() {
 
       {/* Recent Beneficiaries Widget */}
       <RecentBeneficiariesWidget healthFilter={healthFilter} />
-    </div>);
-
+    </div>
+  );
 }

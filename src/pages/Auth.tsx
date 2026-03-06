@@ -1,39 +1,26 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Mail, Lock, User, Hash, MapPin } from 'lucide-react';
+import { Mail, Lock } from 'lucide-react';
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import fmbnHero from '@/assets/fmbn_hero.jpeg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 
 export default function Auth() {
   const { user, loading } = useAuth();
-  const [isLogin, setIsLogin] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({
-    email: '',
-    password: '',
-    surname: '',
-    firstName: '',
-    otherNames: '',
-    staffIdNo: '',
-    nhfAccountNumber: '',
-    bankBranch: '',
-    state: ''
-  });
+  const [form, setForm] = useState({ email: '', password: '' });
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
-      </div>);
-
+      </div>
+    );
   }
 
   if (user) return <Navigate to="/" replace />;
@@ -43,49 +30,18 @@ export default function Auth() {
     setSubmitting(true);
 
     try {
-      if (isLogin) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: form.email,
-          password: form.password
-        });
-        if (error) throw error;
-        const surname = data.user?.user_metadata?.surname || data.user?.email?.split('@')[0] || 'User';
-        toast({ title: `Welcome back, ${surname}!`, description: 'You have signed in successfully.' });
-      } else {
-        if (!form.surname || !form.firstName || !form.staffIdNo || !form.state || !form.bankBranch) {
-          toast({ title: 'Validation Error', description: 'Please fill all required fields.', variant: 'destructive' });
-          setSubmitting(false);
-          return;
-        }
-        const fullName = [form.surname, form.firstName, form.otherNames].filter(Boolean).join(' ');
-        const { error } = await supabase.auth.signUp({
-          email: form.email,
-          password: form.password,
-          options: {
-            data: {
-              full_name: fullName,
-              surname: form.surname,
-              first_name: form.firstName,
-              other_names: form.otherNames,
-              staff_id_no: form.staffIdNo,
-              nhf_account_number: form.nhfAccountNumber,
-              bank_branch: form.bankBranch,
-              state: form.state
-            },
-            emailRedirectTo: window.location.origin
-          }
-        });
-        if (error) throw error;
-        toast({
-          title: 'Account created!',
-          description: 'Please check your email to verify your account.'
-        });
-      }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+      if (error) throw error;
+      const surname = data.user?.user_metadata?.surname || data.user?.email?.split('@')[0] || 'User';
+      toast({ title: `Welcome back, ${surname}!`, description: 'You have signed in successfully.' });
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message,
-        variant: 'destructive'
+        variant: 'destructive',
       });
     } finally {
       setSubmitting(false);
@@ -121,79 +77,13 @@ export default function Auth() {
           </div>
 
           <div className="text-center">
-            <h2 className="text-2xl font-bold font-display">
-              {isLogin ? 'Sign In' : 'Create Account'}
-            </h2>
+            <h2 className="text-2xl font-bold font-display">Sign In</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isLogin ?
-              'Enter your credentials to access the portal' :
-              'Register to get started — first user gets admin access'}
+              Enter your credentials to access the portal
             </p>
-            {!isLogin && (
-              <p className="mt-2 text-xs text-accent bg-accent/10 rounded-md px-3 py-2">
-                Staff: Use the same email address your admin registered in the Staff Directory to automatically link your account.
-              </p>
-            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin &&
-            <>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="surname">Surname *</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input id="surname" placeholder="e.g. Ogundimu" value={form.surname} onChange={(e) => set('surname', e.target.value)} className="pl-10" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <Input id="firstName" placeholder="e.g. Adebayo" value={form.firstName} onChange={(e) => set('firstName', e.target.value)} required />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="otherNames">Other Names</Label>
-                  <Input id="otherNames" placeholder="e.g. Oluwafemi" value={form.otherNames} onChange={(e) => set('otherNames', e.target.value)} />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="staffIdNo">Staff ID No. *</Label>
-                    <div className="relative">
-                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input id="staffIdNo" placeholder="e.g. EMP-1024" value={form.staffIdNo} onChange={(e) => set('staffIdNo', e.target.value)} className="pl-10" required />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="nhfAccount">NHF Account No.</Label>
-                    <Input id="nhfAccount" placeholder="e.g. NHF123456" value={form.nhfAccountNumber} onChange={(e) => set('nhfAccountNumber', e.target.value)} />
-                  </div>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>State *</Label>
-                    <Select value={form.state} onValueChange={(v) => set('state', v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select state" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {NIGERIA_STATES.map((s) =>
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                      )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bankBranch">Bank Branch *</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input id="bankBranch" placeholder="e.g. Ikeja Branch" value={form.bankBranch} onChange={(e) => set('bankBranch', e.target.value)} className="pl-10" required />
-                    </div>
-                  </div>
-                </div>
-              </>
-            }
-
             <div className="space-y-2">
               <Label htmlFor="email">Email *</Label>
               <div className="relative">
@@ -205,8 +95,8 @@ export default function Auth() {
                   value={form.email}
                   onChange={(e) => set('email', e.target.value)}
                   className="pl-10"
-                  required />
-
+                  required
+                />
               </div>
             </div>
 
@@ -222,53 +112,48 @@ export default function Auth() {
                   onChange={(e) => set('password', e.target.value)}
                   className="pl-10"
                   required
-                  minLength={6} />
-
+                  minLength={6}
+                />
               </div>
             </div>
 
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full gradient-accent text-accent-foreground border-0 font-semibold">
-              {submitting ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              className="w-full gradient-accent text-accent-foreground border-0 font-semibold"
+            >
+              {submitting ? 'Please wait...' : 'Sign In'}
             </Button>
 
-            {isLogin && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (!form.email) {
-                    toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
-                    return;
-                  }
-                  try {
-                    const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
-                      redirectTo: `${window.location.origin}/reset-password`,
-                    });
-                    if (error) throw error;
-                    toast({ title: 'Check your email', description: 'A password reset link has been sent to your email.' });
-                  } catch (err: any) {
-                    toast({ title: 'Error', description: err.message, variant: 'destructive' });
-                  }
-                }}
-                className="w-full text-center text-sm text-accent hover:underline"
-              >
-                Forgot Password?
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={async () => {
+                if (!form.email) {
+                  toast({ title: 'Enter your email', description: 'Please enter your email address first.', variant: 'destructive' });
+                  return;
+                }
+                try {
+                  const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+                    redirectTo: `${window.location.origin}/reset-password`,
+                  });
+                  if (error) throw error;
+                  toast({ title: 'Check your email', description: 'A password reset link has been sent to your email.' });
+                } catch (err: any) {
+                  toast({ title: 'Error', description: err.message, variant: 'destructive' });
+                }
+              }}
+              className="w-full text-center text-sm text-accent hover:underline"
+            >
+              Forgot Password?
+            </button>
           </form>
 
-          <p className="text-center text-sm text-muted-foreground">
-            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
-            <button
-              onClick={() => setIsLogin(!isLogin)}
-              className="font-medium text-accent hover:underline">
-              {isLogin ? 'Sign Up' : 'Sign In'}
-            </button>
+          <p className="text-center text-xs text-muted-foreground">
+            Staff accounts are created by your administrator via the Staff Directory.
+            Contact your admin if you need access.
           </p>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 }
