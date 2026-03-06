@@ -364,6 +364,7 @@ export default function StaffDirectory() {
       date_of_birth: s.date_of_birth || '', phone: s.phone || '', email: s.email || '',
       date_employed: s.date_employed || '', status: s.status || 'Active',
       status_date: s.status_date || '', status_reason: s.status_reason || '',
+      passport_photo_url: (s as any).passport_photo_url || '',
     });
     setShowEdit(true);
   };
