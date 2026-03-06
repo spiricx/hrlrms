@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2, Upload, Pin } from 'lucide-react';
+import { Search, Eye, Download, Plus, Users, Pencil, ArrowRightLeft, Calendar, Clock, Cake, History, Trash2, Upload, Pin, Camera, X } from 'lucide-react';
 import BulkStaffUpload from '@/components/staff/BulkStaffUpload';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
