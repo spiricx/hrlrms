@@ -181,8 +181,8 @@ export function printBatchReport(data: NplBatchReportData) {
   const html = `<html><head><title>NPL Batch Report - FMBN</title>
     <style>
       body{font-family:Arial,sans-serif;margin:30px;font-size:12px;color:#222}
-      .header{text-align:center;margin-bottom:16px}.header img{width:70px;height:70px;margin-bottom:8px}
-      h1{font-size:18px;margin:0;font-weight:bold}h2{font-size:14px;margin:4px 0 16px;font-weight:bold;color:#006040}
+      .header{text-align:center;margin-bottom:16px}.header img{width:80px;height:80px;margin-bottom:8px}
+      h1{font-size:22px;margin:0;font-weight:bold}h2{font-size:14px;margin:4px 0 16px;font-weight:bold;color:#006040}
       .meta{margin-bottom:20px}.meta p{margin:3px 0}.label{font-weight:bold}
       table{width:100%;border-collapse:collapse;margin:12px 0 20px}
       th{background:#006040;color:white;padding:8px;text-align:left;font-size:9px}

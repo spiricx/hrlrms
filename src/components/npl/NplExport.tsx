@@ -334,8 +334,8 @@ export function printNplReport(data: NplReportData) {
       <style>
         body { font-family: Arial, sans-serif; margin: 30px; font-size: 12px; color: #222; }
         .header { text-align: center; margin-bottom: 16px; }
-        .header img { width: 70px; height: 70px; margin-bottom: 8px; }
-        h1 { font-size: 18px; margin: 0; font-weight: bold; }
+        .header img { width: 80px; height: 80px; margin-bottom: 8px; }
+        h1 { font-size: 22px; margin: 0; font-weight: bold; }
         h2 { font-size: 14px; margin: 4px 0 16px; font-weight: bold; color: #006040; }
         .meta { margin-bottom: 20px; }
         .meta p { margin: 3px 0; }
