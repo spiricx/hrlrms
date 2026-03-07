@@ -109,7 +109,7 @@ export async function exportActivityLogsToPDF(data: ExportData) {
 
   const logoBase64 = await getLogoBase64();
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', centerX - 10, 8, 20, 20);
+    doc.addImage(logoBase64, 'PNG', centerX - 12, 8, 24, 24);
   }
 
   let y = logoBase64 ? 32 : 14;
