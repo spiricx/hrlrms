@@ -257,7 +257,7 @@ export async function exportNplToPDF(data: NplReportData) {
     if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 12, 8, 24, 24);
     let dy = logoBase64 ? 36 : 14;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(18);
     doc.text(REPORT_TITLE, centerX, dy, { align: 'center' });
     dy += 7;
     doc.setFontSize(11);
