@@ -106,11 +106,10 @@ export function exportToExcel(
   const now = new Date();
 
   const summaryData = [
-    ['HOME RENOVATION LOAN STATEMENT OF ACCOUNT'],
     ['FEDERAL MORTGAGE BANK OF NIGERIA'],
+    ['HOME RENOVATION LOAN STATEMENT OF ACCOUNT'],
     [],
     ['Beneficiary Name', beneficiary.name],
-    ['Employee ID', beneficiary.employee_id],
     ['Loan Reference Number', beneficiary.loan_reference_number || 'Not Set'],
     ['NHF Number', beneficiary.nhf_number || 'Not Set'],
     ['Organization', beneficiary.department],
@@ -174,25 +173,24 @@ export async function exportToPDF(
 
   const logoBase64 = await getLogoBase64();
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', centerX - 8, 4, 16, 16);
+    doc.addImage(logoBase64, 'PNG', centerX - 12, 4, 24, 24);
   }
 
-  const titleY = logoBase64 ? 24 : 14;
-  doc.setFontSize(16);
+  const titleY = logoBase64 ? 32 : 14;
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', centerX, titleY, { align: 'center' });
+  doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, titleY, { align: 'center' });
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, titleY + 7, { align: 'center' });
+  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', centerX, titleY + 8, { align: 'center' });
 
-  const infoY = titleY + 15;
+  const infoY = titleY + 16;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(`Beneficiary: ${beneficiary.name}`, 14, infoY);
-  doc.text(`Employee ID: ${beneficiary.employee_id}`, 14, infoY + 5);
-  doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 10);
-  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 15);
-  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 20);
+  doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 5);
+  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 10);
+  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
 
   doc.setFont('helvetica', 'normal');
   doc.text(`Organization: ${beneficiary.department}`, 150, infoY);
@@ -263,8 +261,8 @@ export function printStatement(
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; font-size: 11px; }
         .header { text-align: center; margin-bottom: 12px; }
-        .header img { width: 60px; height: 60px; margin-bottom: 6px; }
-        h1 { font-size: 20px; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        .header img { width: 80px; height: 80px; margin-bottom: 8px; }
+        h1 { font-size: 22px; text-align: center; margin-bottom: 4px; font-weight: bold; }
         h2 { font-size: 14px; text-align: center; font-weight: bold; color: #006040; margin-top: 0; margin-bottom: 12px; }
         .info { display: flex; justify-content: space-between; margin: 16px 0; }
         .info-col { }
@@ -288,12 +286,11 @@ export function printStatement(
       <div class="header">
         <img src="${logoUrl}" alt="FMBN Logo" />
       </div>
-      <h1>HOME RENOVATION LOAN STATEMENT OF ACCOUNT</h1>
-      <h2>FEDERAL MORTGAGE BANK OF NIGERIA</h2>
+      <h1>FEDERAL MORTGAGE BANK OF NIGERIA</h1>
+      <h2>HOME RENOVATION LOAN STATEMENT OF ACCOUNT</h2>
       <div class="info">
         <div class="info-col">
           <div class="info-row"><span class="label">Beneficiary:</span> ${beneficiary.name}</div>
-          <div class="info-row"><span class="label">Employee ID:</span> ${beneficiary.employee_id}</div>
           <div class="info-row"><span class="label">Loan Reference:</span> ${beneficiary.loan_reference_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">NHF Number:</span> ${beneficiary.nhf_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">Organization:</span> ${beneficiary.department}</div>

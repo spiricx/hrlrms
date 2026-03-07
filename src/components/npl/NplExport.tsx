@@ -182,11 +182,11 @@ export async function exportNplToPDF(data: NplReportData) {
   const centerX = pageWidth / 2;
 
   const logoBase64 = await getLogoBase64();
-  if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 10, 8, 20, 20);
+  if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 12, 8, 24, 24);
 
-  let y = logoBase64 ? 32 : 14;
+  let y = logoBase64 ? 36 : 14;
 
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text(REPORT_TITLE, centerX, y, { align: 'center' });
   y += 8;
@@ -254,10 +254,10 @@ export async function exportNplToPDF(data: NplReportData) {
     doc.addPage();
 
     // Add logo and title on detail page too
-    if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 10, 8, 20, 20);
-    let dy = logoBase64 ? 32 : 14;
+    if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 12, 8, 24, 24);
+    let dy = logoBase64 ? 36 : 14;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14);
+    doc.setFontSize(18);
     doc.text(REPORT_TITLE, centerX, dy, { align: 'center' });
     dy += 7;
     doc.setFontSize(11);
@@ -334,8 +334,8 @@ export function printNplReport(data: NplReportData) {
       <style>
         body { font-family: Arial, sans-serif; margin: 30px; font-size: 12px; color: #222; }
         .header { text-align: center; margin-bottom: 16px; }
-        .header img { width: 70px; height: 70px; margin-bottom: 8px; }
-        h1 { font-size: 18px; margin: 0; font-weight: bold; }
+        .header img { width: 80px; height: 80px; margin-bottom: 8px; }
+        h1 { font-size: 22px; margin: 0; font-weight: bold; }
         h2 { font-size: 14px; margin: 4px 0 16px; font-weight: bold; color: #006040; }
         .meta { margin-bottom: 20px; }
         .meta p { margin: 3px 0; }

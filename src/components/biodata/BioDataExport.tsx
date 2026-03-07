@@ -127,11 +127,11 @@ export async function exportBioDataToPDF(data: BioDataReportData) {
   const logoBase64 = await getLogoBase64();
   let y = 20;
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', centerX - 20, y, 40, 40);
-    y += 48;
+    doc.addImage(logoBase64, 'PNG', centerX - 12, y, 24, 24);
+    y += 30;
   }
 
-  doc.setFontSize(14);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, y, { align: 'center' });
   y += 16;
