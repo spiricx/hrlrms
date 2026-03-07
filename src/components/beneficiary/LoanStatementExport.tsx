@@ -106,11 +106,10 @@ export function exportToExcel(
   const now = new Date();
 
   const summaryData = [
-    ['HOME RENOVATION LOAN STATEMENT OF ACCOUNT'],
     ['FEDERAL MORTGAGE BANK OF NIGERIA'],
+    ['HOME RENOVATION LOAN STATEMENT OF ACCOUNT'],
     [],
     ['Beneficiary Name', beneficiary.name],
-    ['Employee ID', beneficiary.employee_id],
     ['Loan Reference Number', beneficiary.loan_reference_number || 'Not Set'],
     ['NHF Number', beneficiary.nhf_number || 'Not Set'],
     ['Organization', beneficiary.department],
