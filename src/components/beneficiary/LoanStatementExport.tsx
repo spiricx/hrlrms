@@ -173,25 +173,24 @@ export async function exportToPDF(
 
   const logoBase64 = await getLogoBase64();
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', centerX - 8, 4, 16, 16);
+    doc.addImage(logoBase64, 'PNG', centerX - 12, 4, 24, 24);
   }
 
-  const titleY = logoBase64 ? 24 : 14;
-  doc.setFontSize(16);
+  const titleY = logoBase64 ? 32 : 14;
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', centerX, titleY, { align: 'center' });
+  doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, titleY, { align: 'center' });
   doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, titleY + 7, { align: 'center' });
+  doc.text('HOME RENOVATION LOAN STATEMENT OF ACCOUNT', centerX, titleY + 8, { align: 'center' });
 
-  const infoY = titleY + 15;
+  const infoY = titleY + 16;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text(`Beneficiary: ${beneficiary.name}`, 14, infoY);
-  doc.text(`Employee ID: ${beneficiary.employee_id}`, 14, infoY + 5);
-  doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 10);
-  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 15);
-  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 20);
+  doc.text(`Loan Ref: ${beneficiary.loan_reference_number || 'Not Set'}`, 14, infoY + 5);
+  doc.text(`NHF Number: ${beneficiary.nhf_number || 'Not Set'}`, 14, infoY + 10);
+  doc.text(`Total Paid: ${formatCurrency(Number(beneficiary.total_paid))}`, 14, infoY + 15);
 
   doc.setFont('helvetica', 'normal');
   doc.text(`Organization: ${beneficiary.department}`, 150, infoY);
