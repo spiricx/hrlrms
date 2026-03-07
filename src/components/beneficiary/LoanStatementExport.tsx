@@ -261,8 +261,8 @@ export function printStatement(
       <style>
         body { font-family: Arial, sans-serif; margin: 20px; font-size: 11px; }
         .header { text-align: center; margin-bottom: 12px; }
-        .header img { width: 60px; height: 60px; margin-bottom: 6px; }
-        h1 { font-size: 20px; text-align: center; margin-bottom: 4px; font-weight: bold; }
+        .header img { width: 80px; height: 80px; margin-bottom: 8px; }
+        h1 { font-size: 22px; text-align: center; margin-bottom: 4px; font-weight: bold; }
         h2 { font-size: 14px; text-align: center; font-weight: bold; color: #006040; margin-top: 0; margin-bottom: 12px; }
         .info { display: flex; justify-content: space-between; margin: 16px 0; }
         .info-col { }
@@ -286,12 +286,11 @@ export function printStatement(
       <div class="header">
         <img src="${logoUrl}" alt="FMBN Logo" />
       </div>
-      <h1>HOME RENOVATION LOAN STATEMENT OF ACCOUNT</h1>
-      <h2>FEDERAL MORTGAGE BANK OF NIGERIA</h2>
+      <h1>FEDERAL MORTGAGE BANK OF NIGERIA</h1>
+      <h2>HOME RENOVATION LOAN STATEMENT OF ACCOUNT</h2>
       <div class="info">
         <div class="info-col">
           <div class="info-row"><span class="label">Beneficiary:</span> ${beneficiary.name}</div>
-          <div class="info-row"><span class="label">Employee ID:</span> ${beneficiary.employee_id}</div>
           <div class="info-row"><span class="label">Loan Reference:</span> ${beneficiary.loan_reference_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">NHF Number:</span> ${beneficiary.nhf_number || 'Not Set'}</div>
           <div class="info-row"><span class="label">Organization:</span> ${beneficiary.department}</div>

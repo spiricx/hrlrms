@@ -942,10 +942,26 @@ export default function StaffDirectory() {
           {selected && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-lg flex items-center gap-2">
-                  Staff Profile – {selected.title} {selected.surname} {selected.first_name}
-                  {isNearRetirement(selected.date_of_birth) && <span className="text-destructive animate-pulse text-sm">⚠️ Near Retirement</span>}
-                </DialogTitle>
+                <div className="flex items-start gap-4">
+                  {(selected as any).passport_photo_url ? (
+                    <img
+                      src={`${((selected as any).passport_photo_url as string).split('?')[0]}?t=${Date.now()}`}
+                      alt={`${selected.surname} ${selected.first_name}`}
+                      className="w-20 h-20 rounded-lg object-cover border-2 border-primary/20 shadow-sm flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-2xl font-bold flex-shrink-0 border-2 border-border">
+                      {(selected.surname?.[0] || '').toUpperCase()}{(selected.first_name?.[0] || '').toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <DialogTitle className="text-lg flex items-center gap-2">
+                      Staff Profile – {selected.title} {selected.surname} {selected.first_name}
+                      {isNearRetirement(selected.date_of_birth) && <span className="text-destructive animate-pulse text-sm">⚠️ Near Retirement</span>}
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground mt-1">Staff ID: {selected.staff_id} · {selected.state}, {selected.branch}</p>
+                  </div>
+                </div>
               </DialogHeader>
               <Tabs value={profileTab} onValueChange={setProfileTab}>
                 <TabsList className="mb-3">
