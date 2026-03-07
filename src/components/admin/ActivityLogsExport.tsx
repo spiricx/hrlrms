@@ -112,9 +112,9 @@ export async function exportActivityLogsToPDF(data: ExportData) {
     doc.addImage(logoBase64, 'PNG', centerX - 12, 8, 24, 24);
   }
 
-  let y = logoBase64 ? 32 : 14;
+  let y = logoBase64 ? 36 : 14;
 
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, y, { align: 'center' });
   y += 8;

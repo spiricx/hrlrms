@@ -115,7 +115,7 @@ export async function exportBatchToPDF(data: NplBatchReportData) {
   if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 12, 8, 24, 24);
   let y = logoBase64 ? 36 : 14;
 
-  doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18); doc.setFont('helvetica', 'bold');
   doc.text(REPORT_TITLE, centerX, y, { align: 'center' }); y += 8;
   doc.setFontSize(12);
   doc.text(REPORT_SUBTITLE, centerX, y, { align: 'center' }); y += 10;
