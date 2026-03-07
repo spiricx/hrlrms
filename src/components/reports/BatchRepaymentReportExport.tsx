@@ -142,11 +142,11 @@ export async function exportBatchReportToPDF(data: BatchRepaymentReportData) {
   const centerX = pageWidth / 2;
 
   const logoBase64 = await getLogoBase64();
-  if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 10, 6, 20, 20);
+  if (logoBase64) doc.addImage(logoBase64, 'PNG', centerX - 12, 6, 24, 24);
 
-  let y = logoBase64 ? 30 : 12;
+  let y = logoBase64 ? 34 : 12;
 
-  doc.setFontSize(16);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
   doc.text('FEDERAL MORTGAGE BANK OF NIGERIA', centerX, y, { align: 'center' });
   y += 8;
