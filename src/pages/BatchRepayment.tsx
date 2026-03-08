@@ -1615,7 +1615,7 @@ export default function BatchRepayment() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((batch, idx) => {
-                const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
+                const s = batchStats[batch.id] || { count: 0, totalAmount: 0, totalPaid: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
                 return (
                   <tr key={batch.id} className="table-row-highlight">
                     {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
