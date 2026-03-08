@@ -258,15 +258,17 @@ export default function MultiBatchUpload({ onComplete }: MultiBatchUploadProps) 
       const monthFor = groupRows[0].monthOfPayment;
       const paymentDate = groupRows[0].dateOnRemitaReceipt;
 
-      // Check duplicate RRR
+      // Check duplicate RRR within the same batch only
+      const batchIdForRrr = groupRows[0].batchId;
       const { data: existing } = await supabase
         .from('batch_repayments')
         .select('id')
         .eq('rrr_number', rrr)
+        .eq('batch_id', batchIdForRrr)
         .maybeSingle();
 
       if (existing) {
-        toast({ title: 'Duplicate RRR', description: `RRR "${rrr}" already used. Skipping group.`, variant: 'destructive' });
+        toast({ title: 'Duplicate RRR', description: `RRR "${rrr}" already used for this batch. Skipping group.`, variant: 'destructive' });
         errorCount += groupRows.length;
         continue;
       }

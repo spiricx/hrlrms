@@ -142,7 +142,7 @@ export default function RepaymentHistoryTable({
                   <td className="px-4 py-3 text-muted-foreground">
                     {latestTxn ? formatDate(new Date(latestTxn.date_paid)) : '—'}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs">
+                  <td className="px-4 py-3 font-mono text-sm">
                     {latestTxn ? latestTxn.rrr_number : '—'}
                   </td>
                   <td className="px-4 py-3">
