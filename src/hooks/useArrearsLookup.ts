@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 import type { Tables } from '@/integrations/supabase/types';
 
 export type ArrearsRow = Tables<'v_loan_arrears'>;
@@ -23,15 +24,22 @@ export function useArrearsLookup(): ArrearsLookup {
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
-    const { data } = await supabase
-      .from('v_loan_arrears')
-      .select('*');
-
-    const m = new Map<string, ArrearsRow>();
-    (data || []).forEach((row) => {
-      if (row.id) m.set(row.id, row);
-    });
-    setMap(m);
+    try {
+      const data = await fetchAllRows<ArrearsRow>('v_loan_arrears');
+      const m = new Map<string, ArrearsRow>();
+      data.forEach((row) => {
+        if (row.id) m.set(row.id, row);
+      });
+      setMap(m);
+    } catch {
+      // fallback to single query
+      const { data } = await supabase.from('v_loan_arrears').select('*');
+      const m = new Map<string, ArrearsRow>();
+      (data || []).forEach((row) => {
+        if (row.id) m.set(row.id, row);
+      });
+      setMap(m);
+    }
     setLoading(false);
   };
 

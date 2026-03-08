@@ -459,15 +459,16 @@ export default function BatchRepayment() {
       return;
     }
 
-    // Check duplicate RRR in batch_repayments for each RRR
+    // Check duplicate RRR in batch_repayments for the SAME batch only
     for (const rrr of rrrList) {
       const { data: existingBatch } = await supabase
         .from('batch_repayments')
         .select('id')
         .eq('rrr_number', rrr)
+        .eq('batch_id', payBatch.id)
         .maybeSingle();
       if (existingBatch) {
-        toast({ title: 'Duplicate RRR', description: `RRR "${rrr}" has already been used for a batch repayment.`, variant: 'destructive' });
+        toast({ title: 'Duplicate RRR', description: `RRR "${rrr}" has already been used for this batch.`, variant: 'destructive' });
         return;
       }
     }
