@@ -215,6 +215,7 @@ export default function BatchRepayment() {
   interface BatchStat {
     count: number;
     totalAmount: number;
+    totalPaid: number;
     monthlyDue: number;
     outstanding: number;
     tenorMonths: number;
@@ -229,7 +230,7 @@ export default function BatchRepayment() {
     const fetchStats = async () => {
       const { data } = await supabase
         .from('beneficiaries')
-        .select('batch_id, loan_amount, monthly_emi, outstanding_balance, tenor_months, total_paid, commencement_date, status')
+        .select('id, batch_id, loan_amount, monthly_emi, outstanding_balance, tenor_months, total_paid, commencement_date, status')
         .not('batch_id', 'is', null);
 
       // Fetch last batch repayment per batch
@@ -252,13 +253,14 @@ export default function BatchRepayment() {
         data.forEach((b: any) => {
           if (!b.batch_id) return;
           if (!stats[b.batch_id]) stats[b.batch_id] = {
-            count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0,
+            count: 0, totalAmount: 0, totalPaid: 0, monthlyDue: 0, outstanding: 0,
             tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0,
             lastPaymentDate: null, lastPaymentAmount: null,
           };
           const s = stats[b.batch_id];
           s.count++;
           s.totalAmount += Number(b.loan_amount);
+          s.totalPaid += Number(b.total_paid);
           s.monthlyDue += Number(b.monthly_emi);
           s.outstanding += Number(b.outstanding_balance);
           // Use max tenor for display
@@ -1600,6 +1602,7 @@ export default function BatchRepayment() {
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount Disbursed (₦)</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tenor</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiaries</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-success">Total Paid (₦)</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Outstanding (₦)</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly Repayment (₦)</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount in Arrears (₦)</th>
@@ -1612,7 +1615,7 @@ export default function BatchRepayment() {
             </thead>
             <tbody className="divide-y divide-border">
               {filtered.map((batch, idx) => {
-                const s = batchStats[batch.id] || { count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
+                const s = batchStats[batch.id] || { count: 0, totalAmount: 0, totalPaid: 0, monthlyDue: 0, outstanding: 0, tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0, lastPaymentDate: null, lastPaymentAmount: null };
                 return (
                   <tr key={batch.id} className="table-row-highlight">
                     {(isAdmin || hasRole('loan_officer') || hasRole('manager')) && (
@@ -1634,6 +1637,7 @@ export default function BatchRepayment() {
                     <td className="px-4 py-3 text-right">{formatCurrency(s.totalAmount)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.tenorMonths > 0 ? formatTenor(s.tenorMonths) : '—'}</td>
                     <td className="px-4 py-3 text-right">{s.count}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-success">{formatCurrency(s.totalPaid)}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(s.outstanding)}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(s.monthlyDue)}</td>
                     <td className={`px-4 py-3 text-right font-medium ${s.arrearsAmount > 0 ? 'text-destructive' : ''}`}>{s.arrearsAmount > 0 ? formatCurrency(s.arrearsAmount) : '—'}</td>
