@@ -258,7 +258,7 @@ export default function Beneficiaries() {
               })}
               {filtered.length === 0 &&
               <tr>
-                  <td colSpan={19} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={20} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>
