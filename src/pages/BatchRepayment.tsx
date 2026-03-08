@@ -1637,6 +1637,7 @@ export default function BatchRepayment() {
                     <td className="px-4 py-3 text-right">{formatCurrency(s.totalAmount)}</td>
                     <td className="px-4 py-3 text-muted-foreground">{s.tenorMonths > 0 ? formatTenor(s.tenorMonths) : '—'}</td>
                     <td className="px-4 py-3 text-right">{s.count}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-success">{formatCurrency(s.totalPaid)}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(s.outstanding)}</td>
                     <td className="px-4 py-3 text-right">{formatCurrency(s.monthlyDue)}</td>
                     <td className={`px-4 py-3 text-right font-medium ${s.arrearsAmount > 0 ? 'text-destructive' : ''}`}>{s.arrearsAmount > 0 ? formatCurrency(s.arrearsAmount) : '—'}</td>
