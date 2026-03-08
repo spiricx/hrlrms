@@ -253,13 +253,14 @@ export default function BatchRepayment() {
         data.forEach((b: any) => {
           if (!b.batch_id) return;
           if (!stats[b.batch_id]) stats[b.batch_id] = {
-            count: 0, totalAmount: 0, monthlyDue: 0, outstanding: 0,
+            count: 0, totalAmount: 0, totalPaid: 0, monthlyDue: 0, outstanding: 0,
             tenorMonths: 0, arrearsAmount: 0, monthsInArrears: 0,
             lastPaymentDate: null, lastPaymentAmount: null,
           };
           const s = stats[b.batch_id];
           s.count++;
           s.totalAmount += Number(b.loan_amount);
+          s.totalPaid += Number(b.total_paid);
           s.monthlyDue += Number(b.monthly_emi);
           s.outstanding += Number(b.outstanding_balance);
           // Use max tenor for display
