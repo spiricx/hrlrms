@@ -215,6 +215,7 @@ export default function BatchRepayment() {
   interface BatchStat {
     count: number;
     totalAmount: number;
+    totalPaid: number;
     monthlyDue: number;
     outstanding: number;
     tenorMonths: number;
