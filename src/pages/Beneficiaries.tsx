@@ -202,6 +202,7 @@ export default function Beneficiaries() {
                         {b.name}
                       </Link>
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{b.department || '—'}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="text-accent hover:underline font-mono text-xs">
                         {b.employee_id}
