@@ -162,6 +162,7 @@ export default function Beneficiaries() {
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-destructive w-10">⚑</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Beneficiary Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Organization</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">NHF NO </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">State</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branch</th>
@@ -201,6 +202,7 @@ export default function Beneficiaries() {
                         {b.name}
                       </Link>
                     </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{b.department || '—'}</td>
                     <td className="px-4 py-3">
                       <Link to={`/beneficiary/${b.id}`} className="text-accent hover:underline font-mono text-xs">
                         {b.employee_id}
@@ -256,7 +258,7 @@ export default function Beneficiaries() {
               })}
               {filtered.length === 0 &&
               <tr>
-                  <td colSpan={19} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={20} className="px-6 py-12 text-center text-muted-foreground">
                     No beneficiaries found matching your search.
                   </td>
                 </tr>
