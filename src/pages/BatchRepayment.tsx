@@ -230,7 +230,7 @@ export default function BatchRepayment() {
     const fetchStats = async () => {
       const { data } = await supabase
         .from('beneficiaries')
-        .select('batch_id, loan_amount, monthly_emi, outstanding_balance, tenor_months, total_paid, commencement_date, status')
+        .select('id, batch_id, loan_amount, monthly_emi, outstanding_balance, tenor_months, total_paid, commencement_date, status')
         .not('batch_id', 'is', null);
 
       // Fetch last batch repayment per batch
