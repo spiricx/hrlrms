@@ -63,7 +63,7 @@ function toRow(r: BatchDefaultRecord, i: number): (string | number)[] {
   return [
     i + 1, r.batchName, r.batchCode, r.state, r.branch, r.totalBeneficiaries,
     r.defaultCount, r.totalLoanAmount, r.totalOutstanding, r.totalPaid,
-    r.totalArrearsAmount, r.avgMonthsInArrears, r.status,
+    r.totalArrearsAmount, r.avgMonthsInArrears, r.avgAgeOfArrears, r.status,
   ];
 }
 

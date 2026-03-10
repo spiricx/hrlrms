@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
@@ -9,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight } from 'lucide-react';
 import BatchDefaultsExport, { type BatchDefaultRecord } from './BatchDefaultsExport';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -29,18 +30,24 @@ interface BatchStat {
   totalPaid: number;
   totalArrearsAmount: number;
   avgMonthsInArrears: number;
+  avgAgeOfArrears: number;
+  nplAmount: number;
+  nplCount: number;
   status: string;
+  defaultingBeneficiaries: { beneficiary: Beneficiary; arrears: ReturnType<typeof getArrearsFromMap> }[];
 }
 
 export default function BatchDefaultsTab() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const navigate = useNavigate();
   const { map: arrearsMap, loading: arrearsLoading } = useArrearsLookup();
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
   const [batches, setBatches] = useState<LoanBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffName, setStaffName] = useState('');
+  const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
 
   // Filters
   const [stateFilter, setStateFilter] = useState('all');
@@ -60,7 +67,7 @@ export default function BatchDefaultsTab() {
     const fetch = async () => {
       setLoading(true);
       const [bRows, batRows] = await Promise.all([
-        fetchAllRows<Beneficiary>('beneficiaries', 'id, batch_id, name, loan_amount, outstanding_balance, total_paid, status, state, bank_branch, department'),
+        fetchAllRows<Beneficiary>('beneficiaries', 'id, batch_id, name, loan_amount, outstanding_balance, total_paid, status, state, bank_branch, department, employee_id, nhf_number, loan_reference_number, tenor_months, monthly_emi, commencement_date'),
         fetchAllRows<LoanBatch>('loan_batches'),
       ]);
       setBeneficiaries(bRows);
@@ -76,7 +83,6 @@ export default function BatchDefaultsTab() {
     return m;
   }, [batches]);
 
-  // Branches derived from batches filtered by state
   const branchOptions = useMemo(() => {
     const filtered = stateFilter === 'all' ? batches : batches.filter(b => b.state === stateFilter);
     return [...new Set(filtered.map(b => b.bank_branch).filter(Boolean))].sort();
@@ -84,11 +90,9 @@ export default function BatchDefaultsTab() {
 
   useEffect(() => { setBranchFilter('all'); }, [stateFilter]);
 
-  // Aggregate by batch, filter to only batches that have defaulting beneficiaries
   const batchStats = useMemo(() => {
     if (arrearsLoading) return [];
 
-    // Group beneficiaries by batch
     const groups = new Map<string, Beneficiary[]>();
     beneficiaries.forEach(b => {
       if (!b.batch_id) return;
@@ -103,10 +107,13 @@ export default function BatchDefaultsTab() {
       const batch = batchMap.get(batchId);
       if (!batch) return;
 
-      // Count defaults in this batch
       let defaultCount = 0;
       let totalArrearsAmount = 0;
       let totalMonthsArrears = 0;
+      let totalDaysArrears = 0;
+      let nplAmount = 0;
+      let nplCount = 0;
+      const defaultingBeneficiaries: BatchStat['defaultingBeneficiaries'] = [];
 
       bens.forEach(b => {
         const arrears = getArrearsFromMap(arrearsMap, b.id);
@@ -114,13 +121,17 @@ export default function BatchDefaultsTab() {
           defaultCount++;
           totalArrearsAmount += arrears.arrearsAmount;
           totalMonthsArrears += arrears.arrearsMonths;
+          totalDaysArrears += arrears.daysOverdue;
+          defaultingBeneficiaries.push({ beneficiary: b, arrears });
+          if (arrears.daysOverdue >= 90) {
+            nplCount++;
+            nplAmount += Number(b.outstanding_balance);
+          }
         }
       });
 
-      // Only include batches with at least one default
       if (defaultCount === 0) return;
 
-      // Filters
       if (stateFilter !== 'all' && batch.state !== stateFilter) return;
       if (branchFilter !== 'all' && batch.bank_branch !== branchFilter) return;
       if (searchQuery) {
@@ -142,7 +153,11 @@ export default function BatchDefaultsTab() {
         totalPaid: bens.reduce((s, b) => s + Number(b.total_paid), 0),
         totalArrearsAmount,
         avgMonthsInArrears: defaultCount > 0 ? Math.round(totalMonthsArrears / defaultCount) : 0,
+        avgAgeOfArrears: defaultCount > 0 ? Math.round(totalDaysArrears / defaultCount) : 0,
+        nplAmount,
+        nplCount,
         status: batch.status,
+        defaultingBeneficiaries: defaultingBeneficiaries.sort((a, b) => b.arrears.arrearsMonths - a.arrears.arrearsMonths),
       });
     });
 
@@ -162,15 +177,19 @@ export default function BatchDefaultsTab() {
       totalPaid: s.totalPaid,
       totalArrearsAmount: s.totalArrearsAmount,
       avgMonthsInArrears: s.avgMonthsInArrears,
+      avgAgeOfArrears: s.avgAgeOfArrears,
       status: s.status,
     })),
   [batchStats]);
+
+  const totalNplAmount = batchStats.reduce((s, b) => s + b.nplAmount, 0);
+  const totalDefaultCount = batchStats.reduce((s, b) => s + b.defaultCount, 0);
+  const totalNplCount = batchStats.reduce((s, b) => s + b.nplCount, 0);
 
   const isLoading = loading || arrearsLoading;
 
   return (
     <div className="space-y-5">
-      {/* Export Buttons */}
       <div className="flex justify-end">
         <BatchDefaultsExport records={exportRecords} staffName={staffName} filters={{ state: stateFilter, branch: branchFilter }} />
       </div>
@@ -212,18 +231,28 @@ export default function BatchDefaultsTab() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Batches with Defaults</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">{batchStats.length.toLocaleString()}</p>
         </div>
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Defaulting Accounts</p>
-          <p className="mt-1 text-2xl font-bold font-display text-destructive">{batchStats.reduce((s, b) => s + b.defaultCount, 0).toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">{totalDefaultCount.toLocaleString()}</p>
         </div>
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Arrears Amount</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">{formatCurrency(batchStats.reduce((s, b) => s + b.totalArrearsAmount, 0))}</p>
+        </div>
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Amount</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">{formatCurrency(totalNplAmount)}</p>
+        </div>
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Ratio</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">
+            {totalDefaultCount > 0 ? ((totalNplCount / totalDefaultCount) * 100).toFixed(1) : '0.0'}%
+          </p>
         </div>
       </div>
 
@@ -241,6 +270,7 @@ export default function BatchDefaultsTab() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead className="w-12">S/N</TableHead>
                   <TableHead>Batch Name</TableHead>
                   <TableHead>Batch Code</TableHead>
@@ -253,30 +283,90 @@ export default function BatchDefaultsTab() {
                   <TableHead className="text-right text-success">Total Paid</TableHead>
                   <TableHead className="text-right">Arrears Amount</TableHead>
                   <TableHead className="text-center">Avg Mths Arrears</TableHead>
+                  <TableHead className="text-center">Age of Arrears</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {batchStats.map((s, i) => (
-                  <TableRow key={s.batchId} className="hover:bg-primary/5 transition-all">
-                    <TableCell className="text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell className="font-medium whitespace-nowrap">{s.batchName}</TableCell>
-                    <TableCell className="font-mono text-xs">{s.batchCode}</TableCell>
-                    <TableCell>{s.state || '—'}</TableCell>
-                    <TableCell>{s.branch || '—'}</TableCell>
-                    <TableCell className="text-center">{s.totalBeneficiaries}</TableCell>
-                    <TableCell className="text-center font-semibold text-destructive">{s.defaultCount}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(s.totalLoanAmount)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(s.totalOutstanding)}</TableCell>
-                    <TableCell className="text-right font-semibold text-success">{formatCurrency(s.totalPaid)}</TableCell>
-                    <TableCell className="text-right font-semibold text-destructive">{formatCurrency(s.totalArrearsAmount)}</TableCell>
-                    <TableCell className="text-center font-semibold text-destructive">{s.avgMonthsInArrears}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={s.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}>
-                        {s.status}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
+                  <>
+                    <TableRow
+                      key={s.batchId}
+                      className="hover:bg-primary/5 transition-all cursor-pointer"
+                      onClick={() => setExpandedBatch(expandedBatch === s.batchId ? null : s.batchId)}
+                    >
+                      <TableCell className="px-2">
+                        {expandedBatch === s.batchId
+                          ? <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">{s.batchName}</TableCell>
+                      <TableCell className="font-mono text-xs">{s.batchCode}</TableCell>
+                      <TableCell>{s.state || '—'}</TableCell>
+                      <TableCell>{s.branch || '—'}</TableCell>
+                      <TableCell className="text-center">{s.totalBeneficiaries}</TableCell>
+                      <TableCell className="text-center font-semibold text-destructive">{s.defaultCount}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(s.totalLoanAmount)}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(s.totalOutstanding)}</TableCell>
+                      <TableCell className="text-right font-semibold text-success">{formatCurrency(s.totalPaid)}</TableCell>
+                      <TableCell className="text-right font-semibold text-destructive">{formatCurrency(s.totalArrearsAmount)}</TableCell>
+                      <TableCell className="text-center font-semibold text-destructive">{s.avgMonthsInArrears}</TableCell>
+                      <TableCell className="text-center font-semibold text-destructive">{s.avgAgeOfArrears} days</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={s.status === 'active' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-muted text-muted-foreground'}>
+                          {s.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                    {expandedBatch === s.batchId && (
+                      <TableRow key={`${s.batchId}-expanded`}>
+                        <TableCell colSpan={15} className="p-0">
+                          <div className="bg-muted/30 border-l-4 border-primary/30 px-6 py-3">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                              Defaulting Beneficiaries in {s.batchName} ({s.defaultCount})
+                            </p>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-xs">S/N</TableHead>
+                                  <TableHead className="text-xs">Name</TableHead>
+                                  <TableHead className="text-xs">Organization</TableHead>
+                                  <TableHead className="text-xs">NHF No</TableHead>
+                                  <TableHead className="text-xs text-right">Loan Amount</TableHead>
+                                  <TableHead className="text-xs text-right">Outstanding</TableHead>
+                                  <TableHead className="text-xs text-right text-success">Total Paid</TableHead>
+                                  <TableHead className="text-xs text-center">Mths Arrears</TableHead>
+                                  <TableHead className="text-xs text-center">Age of Arrears</TableHead>
+                                  <TableHead className="text-xs text-right">Amt in Arrears</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {s.defaultingBeneficiaries.map((d, j) => (
+                                  <TableRow
+                                    key={d.beneficiary.id}
+                                    className="hover:bg-primary/5 cursor-pointer"
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/beneficiary/${d.beneficiary.id}`); }}
+                                  >
+                                    <TableCell className="text-xs text-muted-foreground">{j + 1}</TableCell>
+                                    <TableCell className="text-xs font-medium">{d.beneficiary.name}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{d.beneficiary.department || '—'}</TableCell>
+                                    <TableCell className="text-xs">{d.beneficiary.nhf_number || d.beneficiary.employee_id}</TableCell>
+                                    <TableCell className="text-xs text-right">{formatCurrency(d.beneficiary.loan_amount)}</TableCell>
+                                    <TableCell className="text-xs text-right">{formatCurrency(d.beneficiary.outstanding_balance)}</TableCell>
+                                    <TableCell className="text-xs text-right font-semibold text-success">{formatCurrency(d.beneficiary.total_paid)}</TableCell>
+                                    <TableCell className="text-xs text-center font-semibold text-destructive">{d.arrears.arrearsMonths}</TableCell>
+                                    <TableCell className="text-xs text-center font-semibold text-destructive">{d.arrears.daysOverdue} days</TableCell>
+                                    <TableCell className="text-xs text-right font-semibold text-destructive">{formatCurrency(d.arrears.arrearsAmount)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </>
                 ))}
               </TableBody>
             </Table>
