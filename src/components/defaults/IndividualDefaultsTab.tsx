@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import IndividualDefaultsExport, { type IndividualDefaultRecord } from './IndividualDefaultsExport';
 import type { Tables } from '@/integrations/supabase/types';
