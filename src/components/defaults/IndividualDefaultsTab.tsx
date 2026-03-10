@@ -271,7 +271,7 @@ export default function IndividualDefaultsTab() {
               </TableHeader>
               <TableBody>
                 {defaultRecords.slice(0, 500).map((r, i) => (
-                  <TableRow key={r.beneficiary.id} className="hover:bg-primary/5 transition-all">
+                  <TableRow key={r.beneficiary.id} className="hover:bg-primary/5 transition-all cursor-pointer" onClick={() => navigate(`/beneficiary/${r.beneficiary.id}`)}>
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="font-medium whitespace-nowrap">{r.beneficiary.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.beneficiary.department || '—'}</TableCell>
