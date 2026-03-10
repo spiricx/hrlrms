@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import DateRangeFilter from '@/components/DateRangeFilter';
 import IndividualDefaultsExport, { type IndividualDefaultRecord } from './IndividualDefaultsExport';
 import type { Tables } from '@/integrations/supabase/types';
@@ -20,6 +21,7 @@ type Transaction = Tables<'transactions'>;
 export default function IndividualDefaultsTab() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const navigate = useNavigate();
   const { map: arrearsMap, loading: arrearsLoading } = useArrearsLookup();
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
@@ -204,7 +206,7 @@ export default function IndividualDefaultsTab() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Accounts in Default</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">{defaultRecords.length.toLocaleString()}</p>
@@ -216,6 +218,20 @@ export default function IndividualDefaultsTab() {
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Arrears Amount</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">{formatCurrency(defaultRecords.reduce((s, r) => s + r.arrears.arrearsAmount, 0))}</p>
+        </div>
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Amount</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">
+            {formatCurrency(defaultRecords.filter(r => r.arrears.daysOverdue >= 90).reduce((s, r) => s + Number(r.beneficiary.outstanding_balance), 0))}
+          </p>
+        </div>
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Ratio</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">
+            {defaultRecords.length > 0
+              ? ((defaultRecords.filter(r => r.arrears.daysOverdue >= 90).length / defaultRecords.length) * 100).toFixed(1)
+              : '0.0'}%
+          </p>
         </div>
       </div>
 
@@ -255,7 +271,7 @@ export default function IndividualDefaultsTab() {
               </TableHeader>
               <TableBody>
                 {defaultRecords.slice(0, 500).map((r, i) => (
-                  <TableRow key={r.beneficiary.id} className="hover:bg-primary/5 transition-all">
+                  <TableRow key={r.beneficiary.id} className="hover:bg-primary/5 transition-all cursor-pointer" onClick={() => navigate(`/beneficiary/${r.beneficiary.id}`)}>
                     <TableCell className="text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="font-medium whitespace-nowrap">{r.beneficiary.name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{r.beneficiary.department || '—'}</TableCell>

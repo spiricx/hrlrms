@@ -18,6 +18,7 @@ export interface BatchDefaultRecord {
   totalPaid: number;
   totalArrearsAmount: number;
   avgMonthsInArrears: number;
+  avgAgeOfArrears: number;
   status: string;
 }
 
@@ -32,7 +33,7 @@ const REPORT_SUBTITLE = 'Report on Batch Loan Defaults';
 const HEADERS = [
   'S/N', 'Batch Name', 'Batch Code', 'State', 'Branch', 'Beneficiaries',
   'Defaults', 'Total Loan Amt (₦)', 'Outstanding (₦)', 'Total Paid (₦)',
-  'Arrears Amount (₦)', 'Avg Mths Arrears', 'Status',
+  'Arrears Amount (₦)', 'Avg Mths Arrears', 'Avg Age of Arrears (days)', 'Status',
 ];
 
 function formatDateTime(d: Date): string {
@@ -62,7 +63,7 @@ function toRow(r: BatchDefaultRecord, i: number): (string | number)[] {
   return [
     i + 1, r.batchName, r.batchCode, r.state, r.branch, r.totalBeneficiaries,
     r.defaultCount, r.totalLoanAmount, r.totalOutstanding, r.totalPaid,
-    r.totalArrearsAmount, r.avgMonthsInArrears, r.status,
+    r.totalArrearsAmount, r.avgMonthsInArrears, r.avgAgeOfArrears, r.status,
   ];
 }
 
