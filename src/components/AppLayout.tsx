@@ -58,6 +58,7 @@ const navItems = [
 { path: '/loan-repayment-report', label: 'Repayment Report', icon: FileText },
 { path: '/loan-history', label: 'Loan History', icon: FileText },
 { path: '/npl-status', label: 'NPL Status', icon: AlertTriangle, roles: ['admin', 'loan_officer'] as string[] },
+{ path: '/defaults', label: 'Defaults', icon: AlertTriangle },
 { path: '/reports', label: 'Reports', icon: FileText },
 { path: '/staff-directory', label: 'Staff Management', icon: UserCog, roles: ['admin', 'loan_officer'] as string[] },
 { path: '/staff-performance', label: 'Staff Performance', icon: BarChart3, roles: ['admin', 'loan_officer'] as string[] },

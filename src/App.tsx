@@ -25,6 +25,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import StaffLoanTracker from "./pages/StaffLoanTracker";
+import Defaults from "./pages/Defaults";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -72,6 +73,7 @@ const App = () => (
                       <Route path="/staff-loan-tracker" element={<StaffLoanTracker />} />
                       <Route path="/loan-reconciliation" element={<LoanReconciliation />} />
                       <Route path="/loan-history" element={<LoanHistory />} />
+                      <Route path="/defaults" element={<Defaults />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/loan-repayment-report" element={<LoanRepaymentReport />} />
                       <Route path="/feedback-support" element={<FeedbackSupport />} />
