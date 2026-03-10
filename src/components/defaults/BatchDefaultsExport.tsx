@@ -18,6 +18,7 @@ export interface BatchDefaultRecord {
   totalPaid: number;
   totalArrearsAmount: number;
   avgMonthsInArrears: number;
+  avgAgeOfArrears: number;
   status: string;
 }
 
