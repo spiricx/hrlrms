@@ -219,6 +219,20 @@ export default function IndividualDefaultsTab() {
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Arrears Amount</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">{formatCurrency(defaultRecords.reduce((s, r) => s + r.arrears.arrearsAmount, 0))}</p>
         </div>
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Amount</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">
+            {formatCurrency(defaultRecords.filter(r => r.arrears.daysOverdue >= 90).reduce((s, r) => s + Number(r.beneficiary.outstanding_balance), 0))}
+          </p>
+        </div>
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Ratio</p>
+          <p className="mt-1 text-2xl font-bold font-display text-destructive">
+            {defaultRecords.length > 0
+              ? ((defaultRecords.filter(r => r.arrears.daysOverdue >= 90).length / defaultRecords.length) * 100).toFixed(1)
+              : '0.0'}%
+          </p>
+        </div>
       </div>
 
       {/* Table */}
