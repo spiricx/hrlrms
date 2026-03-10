@@ -73,6 +73,7 @@ const App = () => (
                       <Route path="/staff-loan-tracker" element={<StaffLoanTracker />} />
                       <Route path="/loan-reconciliation" element={<LoanReconciliation />} />
                       <Route path="/loan-history" element={<LoanHistory />} />
+                      <Route path="/defaults" element={<Defaults />} />
                       <Route path="/reports" element={<Reports />} />
                       <Route path="/loan-repayment-report" element={<LoanRepaymentReport />} />
                       <Route path="/feedback-support" element={<FeedbackSupport />} />
