@@ -206,7 +206,7 @@ export default function IndividualDefaultsTab() {
       </div>
 
       {/* Summary */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">Accounts in Default</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">{defaultRecords.length.toLocaleString()}</p>
