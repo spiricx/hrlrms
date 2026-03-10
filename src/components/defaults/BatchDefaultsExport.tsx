@@ -33,7 +33,7 @@ const REPORT_SUBTITLE = 'Report on Batch Loan Defaults';
 const HEADERS = [
   'S/N', 'Batch Name', 'Batch Code', 'State', 'Branch', 'Beneficiaries',
   'Defaults', 'Total Loan Amt (₦)', 'Outstanding (₦)', 'Total Paid (₦)',
-  'Arrears Amount (₦)', 'Avg Mths Arrears', 'Status',
+  'Arrears Amount (₦)', 'Avg Mths Arrears', 'Avg Age of Arrears (days)', 'Status',
 ];
 
 function formatDateTime(d: Date): string {
