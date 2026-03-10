@@ -21,6 +21,7 @@ type Transaction = Tables<'transactions'>;
 export default function IndividualDefaultsTab() {
   const { hasRole } = useAuth();
   const isAdmin = hasRole('admin');
+  const navigate = useNavigate();
   const { map: arrearsMap, loading: arrearsLoading } = useArrearsLookup();
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([]);
