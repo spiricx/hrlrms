@@ -25,6 +25,7 @@ import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Admin from "./pages/Admin";
 import StaffLoanTracker from "./pages/StaffLoanTracker";
+import Defaults from "./pages/Defaults";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
