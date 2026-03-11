@@ -17,7 +17,9 @@ import {
   Moon,
   UserCog,
   BarChart3,
-  Shield } from
+  Shield,
+  Bell,
+  FileBarChart } from
 'lucide-react';
 import fmbnLogo from '@/assets/fmbn_logo.png';
 import { cn } from '@/lib/utils';
