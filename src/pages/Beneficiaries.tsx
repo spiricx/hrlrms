@@ -54,7 +54,7 @@ function formatPaymentDate(date: string): string {
 }
 
 export default function Beneficiaries() {
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState('all');
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithPayment[]>([]);
