@@ -141,7 +141,7 @@ export default function DisbursementRecord() {
       let nplCount = 0;
       for (const m of members) {
         const a = getArrearsFromMap(arrearsMap, m.id);
-        totalAgeOfArrears += a.daysPastDue;
+        totalAgeOfArrears += a.daysOverdue;
         totalMonthsArrears += a.arrearsMonths;
         totalAmtArrears += a.arrearsAmount;
         if (a.isNpl) nplCount++;

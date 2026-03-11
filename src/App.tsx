@@ -20,6 +20,8 @@ import LoanReconciliation from "./pages/LoanReconciliation";
 import LoanHistory from "./pages/LoanHistory";
 import LoanRepaymentReport from "./pages/LoanRepaymentReport";
 import BulkUpload from "./pages/BulkUpload";
+import NotificationOfDisbursement from "./pages/NotificationOfDisbursement";
+import DisbursementRecord from "./pages/DisbursementRecord";
 import FeedbackSupport from "./pages/FeedbackSupport";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
