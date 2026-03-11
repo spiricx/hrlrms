@@ -95,14 +95,14 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold font-display text-foreground">Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">Home Renovation Loan portfolio overview</p>
         </div>
-        <ToggleGroup type="single" value={healthFilter} onValueChange={(v) => { if (v) setHealthFilter(v as LoanHealthFilter); }} className="bg-secondary/50 rounded-lg p-1">
-          <ToggleGroupItem value="all" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-card data-[state=on]:shadow-sm">
+        <ToggleGroup type="single" value={healthFilter} onValueChange={(v) => { if (v) setHealthFilter(v as LoanHealthFilter); }} className="bg-secondary/50 rounded-lg p-1 border border-border">
+          <ToggleGroupItem value="all" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm text-muted-foreground">
             All ({beneficiaries.length})
           </ToggleGroupItem>
-          <ToggleGroupItem value="active" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-card data-[state=on]:shadow-sm data-[state=on]:text-success">
+          <ToggleGroupItem value="active" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-success data-[state=on]:text-success-foreground data-[state=on]:shadow-sm text-muted-foreground">
             Active ({loanMetrics.active})
           </ToggleGroupItem>
-          <ToggleGroupItem value="defaulted" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-card data-[state=on]:shadow-sm data-[state=on]:text-destructive">
+          <ToggleGroupItem value="defaulted" className="text-xs px-3 py-1.5 rounded-md data-[state=on]:bg-destructive data-[state=on]:text-destructive-foreground data-[state=on]:shadow-sm text-muted-foreground">
             Defaulted ({loanMetrics.defaulted})
           </ToggleGroupItem>
         </ToggleGroup>

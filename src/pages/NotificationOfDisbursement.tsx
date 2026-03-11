@@ -210,7 +210,7 @@ export default function NotificationOfDisbursement() {
                       <TableCell>{b.loan_reference_number || '—'}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(b.loan_amount)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(b.monthly_emi)}</TableCell>
-                      <TableCell className="text-center">{formatTenor(b.tenor_months)}</TableCell>
+                      <TableCell className="text-center">{b.tenor_months % 12 === 0 ? `${b.tenor_months / 12} Year${b.tenor_months / 12 !== 1 ? 's' : ''}` : `${(b.tenor_months / 12).toFixed(1)} Years`}</TableCell>
                       <TableCell>{format(new Date(b.disbursement_date), NG_DATE)}</TableCell>
                       <TableCell>{format(new Date(b.termination_date), NG_DATE)}</TableCell>
                     </TableRow>
