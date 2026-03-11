@@ -144,6 +144,12 @@ export default function Beneficiaries() {
     };
   }), [filtered, arrearsMap]);
 
+  if (loading) {
+    return <div className="flex items-center justify-center py-20">
+        <div className="animate-pulse text-muted-foreground">Loading beneficiaries...</div>
+      </div>;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
