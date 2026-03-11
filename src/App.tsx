@@ -20,6 +20,8 @@ import LoanReconciliation from "./pages/LoanReconciliation";
 import LoanHistory from "./pages/LoanHistory";
 import LoanRepaymentReport from "./pages/LoanRepaymentReport";
 import BulkUpload from "./pages/BulkUpload";
+import NotificationOfDisbursement from "./pages/NotificationOfDisbursement";
+import DisbursementRecord from "./pages/DisbursementRecord";
 import FeedbackSupport from "./pages/FeedbackSupport";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -65,6 +67,8 @@ const App = () => (
                       <Route path="/add-beneficiary" element={<AddBeneficiary />} />
                       <Route path="/bulk-upload" element={<BulkUpload />} />
                       <Route path="/bio-data" element={<BioData />} />
+                      <Route path="/notification-of-disbursement" element={<NotificationOfDisbursement />} />
+                      <Route path="/disbursement-record" element={<DisbursementRecord />} />
                       <Route path="/loan-repayment" element={<LoanRepayment />} />
                       <Route path="/batch-repayment" element={<BatchRepayment />} />
                       <Route path="/npl-status" element={<NplStatus />} />
