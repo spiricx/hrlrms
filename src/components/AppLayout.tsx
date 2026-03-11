@@ -54,6 +54,8 @@ const navItems = [
 { path: '/add-beneficiary', label: 'New Loan', icon: PlusCircle },
 { path: '/bulk-upload', label: 'Bulk Loan Creation', icon: Package },
 { path: '/bio-data', label: 'Bio Data', icon: FileText },
+{ path: '/notification-of-disbursement', label: 'Notification of Disbursement', icon: Bell },
+{ path: '/disbursement-record', label: 'Disbursement Record', icon: FileBarChart },
 { path: '/loan-repayment', label: 'Loan Repayment', icon: Banknote },
 { path: '/batch-repayment', label: 'Batch Loan Repayment', icon: Package },
 { path: '/loan-reconciliation', label: 'Reconciliation', icon: ArrowLeftRight },
