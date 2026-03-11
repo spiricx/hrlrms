@@ -15,6 +15,7 @@ import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
 import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
 import FlagButton from '@/components/FlagButton';
+import BeneficiariesExport, { type BenExportRow } from '@/components/beneficiary/BeneficiariesExport';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
