@@ -115,12 +115,6 @@ export default function Beneficiaries() {
     });
   }, [beneficiaries, search, stateFilter]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-20">
-        <div className="animate-pulse text-muted-foreground">Loading beneficiaries...</div>
-      </div>;
-  }
-
   const staffName = user?.user_metadata?.surname && user?.user_metadata?.first_name
     ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
     : user?.email?.split('@')[0] || 'User';
