@@ -42,11 +42,16 @@ function fmtDate(d: string) {
   try { return format(new Date(d), NG_DATE); } catch { return d; }
 }
 
+function tenorInYears(months: number): string {
+  const years = months / 12;
+  return years % 1 === 0 ? `${years} Year${years !== 1 ? 's' : ''}` : `${years.toFixed(1)} Years`;
+}
+
 function toRow(r: NodRecord, i: number): (string | number)[] {
   return [
     i + 1, r.surname, r.firstName, r.otherName, r.organization, r.loanBatch,
     r.nhfNumber, r.loanRefNo, r.amountDisbursed, r.monthlyRepayment,
-    r.tenor, fmtDate(r.disbursementDate), fmtDate(r.terminationDate),
+    tenorInYears(r.tenor), fmtDate(r.disbursementDate), fmtDate(r.terminationDate),
   ];
 }
 
