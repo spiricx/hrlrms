@@ -121,6 +121,35 @@ export default function Beneficiaries() {
       </div>;
   }
 
+  const staffName = user?.user_metadata?.surname && user?.user_metadata?.first_name
+    ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
+    : user?.email?.split('@')[0] || 'User';
+
+  const exportRows: BenExportRow[] = useMemo(() => filtered.map(b => {
+    const a = getArrearsFromMap(arrearsMap, b.id);
+    const statusInfo = getStatusInfoFromArrears(a);
+    return {
+      name: b.name,
+      organization: b.department || '—',
+      nhfNumber: b.nhf_number || '—',
+      loanRefNo: b.loan_reference_number || '—',
+      state: b.state || '—',
+      branch: b.bank_branch || '—',
+      tenor: b.tenor_months,
+      loanAmount: Number(b.loan_amount),
+      outstanding: Number(b.outstanding_balance),
+      totalPaid: Number(b.total_paid),
+      monthlyRepayment: Number(b.monthly_emi),
+      lastPmtAmt: b.lastTransaction ? Number(b.lastTransaction.amount) : 0,
+      lastPmtDate: b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—',
+      overdueAmt: a.overdueAmount,
+      monthsOverdue: a.overdueMonths,
+      arrearsAmt: a.arrearsAmount,
+      monthsArrears: a.arrearsMonths,
+      status: statusInfo.label,
+    };
+  }), [filtered, arrearsMap]);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -128,12 +157,15 @@ export default function Beneficiaries() {
           <h1 className="text-3xl font-bold font-display">Beneficiaries</h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage loan beneficiaries and track repayments</p>
         </div>
-        <Link to="/add-beneficiary">
-          <Button className="gradient-accent text-accent-foreground border-0 font-semibold gap-2">
-            <PlusCircle className="w-4 h-4" />
-            New Loan
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <BeneficiariesExport records={exportRows} staffName={staffName} />
+          <Link to="/add-beneficiary">
+            <Button className="gradient-accent text-accent-foreground border-0 font-semibold gap-2">
+              <PlusCircle className="w-4 h-4" />
+              New Loan
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
