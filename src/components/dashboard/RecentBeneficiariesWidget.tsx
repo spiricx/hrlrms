@@ -86,7 +86,7 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
     from('beneficiaries').
     select('*').
     order('created_at', { ascending: false }).
-    limit(20);
+    limit(150);
 
     if (!bens) {setLoading(false);return;}
 

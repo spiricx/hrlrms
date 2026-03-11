@@ -153,7 +153,7 @@ export function printNod(records: NodRecord[], batchName: string, organization: 
       <td>${r.organization}</td><td>${r.loanBatch}</td><td>${r.nhfNumber}</td><td>${r.loanRefNo}</td>
       <td class="text-right">${formatCurrency(r.amountDisbursed)}</td>
       <td class="text-right">${formatCurrency(r.monthlyRepayment)}</td>
-      <td class="text-center">${r.tenor}</td>
+      <td class="text-center">${tenorInYears(r.tenor)}</td>
       <td>${fmtDate(r.disbursementDate)}</td><td>${fmtDate(r.terminationDate)}</td>
     </tr>`).join('')}
     </tbody></table></body></html>`;
