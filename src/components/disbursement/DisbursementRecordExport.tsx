@@ -173,7 +173,7 @@ export function printDisbursementRecord(records: DisbursementSummary[], staffNam
     <div class="meta">Generated: ${fmtNow()} | By: ${staffName} | Filter: ${getFilterSummary(filters)}</div>
     <table><thead><tr>${HEADERS.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
     ${records.map((r, i) => `<tr>
-      <td>${i + 1}</td><td>${r.organization}</td><td>${r.batchName}</td><td class="text-center">${r.tenor}</td>
+      <td>${i + 1}</td><td>${r.organization}</td><td>${r.batchName}</td><td class="text-center">${tenorInYears(r.tenor)}</td>
       <td class="text-center">${r.beneficiaryCount}</td><td>${r.disbursementMonth} ${r.disbursementYear}</td>
       <td class="text-right">${formatCurrency(r.totalDisbursed)}</td><td class="text-right">${formatCurrency(r.outstandingBalance)}</td>
       <td class="text-right text-green">${formatCurrency(r.totalRepaid)}</td><td class="text-right">${formatCurrency(r.monthlyRepayment)}</td>
