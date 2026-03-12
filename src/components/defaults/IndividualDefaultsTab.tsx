@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { fetchAllRows } from '@/lib/fetchAllRows';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

@@ -304,7 +304,7 @@ export default function BatchRepaymentUpload({ batchId, batchCode, onComplete }:
     setUploading(false);
 
     if (errorCount > 0 && successCount > 0) {
-      toast({ title: 'Partial Success', description: `${successCount} recorded, ${errorCount} failed.`, variant: 'destructive' });
+      toast({ title: 'Partial Success', description: `${successCount} recorded, ${errorCount} skipped (duplicates or errors).` });
     } else if (errorCount > 0) {
       toast({ title: 'Upload Failed', description: `${errorCount} records failed.`, variant: 'destructive' });
     } else {

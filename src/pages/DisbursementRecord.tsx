@@ -291,7 +291,7 @@ export default function DisbursementRecord() {
             {filtered.length === 0 ? (
               <TableRow><TableCell colSpan={17} className="text-center py-8 text-muted-foreground">No records found</TableCell></TableRow>
             ) : filtered.map((s, i) => (
-              <TableRow key={s.batchId}>
+              <TableRow key={s.batchId} className="hover:bg-primary/5 cursor-pointer" onClick={() => navigate(`/batch-repayment?batch=${s.batchId}`)}>
                 <TableCell className="font-medium">{i + 1}</TableCell>
                 <TableCell>{s.organization}</TableCell>
                 <TableCell className="font-medium">{s.batchName}</TableCell>
