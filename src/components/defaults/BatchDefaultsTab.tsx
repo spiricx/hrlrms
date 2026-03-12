@@ -251,7 +251,16 @@ export default function BatchDefaultsTab() {
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Ratio</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">
-            {totalDefaultCount > 0 ? ((totalNplCount / totalDefaultCount) * 100).toFixed(1) : '0.0'}%
+            {(() => {
+              const totalActiveOutstanding = beneficiaries
+                .filter(b => b.status !== 'completed' && Number(b.outstanding_balance) >= 0.01)
+                .reduce((s, b) => s + Number(b.outstanding_balance), 0);
+              const nplOutstanding = beneficiaries
+                .filter(b => b.status !== 'completed' && Number(b.outstanding_balance) >= 0.01)
+                .filter(b => { const a = getArrearsFromMap(arrearsMap, b.id); return a.daysOverdue >= 90; })
+                .reduce((s, b) => s + Number(b.outstanding_balance), 0);
+              return totalActiveOutstanding > 0 ? ((nplOutstanding / totalActiveOutstanding) * 100).toFixed(2) : '0.00';
+            })()}%
           </p>
         </div>
       </div>

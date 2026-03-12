@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useArrearsLookup, getArrearsFromMap } from '@/hooks/useArrearsLookup';
-import { formatCurrency, formatDate } from '@/lib/loanCalculations';
+import { formatCurrency, formatDate, formatTenor } from '@/lib/loanCalculations';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
 import { fetchAllRows } from '@/lib/fetchAllRows';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -228,9 +228,14 @@ export default function IndividualDefaultsTab() {
         <div className="bg-card rounded-xl shadow-card p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">NPL Ratio</p>
           <p className="mt-1 text-2xl font-bold font-display text-destructive">
-            {defaultRecords.length > 0
-              ? ((defaultRecords.filter(r => r.arrears.daysOverdue >= 90).length / defaultRecords.length) * 100).toFixed(1)
-              : '0.0'}%
+            {(() => {
+              const totalActiveOutstanding = defaultRecords.reduce((s, r) => s + Number(r.beneficiary.outstanding_balance), 0) +
+                (beneficiaries.filter(b => b.status !== 'completed' && Number(b.outstanding_balance) >= 0.01)
+                  .filter(b => { const a = getArrearsFromMap(arrearsMap, b.id); return a.overdueMonths <= 0; })
+                  .reduce((s, b) => s + Number(b.outstanding_balance), 0));
+              const nplOutstanding = defaultRecords.filter(r => r.arrears.daysOverdue >= 90).reduce((s, r) => s + Number(r.beneficiary.outstanding_balance), 0);
+              return totalActiveOutstanding > 0 ? ((nplOutstanding / totalActiveOutstanding) * 100).toFixed(2) : '0.00';
+            })()}%
           </p>
         </div>
       </div>
@@ -279,7 +284,7 @@ export default function IndividualDefaultsTab() {
                     <TableCell className="text-xs">{r.beneficiary.nhf_number || r.beneficiary.employee_id}</TableCell>
                     <TableCell>{r.beneficiary.state || '—'}</TableCell>
                     <TableCell>{r.beneficiary.bank_branch || '—'}</TableCell>
-                    <TableCell className="text-center">{r.beneficiary.tenor_months}</TableCell>
+                    <TableCell className="text-center">{formatTenor(r.beneficiary.tenor_months)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.beneficiary.loan_amount)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.beneficiary.monthly_emi)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.beneficiary.outstanding_balance)}</TableCell>

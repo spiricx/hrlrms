@@ -72,9 +72,14 @@ async function getLogoBase64(): Promise<string> {
   } catch { return ''; }
 }
 
+function tenorInYears(months: number): string {
+  const years = months / 12;
+  return years % 1 === 0 ? `${years} Year${years !== 1 ? 's' : ''}` : `${years.toFixed(1)} Years`;
+}
+
 function toRow(r: DisbursementSummary, i: number): (string | number)[] {
   return [
-    i + 1, r.organization, r.batchName, r.tenor, r.beneficiaryCount,
+    i + 1, r.organization, r.batchName, tenorInYears(r.tenor), r.beneficiaryCount,
     `${r.disbursementMonth} ${r.disbursementYear}`,
     r.totalDisbursed, r.outstandingBalance, r.totalRepaid, r.monthlyRepayment,
     r.ageOfArrears, r.monthsInArrears, r.amtInArrears, fmtDate(r.lastPaymentDate),
@@ -168,7 +173,7 @@ export function printDisbursementRecord(records: DisbursementSummary[], staffNam
     <div class="meta">Generated: ${fmtNow()} | By: ${staffName} | Filter: ${getFilterSummary(filters)}</div>
     <table><thead><tr>${HEADERS.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>
     ${records.map((r, i) => `<tr>
-      <td>${i + 1}</td><td>${r.organization}</td><td>${r.batchName}</td><td class="text-center">${r.tenor}</td>
+      <td>${i + 1}</td><td>${r.organization}</td><td>${r.batchName}</td><td class="text-center">${tenorInYears(r.tenor)}</td>
       <td class="text-center">${r.beneficiaryCount}</td><td>${r.disbursementMonth} ${r.disbursementYear}</td>
       <td class="text-right">${formatCurrency(r.totalDisbursed)}</td><td class="text-right">${formatCurrency(r.outstandingBalance)}</td>
       <td class="text-right text-green">${formatCurrency(r.totalRepaid)}</td><td class="text-right">${formatCurrency(r.monthlyRepayment)}</td>

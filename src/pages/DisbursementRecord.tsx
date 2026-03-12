@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -71,6 +72,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 export default function DisbursementRecord() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState('all');
   const [filterBranch, setFilterBranch] = useState('all');
@@ -132,23 +134,30 @@ export default function DisbursementRecord() {
       const outstandingBalance = members.reduce((s, m) => s + m.outstanding_balance, 0);
       const totalRepaid = members.reduce((s, m) => s + m.total_paid, 0);
       const monthlyRepayment = members.reduce((s, m) => s + m.monthly_emi, 0);
-      const defaults = members.reduce((s, m) => s + m.default_count, 0);
 
-      // Arrears from view
+      // Arrears & defaults from Golden Record only
       let totalAgeOfArrears = 0;
       let totalMonthsArrears = 0;
       let totalAmtArrears = 0;
       let nplCount = 0;
+      let defaults = 0;
       for (const m of members) {
         const a = getArrearsFromMap(arrearsMap, m.id);
         totalAgeOfArrears += a.daysOverdue;
         totalMonthsArrears += a.arrearsMonths;
         totalAmtArrears += a.arrearsAmount;
         if (a.isNpl) nplCount++;
+        if (a.overdueMonths > 0) defaults++;
       }
       const avgAge = members.length > 0 ? Math.round(totalAgeOfArrears / members.length) : 0;
       const avgMonths = members.length > 0 ? Math.round(totalMonthsArrears / members.length) : 0;
-      const nplRatio = members.length > 0 ? Math.round((nplCount / members.length) * 100 * 100) / 100 : 0;
+      // NPL ratio: outstanding-weighted (aligned with Dashboard Golden Record)
+      const activeOutstanding = members.filter(m => m.status !== 'completed' && m.outstanding_balance >= 0.01).reduce((s, m) => s + m.outstanding_balance, 0);
+      const nplOutstanding = members.filter(m => {
+        const a = getArrearsFromMap(arrearsMap, m.id);
+        return a.isNpl;
+      }).reduce((s, m) => s + m.outstanding_balance, 0);
+      const nplRatio = activeOutstanding > 0 ? Math.round((nplOutstanding / activeOutstanding) * 100 * 100) / 100 : 0;
 
       // Last payment date across all members
       let lastPmtDate: string | null = null;
@@ -289,7 +298,7 @@ export default function DisbursementRecord() {
             {filtered.length === 0 ? (
               <TableRow><TableCell colSpan={17} className="text-center py-8 text-muted-foreground">No records found</TableCell></TableRow>
             ) : filtered.map((s, i) => (
-              <TableRow key={s.batchId}>
+              <TableRow key={s.batchId} className="hover:bg-primary/5 cursor-pointer" onClick={() => navigate(`/batch-repayment?batch=${s.batchId}`)}>
                 <TableCell className="font-medium">{i + 1}</TableCell>
                 <TableCell>{s.organization}</TableCell>
                 <TableCell className="font-medium">{s.batchName}</TableCell>
