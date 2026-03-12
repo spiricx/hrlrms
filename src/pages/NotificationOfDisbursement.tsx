@@ -1,17 +1,20 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, FileText, Bell } from 'lucide-react';
+import { Search, FileText, Bell, ExternalLink } from 'lucide-react';
 import { formatCurrency, formatTenor } from '@/lib/loanCalculations';
 import { format } from 'date-fns';
 import { NG_DATE } from '@/lib/dateFormat';
 import { useAuth } from '@/contexts/AuthContext';
 import { NIGERIA_STATES } from '@/lib/nigeriaStates';
+import DateRangeFilter from '@/components/DateRangeFilter';
 import NotificationOfDisbursementExport from '@/components/disbursement/NotificationOfDisbursementExport';
+import { fetchAllRows } from '@/lib/fetchAllRows';
 
 interface LoanBatch {
   id: string;
@@ -39,10 +42,13 @@ interface Beneficiary {
 
 export default function NotificationOfDisbursement() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState('all');
   const [filterBranch, setFilterBranch] = useState('all');
+  const [fromDate, setFromDate] = useState<Date | undefined>();
+  const [toDate, setToDate] = useState<Date | undefined>();
 
   // Fetch batches
   const { data: batches = [] } = useQuery({
@@ -54,17 +60,70 @@ export default function NotificationOfDisbursement() {
     },
   });
 
-  // Filter batches by state/branch
+  // Fetch all beneficiaries for org name lookup and date filtering
+  const { data: allBeneficiaries = [] } = useQuery({
+    queryKey: ['nod-all-beneficiaries'],
+    queryFn: async () => {
+      return fetchAllRows<Beneficiary>('beneficiaries',
+        'id, surname, first_name, other_name, department, nhf_number, loan_reference_number, loan_amount, monthly_emi, tenor_months, disbursement_date, termination_date, batch_id',
+        { orderBy: 'surname' }
+      );
+    },
+  });
+
+  // Build org name per batch
+  const batchOrgMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allBeneficiaries.forEach(b => {
+      if (b.batch_id && !m.has(b.batch_id) && b.department) {
+        m.set(b.batch_id, b.department);
+      }
+    });
+    return m;
+  }, [allBeneficiaries]);
+
+  // Build first disbursement date per batch
+  const batchDisbDateMap = useMemo(() => {
+    const m = new Map<string, string>();
+    allBeneficiaries.forEach(b => {
+      if (b.batch_id) {
+        const existing = m.get(b.batch_id);
+        if (!existing || b.disbursement_date < existing) {
+          m.set(b.batch_id, b.disbursement_date);
+        }
+      }
+    });
+    return m;
+  }, [allBeneficiaries]);
+
+  // Filter batches by state/branch/search/date
   const filteredBatches = useMemo(() => {
     let b = batches;
     if (filterState !== 'all') b = b.filter(x => x.state === filterState);
     if (filterBranch !== 'all') b = b.filter(x => x.bank_branch === filterBranch);
     if (search) {
       const q = search.toLowerCase();
-      b = b.filter(x => x.name.toLowerCase().includes(q) || x.batch_code.toLowerCase().includes(q));
+      b = b.filter(x => {
+        const orgName = batchOrgMap.get(x.id) || '';
+        return x.name.toLowerCase().includes(q) ||
+          x.batch_code.toLowerCase().includes(q) ||
+          orgName.toLowerCase().includes(q);
+      });
+    }
+    if (fromDate) {
+      b = b.filter(x => {
+        const d = batchDisbDateMap.get(x.id);
+        return d && new Date(d) >= fromDate;
+      });
+    }
+    if (toDate) {
+      b = b.filter(x => {
+        const d = batchDisbDateMap.get(x.id);
+        return d && new Date(d) <= toDate;
+      });
     }
     return b;
-  }, [batches, filterState, filterBranch, search]);
+  }, [batches, filterState, filterBranch, search, fromDate, toDate, batchOrgMap, batchDisbDateMap]);
 
   const branches = useMemo(() => {
     const set = new Set(batches.map(b => b.bank_branch).filter(Boolean));
@@ -122,7 +181,7 @@ export default function NotificationOfDisbursement() {
       <div className="flex flex-wrap items-end gap-3">
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search batch..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search batch, organization..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
         <Select value={filterState} onValueChange={setFilterState}>
           <SelectTrigger className="w-44"><SelectValue placeholder="All States" /></SelectTrigger>
@@ -138,19 +197,53 @@ export default function NotificationOfDisbursement() {
             {branches.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
+        <DateRangeFilter fromDate={fromDate} toDate={toDate} onFromDateChange={setFromDate} onToDateChange={setToDate} />
       </div>
 
-      {/* Batch selection */}
+      {/* Batch selection - now a clickable table */}
       <div className="bg-card rounded-xl border p-4 space-y-3">
-        <h2 className="font-semibold text-foreground">Select a Loan Batch</h2>
-        <Select value={selectedBatchId} onValueChange={setSelectedBatchId}>
-          <SelectTrigger className="w-full max-w-md"><SelectValue placeholder="Choose a batch..." /></SelectTrigger>
-          <SelectContent>
-            {filteredBatches.map(b => (
-              <SelectItem key={b.id} value={b.id}>{b.name} ({b.batch_code})</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <h2 className="font-semibold text-foreground">Select a Loan Batch ({filteredBatches.length})</h2>
+        <div className="overflow-x-auto max-h-64 overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">S/N</TableHead>
+                <TableHead>Batch Name</TableHead>
+                <TableHead>Batch Code</TableHead>
+                <TableHead>Organization</TableHead>
+                <TableHead>State</TableHead>
+                <TableHead>Branch</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBatches.length === 0 ? (
+                <TableRow><TableCell colSpan={7} className="text-center py-4 text-muted-foreground">No batches found</TableCell></TableRow>
+              ) : filteredBatches.map((b, i) => (
+                <TableRow
+                  key={b.id}
+                  className={`cursor-pointer transition-all ${selectedBatchId === b.id ? 'bg-primary/10 border-l-2 border-primary' : 'hover:bg-primary/5'}`}
+                  onClick={() => setSelectedBatchId(b.id)}
+                >
+                  <TableCell className="text-muted-foreground">{i + 1}</TableCell>
+                  <TableCell className="font-medium">{b.name}</TableCell>
+                  <TableCell className="font-mono text-xs">{b.batch_code}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{batchOrgMap.get(b.id) || '—'}</TableCell>
+                  <TableCell>{b.state || '—'}</TableCell>
+                  <TableCell>{b.bank_branch || '—'}</TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost" size="sm"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/batch-repayment?batch=${b.id}`); }}
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Results */}
@@ -199,7 +292,7 @@ export default function NotificationOfDisbursement() {
                 </TableHeader>
                 <TableBody>
                   {beneficiaries.map((b, i) => (
-                    <TableRow key={b.id}>
+                    <TableRow key={b.id} className="hover:bg-primary/5 cursor-pointer" onClick={() => navigate(`/beneficiary/${b.id}`)}>
                       <TableCell className="font-medium">{i + 1}</TableCell>
                       <TableCell>{b.surname || '—'}</TableCell>
                       <TableCell>{b.first_name || '—'}</TableCell>
@@ -210,7 +303,7 @@ export default function NotificationOfDisbursement() {
                       <TableCell>{b.loan_reference_number || '—'}</TableCell>
                       <TableCell className="text-right font-semibold">{formatCurrency(b.loan_amount)}</TableCell>
                       <TableCell className="text-right">{formatCurrency(b.monthly_emi)}</TableCell>
-                      <TableCell className="text-center">{b.tenor_months % 12 === 0 ? `${b.tenor_months / 12} Year${b.tenor_months / 12 !== 1 ? 's' : ''}` : `${(b.tenor_months / 12).toFixed(1)} Years`}</TableCell>
+                      <TableCell className="text-center">{formatTenor(b.tenor_months)}</TableCell>
                       <TableCell>{format(new Date(b.disbursement_date), NG_DATE)}</TableCell>
                       <TableCell>{format(new Date(b.termination_date), NG_DATE)}</TableCell>
                     </TableRow>
