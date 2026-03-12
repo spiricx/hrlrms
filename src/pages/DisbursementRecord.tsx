@@ -134,23 +134,30 @@ export default function DisbursementRecord() {
       const outstandingBalance = members.reduce((s, m) => s + m.outstanding_balance, 0);
       const totalRepaid = members.reduce((s, m) => s + m.total_paid, 0);
       const monthlyRepayment = members.reduce((s, m) => s + m.monthly_emi, 0);
-      const defaults = members.reduce((s, m) => s + m.default_count, 0);
 
-      // Arrears from view
+      // Arrears & defaults from Golden Record only
       let totalAgeOfArrears = 0;
       let totalMonthsArrears = 0;
       let totalAmtArrears = 0;
       let nplCount = 0;
+      let defaults = 0;
       for (const m of members) {
         const a = getArrearsFromMap(arrearsMap, m.id);
         totalAgeOfArrears += a.daysOverdue;
         totalMonthsArrears += a.arrearsMonths;
         totalAmtArrears += a.arrearsAmount;
         if (a.isNpl) nplCount++;
+        if (a.overdueMonths > 0) defaults++;
       }
       const avgAge = members.length > 0 ? Math.round(totalAgeOfArrears / members.length) : 0;
       const avgMonths = members.length > 0 ? Math.round(totalMonthsArrears / members.length) : 0;
-      const nplRatio = members.length > 0 ? Math.round((nplCount / members.length) * 100 * 100) / 100 : 0;
+      // NPL ratio: outstanding-weighted (aligned with Dashboard Golden Record)
+      const activeOutstanding = members.filter(m => m.status !== 'completed' && m.outstanding_balance >= 0.01).reduce((s, m) => s + m.outstanding_balance, 0);
+      const nplOutstanding = members.filter(m => {
+        const a = getArrearsFromMap(arrearsMap, m.id);
+        return a.isNpl;
+      }).reduce((s, m) => s + m.outstanding_balance, 0);
+      const nplRatio = activeOutstanding > 0 ? Math.round((nplOutstanding / activeOutstanding) * 100 * 100) / 100 : 0;
 
       // Last payment date across all members
       let lastPmtDate: string | null = null;
