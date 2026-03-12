@@ -72,6 +72,7 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 
 
 export default function DisbursementRecord() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [filterState, setFilterState] = useState('all');
   const [filterBranch, setFilterBranch] = useState('all');
