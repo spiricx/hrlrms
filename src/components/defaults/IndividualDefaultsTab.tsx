@@ -284,7 +284,7 @@ export default function IndividualDefaultsTab() {
                     <TableCell className="text-xs">{r.beneficiary.nhf_number || r.beneficiary.employee_id}</TableCell>
                     <TableCell>{r.beneficiary.state || '—'}</TableCell>
                     <TableCell>{r.beneficiary.bank_branch || '—'}</TableCell>
-                    <TableCell className="text-center">{r.beneficiary.tenor_months}</TableCell>
+                    <TableCell className="text-center">{formatTenor(r.beneficiary.tenor_months)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.beneficiary.loan_amount)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.beneficiary.monthly_emi)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(r.beneficiary.outstanding_balance)}</TableCell>
