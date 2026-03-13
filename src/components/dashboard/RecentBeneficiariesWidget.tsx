@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import RecentBeneficiariesExport, { type RecentBenExportRow } from '@/components/dashboard/RecentBeneficiariesExport';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
