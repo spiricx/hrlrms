@@ -212,75 +212,84 @@ export default function StaffLoanTracker() {
     setFilterBranch('all');
   }, [filterState]);
 
-  // ── Exports ──
+  const BANK_NAME = 'FEDERAL MORTGAGE BANK OF NIGERIA';
+  const REPORT_TITLE = 'Staff Loan Tracker';
+
+  const getLogoBase64 = async (): Promise<string> => {
+    try {
+      const response = await fetch(fmbnLogo);
+      const blob = await response.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+    } catch { return ''; }
+  };
+
   const exportExcel = useCallback(() => {
     const wb = XLSX.utils.book_new();
 
     // Summary sheet
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{
-      'Total Staff': totals.totalStaff,
-      'Total Loans Created': totals.totalLoans,
-      'Total Disbursed (₦)': totals.totalDisbursed,
-      'Total Outstanding (₦)': totals.totalOutstanding,
-      'Total Paid (₦)': totals.totalPaid,
-    }]), 'Summary');
+    const summaryRows = [
+      [BANK_NAME], [REPORT_TITLE],
+      [`Generated: ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' })} | State: ${filterState === 'all' ? 'All' : filterState} | Branch: ${filterBranch === 'all' ? 'All' : filterBranch}`],
+      [],
+      ['Total Staff', 'Total Loans Created', 'Total Disbursed (₦)', 'Total Outstanding (₦)', 'Total Paid (₦)'],
+      [totals.totalStaff, totals.totalLoans, totals.totalDisbursed, totals.totalOutstanding, totals.totalPaid],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Summary');
 
     // Staff sheet
-    const staffRows = staffLoanData.map((s, i) => ({
-      'S/N': i + 1,
-      'Staff Name': s.staffName,
-      'Staff ID': s.staffId,
-      'State': s.staffState,
-      'Branch': s.staffBranch,
-      'Loans Created': s.totalLoans,
-      'Active': s.activeLoans,
-      'Completed': s.completedLoans,
-      'Total Disbursed (₦)': s.totalDisbursed,
-      'Outstanding (₦)': s.totalOutstanding,
-      'Total Paid (₦)': s.totalPaid,
-    }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(staffRows), 'By Staff');
+    const staffHeaders = ['S/N', 'Staff Name', 'Staff ID', 'State', 'Branch', 'Loans Created', 'Active', 'Completed', 'Total Disbursed (₦)', 'Outstanding (₦)', 'Total Paid (₦)'];
+    const staffRows = [
+      [BANK_NAME], [REPORT_TITLE], [],
+      staffHeaders,
+      ...staffLoanData.map((s, i) => [
+        i + 1, s.staffName, s.staffId, s.staffState, s.staffBranch,
+        s.totalLoans, s.activeLoans, s.completedLoans,
+        s.totalDisbursed, s.totalOutstanding, s.totalPaid,
+      ]),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(staffRows), 'By Staff');
 
     // Detailed loans sheet
-    const loanRows: any[] = [];
+    const loanRows: any[][] = [[BANK_NAME], [REPORT_TITLE], []];
+    const loanHeaders = ['Staff Name', 'Staff ID', 'S/N', 'Beneficiary', 'Loan Ref', 'Employee ID', 'State', 'Branch', 'Loan Amount (₦)', 'Outstanding (₦)', 'Total Paid (₦)', 'EMI (₦)', 'Tenor', 'Status', 'Created'];
+    loanRows.push(loanHeaders);
     staffLoanData.forEach(s => {
       s.loans.forEach((l, i) => {
-        loanRows.push({
-          'Staff Name': s.staffName,
-          'Staff ID': s.staffId,
-          'S/N': i + 1,
-          'Beneficiary': l.name,
-          'Loan Ref': l.loan_reference_number || '',
-          'Employee ID': l.employee_id,
-          'State': l.state,
-          'Branch': l.bank_branch,
-          'Loan Amount (₦)': l.loan_amount,
-          'Outstanding (₦)': l.outstanding_balance,
-          'Total Paid (₦)': l.total_paid,
-          'EMI (₦)': l.monthly_emi,
-          'Tenor': l.tenor_months,
-          'Status': l.status,
-          'Created': new Date(l.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }),
-        });
+        loanRows.push([
+          s.staffName, s.staffId, i + 1, l.name, l.loan_reference_number || '', l.employee_id,
+          l.state, l.bank_branch, l.loan_amount, l.outstanding_balance, l.total_paid,
+          l.monthly_emi, l.tenor_months, l.status,
+          new Date(l.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' }),
+        ]);
       });
     });
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(loanRows), 'Loan Details');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(loanRows), 'Loan Details');
 
     const date = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `Staff_Loan_Tracker_${date}.xlsx`);
     toast({ title: 'Excel exported successfully' });
-  }, [staffLoanData, totals, toast]);
+  }, [staffLoanData, totals, toast, filterState, filterBranch]);
 
-  const exportPDF = useCallback(() => {
+  const exportPDF = useCallback(async () => {
     const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
     const date = new Date().toISOString().split('T')[0];
-    doc.setFontSize(16);
-    doc.text('Staff Loan Creation Tracker', 40, 35);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${date} | State: ${filterState === 'all' ? 'All' : filterState} | Branch: ${filterBranch === 'all' ? 'All' : filterBranch}`, 40, 50);
+    const logo = await getLogoBase64();
+
+    if (logo) doc.addImage(logo, 'PNG', 40, 10, 60, 60);
+    doc.setFontSize(16); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 100, 0);
+    doc.text(BANK_NAME, logo ? 110 : 40, 35);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold');
+    doc.text(REPORT_TITLE, logo ? 110 : 40, 52);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(`Generated: ${date} | State: ${filterState === 'all' ? 'All' : filterState} | Branch: ${filterBranch === 'all' ? 'All' : filterBranch}`, 40, 75);
 
     autoTable(doc, {
-      startY: 65,
+      startY: 85,
       head: [['S/N', 'Staff Name', 'Staff ID', 'State', 'Branch', 'Loans', 'Active', 'Completed', 'Disbursed (₦)', 'Outstanding (₦)', 'Paid (₦)']],
       body: staffLoanData.map((s, i) => [
         i + 1, s.staffName, s.staffId, s.staffState, s.staffBranch,
@@ -288,7 +297,8 @@ export default function StaffLoanTracker() {
         formatNaira(s.totalDisbursed), formatNaira(s.totalOutstanding), formatNaira(s.totalPaid),
       ]),
       styles: { fontSize: 7 },
-      headStyles: { fillColor: [0, 100, 60] },
+      headStyles: { fillColor: [0, 100, 0], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
     });
 
     doc.save(`Staff_Loan_Tracker_${date}.pdf`);
@@ -296,8 +306,41 @@ export default function StaffLoanTracker() {
   }, [staffLoanData, filterState, filterBranch, toast]);
 
   const handlePrint = useCallback(() => {
-    window.print();
-  }, []);
+    const html = `<html><head><title>${REPORT_TITLE}</title>
+      <style>
+        body{font-family:Arial,sans-serif;margin:20px;font-size:11px}
+        .header{text-align:center;margin-bottom:16px}
+        .header img{height:80px;margin-bottom:8px}
+        .header h1{font-size:22px;margin:0;color:#006400;font-weight:bold}
+        .header h2{font-size:16px;margin:4px 0;font-weight:bold}
+        .meta{font-size:10px;color:#666;margin-bottom:12px;text-align:center}
+        table{width:100%;border-collapse:collapse;font-size:9px}
+        th{background:#006400;color:#fff;padding:5px 4px;text-align:left}
+        td{padding:4px;border-bottom:1px solid #ddd}
+        tr:nth-child(even){background:#f9f9f9}
+        .text-right{text-align:right}
+        @media print{@page{size:A4 landscape;margin:10mm}}
+      </style></head><body>
+      <div class="header">
+        <img src="${fmbnLogo}" /><h1>${BANK_NAME}</h1><h2>${REPORT_TITLE}</h2>
+      </div>
+      <div class="meta">Generated: ${new Date().toISOString().split('T')[0]} | State: ${filterState === 'all' ? 'All' : filterState} | Branch: ${filterBranch === 'all' ? 'All' : filterBranch}</div>
+      <table><thead><tr>
+        <th>S/N</th><th>Staff Name</th><th>Staff ID</th><th>State</th><th>Branch</th>
+        <th>Loans</th><th>Active</th><th>Completed</th>
+        <th>Disbursed (₦)</th><th>Outstanding (₦)</th><th>Paid (₦)</th>
+      </tr></thead><tbody>
+      ${staffLoanData.map((s, i) => `<tr>
+        <td>${i + 1}</td><td>${s.staffName}</td><td>${s.staffId}</td><td>${s.staffState}</td>
+        <td>${s.staffBranch}</td><td>${s.totalLoans}</td><td>${s.activeLoans}</td>
+        <td>${s.completedLoans}</td><td class="text-right">${formatNaira(s.totalDisbursed)}</td>
+        <td class="text-right">${formatNaira(s.totalOutstanding)}</td>
+        <td class="text-right">${formatNaira(s.totalPaid)}</td>
+      </tr>`).join('')}
+      </tbody></table></body></html>`;
+    const w = window.open('', '_blank');
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
+  }, [staffLoanData, filterState, filterBranch]);
 
   if (loading) {
     return (
