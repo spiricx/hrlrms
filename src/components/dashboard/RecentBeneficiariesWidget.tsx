@@ -254,6 +254,33 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
       <div className="flex flex-col gap-3 px-6 py-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-bold font-display">Recent Beneficiaries</h2>
         <div className="flex items-center gap-2 flex-wrap">
+          <RecentBeneficiariesExport
+            records={filtered.map((b) => {
+              const a = getArrearsFromMap(arrearsMap, b.id);
+              const statusInfo = getStatusInfoFromArrears(a);
+              return {
+                name: b.name,
+                organization: b.department || '—',
+                loanRefNo: b.loan_reference_number || '—',
+                nhfNo: b.nhf_number || '—',
+                gender: b.gender || '—',
+                state: b.state || '—',
+                branch: b.bank_branch || '—',
+                tenor: b.tenor_months,
+                loanAmount: Number(b.loan_amount),
+                monthlyRepayment: Number(b.monthly_emi),
+                outstanding: Number(b.outstanding_balance),
+                totalPaid: Number(b.total_paid),
+                lastPmtAmt: b.lastTransaction ? Number(b.lastTransaction.amount) : 0,
+                lastPmtDate: b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—',
+                ageOfArrears: a.daysOverdue > 0 ? `${a.daysOverdue} Days` : '—',
+                monthsArrears: a.arrearsMonths,
+                arrearsAmt: a.arrearsAmount,
+                status: statusInfo.label,
+              };
+            })}
+            staffName={staffName}
+          />
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="w-3.5 h-3.5" />
             Export

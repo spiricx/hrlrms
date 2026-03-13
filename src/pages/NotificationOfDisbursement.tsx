@@ -203,7 +203,7 @@ export default function NotificationOfDisbursement() {
       {/* Batch selection - now a clickable table */}
       <div className="bg-card rounded-xl border p-4 space-y-3">
         <h2 className="font-semibold text-foreground">Select a Loan Batch ({filteredBatches.length})</h2>
-        <div className="overflow-x-auto max-h-64 overflow-y-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           <Table>
             <TableHeader>
               <TableRow>
