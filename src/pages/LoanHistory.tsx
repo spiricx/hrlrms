@@ -33,11 +33,15 @@ interface EnrichedBeneficiary extends Beneficiary {
 
 export default function LoanHistory() {
   const navigate = useNavigate();
-  const { hasRole } = useAuth();
+  const { user, hasRole } = useAuth();
   const isAdmin = hasRole('admin');
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
   const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
+
+  const staffName = user?.user_metadata?.surname && user?.user_metadata?.first_name
+    ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
+    : user?.email?.split('@')[0] || 'User';
 
   const [beneficiaries, setBeneficiaries] = useState<EnrichedBeneficiary[]>([]);
   const [loading, setLoading] = useState(true);
