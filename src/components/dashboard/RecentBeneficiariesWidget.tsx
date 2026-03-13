@@ -72,6 +72,7 @@ interface WidgetProps {
 }
 
 export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: WidgetProps) {
+  const { user } = useAuth();
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,6 +83,10 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
   const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
+
+  const staffName = user?.user_metadata?.surname && user?.user_metadata?.first_name
+    ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
+    : user?.email?.split('@')[0] || 'User';
 
   const fetchData = useCallback(async () => {
     const { data: bens } = await supabase.
