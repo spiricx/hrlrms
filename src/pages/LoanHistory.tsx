@@ -315,10 +315,32 @@ export default function LoanHistory() {
 
       {/* Detailed Table */}
       <div className="bg-card rounded-xl shadow-card overflow-hidden">
-        <div className="p-4 border-b border-border">
+        <div className="p-4 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-bold font-display">
             Loan Register — {filtered.length} record{filtered.length !== 1 ? 's' : ''}
           </h2>
+          <LoanHistoryExport
+            records={filtered.map((b) => {
+              const health = classifyHealth(b);
+              const a = getArrearsFromMap(arrearsMap, b.id);
+              const createdDate = new Date(b.created_at);
+              return {
+                name: b.name,
+                loanRef: b.loan_reference_number || '—',
+                stateBranch: `${b.state || '—'} / ${b.bank_branch || '—'}`,
+                organization: b.department,
+                loanOfficer: b.creatorName,
+                created: formatDate(createdDate),
+                loanAmount: Number(b.loan_amount),
+                totalRepaid: Number(b.total_paid),
+                balance: Number(b.outstanding_balance),
+                health: health === 'current' ? 'Current' : health === 'arrears' ? 'In Arrears' : 'Liquidated',
+                daysOverdue: a.daysOverdue > 0 ? `${a.daysOverdue} days` : '0 days',
+                lastPayment: b.lastPaymentDate ? formatDate(new Date(b.lastPaymentDate)) : 'No payment',
+              };
+            })}
+            staffName={staffName}
+          />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
