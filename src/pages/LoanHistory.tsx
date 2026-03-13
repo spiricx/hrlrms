@@ -20,6 +20,7 @@ import { useStarredBeneficiaries } from '@/hooks/useStarredBeneficiaries';
 import StarButton from '@/components/StarButton';
 import { useFlaggedBeneficiaries } from '@/hooks/useFlaggedBeneficiaries';
 import FlagButton from '@/components/FlagButton';
+import LoanHistoryExport, { type LoanHistoryExportRow } from '@/components/reports/LoanHistoryExport';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
