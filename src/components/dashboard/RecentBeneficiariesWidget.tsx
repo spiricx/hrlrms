@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import type { Tables } from '@/integrations/supabase/types';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import RecentBeneficiariesExport, { type RecentBenExportRow } from '@/components/dashboard/RecentBeneficiariesExport';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Beneficiary = Tables<'beneficiaries'>;
 type Transaction = Tables<'transactions'>;
@@ -70,6 +72,7 @@ interface WidgetProps {
 }
 
 export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: WidgetProps) {
+  const { user } = useAuth();
   const [beneficiaries, setBeneficiaries] = useState<BeneficiaryWithPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -80,6 +83,10 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
   const { map: arrearsMap } = useArrearsLookup();
   const { isStarred, toggle: toggleStar } = useStarredBeneficiaries();
   const { isFlagged, toggle: toggleFlag } = useFlaggedBeneficiaries();
+
+  const staffName = user?.user_metadata?.surname && user?.user_metadata?.first_name
+    ? `${user.user_metadata.surname}, ${user.user_metadata.first_name}`
+    : user?.email?.split('@')[0] || 'User';
 
   const fetchData = useCallback(async () => {
     const { data: bens } = await supabase.
@@ -247,6 +254,33 @@ export default function RecentBeneficiariesWidget({ healthFilter = 'all' }: Widg
       <div className="flex flex-col gap-3 px-6 py-4 border-b border-border sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-bold font-display">Recent Beneficiaries</h2>
         <div className="flex items-center gap-2 flex-wrap">
+          <RecentBeneficiariesExport
+            records={filtered.map((b) => {
+              const a = getArrearsFromMap(arrearsMap, b.id);
+              const statusInfo = getStatusInfoFromArrears(a);
+              return {
+                name: b.name,
+                organization: b.department || '—',
+                loanRefNo: b.loan_reference_number || '—',
+                nhfNo: b.nhf_number || '—',
+                gender: b.gender || '—',
+                state: b.state || '—',
+                branch: b.bank_branch || '—',
+                tenor: b.tenor_months,
+                loanAmount: Number(b.loan_amount),
+                monthlyRepayment: Number(b.monthly_emi),
+                outstanding: Number(b.outstanding_balance),
+                totalPaid: Number(b.total_paid),
+                lastPmtAmt: b.lastTransaction ? Number(b.lastTransaction.amount) : 0,
+                lastPmtDate: b.lastTransaction ? formatPaymentDate(b.lastTransaction.date_paid) : '—',
+                ageOfArrears: a.daysOverdue > 0 ? `${a.daysOverdue} Days` : '—',
+                monthsArrears: a.arrearsMonths,
+                arrearsAmt: a.arrearsAmount,
+                status: statusInfo.label,
+              };
+            })}
+            staffName={staffName}
+          />
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="w-3.5 h-3.5" />
             Export
